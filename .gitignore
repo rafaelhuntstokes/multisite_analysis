@@ -1,0 +1,17 @@
+data_studies/condor/errors
+data_studies/condor/logs
+data_studies/condor/macros
+data_studies/condor/outputs
+data_studies/condor/sh
+data_studies/condor/submit
+data_studies/extracted_data
+data_studies/plots
+mc_studies/condor/errors
+mc_studies/condor/logs
+mc_studies/condor/macros
+mc_studies/condor/outputs
+mc_studies/condor/sh
+mc_studies/condor/submit
+mc_studies/plots
+mc_studies/run_by_run_pdf
+mc_studies/run_by_run_test

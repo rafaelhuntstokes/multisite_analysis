@@ -1,0 +1,10 @@
+executable              = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/scripts/hadd.sh
+universe                = vanilla
+notification            = never
+priority                = 5
+getenv                  = False
+output                  = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/outputs/hadd.out
+error                   = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/errors/hadd.err
+log                     = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/logs/hadd.log
+request_cpus            = 1
+queue 1

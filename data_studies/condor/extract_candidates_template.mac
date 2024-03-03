@@ -1,0 +1,16 @@
+/rat/inroot/load ${IN}
+
+/run/initialize
+
+/rat/proc count
+/rat/procset update 100000
+
+/rat/proc/if eventlist
+    /rat/procset file "${LIST}"
+    /rat/proclast outroot
+    /rat/procset file "${OUT}"
+/rat/proc/endif
+
+/rat/inroot/read
+
+exit
