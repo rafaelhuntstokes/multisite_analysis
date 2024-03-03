@@ -59,13 +59,14 @@ def apply_scaling(energy_spectrum, expected_number, binning):
 
     return scaled_counts, mid_points[:-1] 
 
-def create_background_model(FV, coincidence_cuts, itr_cuts, bin_width = 0.05):
+def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width = 0.05):
     """
     For a given FV, the function creates the background model vs data energy spectrum for the Tl208 vs B8 solar ROI.
 
     INPUTS: chosen FV [3, 3.5, 4, 4.5, 5, 5.5, 6], float
             apply coincidence_cuts [True, False], bool
             apply itr_cuts [True, False], bool           | note that ITR cuts were optimised in another analysis to accept events if: 0.18 < ITR < 0.3
+            dist_type "energy", "nhits_clean" or "nhits_corrected", str
             bin_width, float, the bin width for energy spectra
     OUTPUT: None, but saves a background model graph.
     """
@@ -108,125 +109,96 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, bin_width = 0.05):
     itr_B8_numu   = np.load(path + "/B8_solar_numu_mc_information/itr.npy")
     itr_pa234m    = np.load(path + "/Pa234m_mc_information/itr.npy")
 
-    nhits_bi214     = np.load(path + "/BiPo214_mc_information/nhits_scaled.npy")
-    nhits_po214     = np.load(path + "/Po214_mc_information/nhits_scaled.npy")
-    nhits_bi212     = np.load(path + "/BiPo212_mc_information/nhits_scaled.npy")
-    nhits_po212     = np.load(path + "/Po212_mc_information/nhits_scaled.npy")
-    nhits_alphaN_p  = np.load(path + "/AlphaN_LAB_13C_mc_information/nhits_scaled.npy") 
-    nhits_alphaN_d  = np.load(path + "/gammas_2p2MeV_mc_information/nhits_scaled.npy")
-    nhits_tl208     = np.load(path + "/Tl208_mc_information/nhits_scaled.npy")
-    nhits_tl210     = np.load(path + "/Tl210_mc_information/nhits_scaled.npy")
-    nhits_B8_nue    = np.load(path + "/B8_solar_nue_mc_information/nhits_scaled.npy")
-    nhits_B8_numu   = np.load(path + "/B8_solar_numu_mc_information/nhits_scaled.npy")
-    nhits_pa234m    = np.load(path + "/Pa234m_mc_information/nhits_scaled.npy")
+    nhitscorrected_bi214     = np.load(path + "/BiPo214_mc_information/nhits_scaled.npy")
+    nhitscorrected_po214     = np.load(path + "/Po214_mc_information/nhits_scaled.npy")
+    nhitscorrected_bi212     = np.load(path + "/BiPo212_mc_information/nhits_scaled.npy")
+    nhitscorrected_po212     = np.load(path + "/Po212_mc_information/nhits_scaled.npy")
+    nhitscorrected_alphaN_p  = np.load(path + "/AlphaN_LAB_13C_mc_information/nhits_scaled.npy") 
+    nhitscorrected_alphaN_d  = np.load(path + "/gammas_2p2MeV_mc_information/nhits_scaled.npy")
+    nhitscorrected_tl208     = np.load(path + "/Tl208_mc_information/nhits_scaled.npy")
+    nhitscorrected_tl210     = np.load(path + "/Tl210_mc_information/nhits_scaled.npy")
+    nhitscorrected_B8_nue    = np.load(path + "/B8_solar_nue_mc_information/nhits_scaled.npy")
+    nhitscorrected_B8_numu   = np.load(path + "/B8_solar_numu_mc_information/nhits_scaled.npy")
+    nhitscorrected_pa234m    = np.load(path + "/Pa234m_mc_information/nhits_scaled.npy")
 
-    plt.hist(itr_bi214, bins = 50)
-    plt.savefig("itr_bipo214.png")
     # isolate MC events which fall within the FV cut
-    # idx_bi214     = np.where((radius_bi214 < FV) & (itr_bi214 > 0.18) & (itr_bi214 < 0.3))
-    # idx_po214     = np.where((radius_po214 < FV) & (itr_po214 > 0.18) & (itr_po214 < 0.3))
-    # idx_bi212     = np.where((radius_bi212 < FV) & (itr_bi212 > 0.18) & (itr_bi212 < 0.3))
-    # idx_po212     = np.where((radius_po212 < FV) & (itr_po212 > 0.18) & (itr_po212 < 0.3))
-    # idx_alphaN_p  = np.where((radius_alphaN_p < FV) & (itr_alphaN_p > 0.18) & (itr_alphaN_p < 0.3))
-    # idx_alphaN_d  = np.where((radius_alphaN_d < FV) & (itr_alphaN_d > 0.18) & (itr_alphaN_d < 0.3))
-    # idx_tl208     = np.where((radius_tl208 < FV) & (itr_tl208 > 0.18) & (itr_tl208 < 0.3))
-    # idx_tl210     = np.where((radius_tl210 < FV) & (itr_tl210 > 0.18) & (itr_tl210 < 0.3))
-    # idx_B8_nue    = np.where((radius_B8_nue < FV) & (itr_B8_nue > 0.18) & (itr_B8_nue < 0.3))
-    # idx_B8_numu   = np.where((radius_B8_numu < FV) & (itr_B8_numu > 0.18) & (itr_B8_numu < 0.3))
-    # idx_pa234m    = np.where((radius_pa234m < FV) & (itr_pa234m > 0.18) & (itr_pa234m < 0.3))
-    # idx_bi214     = np.where((radius_bi214 < FV) & (itr_bi214 > 0.18) & (itr_bi214 < 0.3) & (energy_bi214 > 2) & (energy_bi214 < 6))
-    # idx_po214     = np.where((radius_po214 < FV) & (itr_po214 > 0.18) & (itr_po214 < 0.3) & (energy_po214 > 2) & (energy_po214 < 6))
-    # idx_bi212     = np.where((radius_bi212 < FV) & (itr_bi212 > 0.18) & (itr_bi212 < 0.3) & (energy_bi212 > 2) & (energy_bi212 < 6))
-    # idx_po212     = np.where((radius_po212 < FV) & (itr_po212 > 0.18) & (itr_po212 < 0.3) & (energy_po212 > 2) & (energy_po212 < 6))
-    # idx_alphaN_p  = np.where((radius_alphaN_p < FV) & (itr_alphaN_p > 0.18) & (itr_alphaN_p < 0.3) & (energy_alphaN_p > 2) & (energy_alphaN_p < 6))
-    # idx_alphaN_d  = np.where((radius_alphaN_d < FV) & (itr_alphaN_d > 0.18) & (itr_alphaN_d < 0.3) & (energy_alphaN_d > 2) & (energy_alphaN_d < 6))
-    # idx_tl208     = np.where((radius_tl208 < FV) & (itr_tl208 > 0.18) & (itr_tl208 < 0.3) & (energy_tl208 > 2) & (energy_tl208 < 6))
-    # idx_tl210     = np.where((radius_tl210 < FV) & (itr_tl210 > 0.18) & (itr_tl210 < 0.3) & (energy_tl210 > 2) & (energy_tl210 < 6))
-    # idx_B8_nue    = np.where((radius_B8_nue < FV) & (itr_B8_nue > 0.18) & (itr_B8_nue < 0.3) & (energy_B8_nue > 2) & (energy_B8_nue < 6))
-    # idx_B8_numu   = np.where((radius_B8_numu < FV) & (itr_B8_numu > 0.18) & (itr_B8_numu < 0.3) & (energy_B8_numu > 2) & (energy_B8_numu < 6))
-    # idx_pa234m    = np.where((radius_pa234m < FV) & (itr_pa234m > 0.18) & (itr_pa234m < 0.3) & (energy_pa234m > 2) & (energy_pa234m < 6))
-
-    # idx_bi214     = np.where((radius_bi214 < FV) & (itr_bi214 > 0.21) & (itr_bi214 < 0.3))
-    # idx_po214     = np.where((radius_po214 < FV) & (itr_po214 > 0.21) & (itr_po214 < 0.3))
-    # idx_bi212     = np.where((radius_bi212 < FV) & (itr_bi212 > 0.21) & (itr_bi212 < 0.3))
-    # idx_po212     = np.where((radius_po212 < FV) & (itr_po212 > 0.21) & (itr_po212 < 0.3))
-    # idx_alphaN_p  = np.where((radius_alphaN_p < FV) & (itr_alphaN_p > 0.21) & (itr_alphaN_p < 0.3))
-    # idx_alphaN_d  = np.where((radius_alphaN_d < FV) & (itr_alphaN_d > 0.21) & (itr_alphaN_d < 0.3))
-    # idx_tl208     = np.where((radius_tl208 < FV) & (itr_tl208 > 0.21) & (itr_tl208 < 0.3))
-    # idx_tl210     = np.where((radius_tl210 < FV) & (itr_tl210 > 0.21) & (itr_tl210 < 0.3))
-    # idx_B8_nue    = np.where((radius_B8_nue < FV) & (itr_B8_nue > 0.21) & (itr_B8_nue < 0.3))
-    # idx_B8_numu   = np.where((radius_B8_numu < FV) & (itr_B8_numu > 0.21) & (itr_B8_numu < 0.3))
-    # idx_pa234m    = np.where((radius_pa234m < FV) & (itr_pa234m > 0.21) & (itr_pa234m < 0.3))
-    idx_bi214     = np.where((radius_bi214 < FV)  & (energy_bi214 > 2) & (energy_bi214 < 6))
-    idx_po214     = np.where((radius_po214 < FV) & (energy_po214 > 2) & (energy_po214 < 6))
-    idx_bi212     = np.where((radius_bi212 < FV) &  (energy_bi212 > 2) & (energy_bi212 < 6))
-    idx_po212     = np.where((radius_po212 < FV) &  (energy_po212 > 2) & (energy_po212 < 6))
-    idx_alphaN_p  = np.where((radius_alphaN_p < FV) &  (energy_alphaN_p > 2) & (energy_alphaN_p < 6))
-    idx_alphaN_d  = np.where((radius_alphaN_d < FV) &  (energy_alphaN_d > 2) & (energy_alphaN_d < 6))
-    idx_tl208     = np.where((radius_tl208 < FV) & (energy_tl208 > 2) & (energy_tl208 < 6))
-    idx_tl210     = np.where((radius_tl210 < FV) &  (energy_tl210 > 2) & (energy_tl210 < 6))
-    idx_B8_nue    = np.where((radius_B8_nue < FV) &  (energy_B8_nue > 2) & (energy_B8_nue < 6))
-    idx_B8_numu   = np.where((radius_B8_numu < FV) &  (energy_B8_numu > 2) & (energy_B8_numu < 6))
-    idx_pa234m    = np.where((radius_pa234m < FV) &  (energy_pa234m > 2) & (energy_pa234m < 6))
+    if itr_cuts == True:
+        idx_bi214     = np.where((radius_bi214 < FV) & (itr_bi214 > 0.18) & (itr_bi214 < 0.3) & (energy_bi214 > 2) & (energy_bi214 < 6))
+        idx_po214     = np.where((radius_po214 < FV) & (itr_po214 > 0.18) & (itr_po214 < 0.3) & (energy_po214 > 2) & (energy_po214 < 6))
+        idx_bi212     = np.where((radius_bi212 < FV) & (itr_bi212 > 0.18) & (itr_bi212 < 0.3) & (energy_bi212 > 2) & (energy_bi212 < 6))
+        idx_po212     = np.where((radius_po212 < FV) & (itr_po212 > 0.18) & (itr_po212 < 0.3) & (energy_po212 > 2) & (energy_po212 < 6))
+        idx_alphaN_p  = np.where((radius_alphaN_p < FV) & (itr_alphaN_p > 0.18) & (itr_alphaN_p < 0.3) & (energy_alphaN_p > 2) & (energy_alphaN_p < 6))
+        idx_alphaN_d  = np.where((radius_alphaN_d < FV) & (itr_alphaN_d > 0.18) & (itr_alphaN_d < 0.3) & (energy_alphaN_d > 2) & (energy_alphaN_d < 6))
+        idx_tl208     = np.where((radius_tl208 < FV) & (itr_tl208 > 0.18) & (itr_tl208 < 0.3) & (energy_tl208 > 2) & (energy_tl208 < 6))
+        idx_tl210     = np.where((radius_tl210 < FV) & (itr_tl210 > 0.18) & (itr_tl210 < 0.3) & (energy_tl210 > 2) & (energy_tl210 < 6))
+        idx_B8_nue    = np.where((radius_B8_nue < FV) & (itr_B8_nue > 0.18) & (itr_B8_nue < 0.3) & (energy_B8_nue > 2) & (energy_B8_nue < 6))
+        idx_B8_numu   = np.where((radius_B8_numu < FV) & (itr_B8_numu > 0.18) & (itr_B8_numu < 0.3) & (energy_B8_numu > 2) & (energy_B8_numu < 6))
+        idx_pa234m    = np.where((radius_pa234m < FV) & (itr_pa234m > 0.18) & (itr_pa234m < 0.3) & (energy_pa234m > 2) & (energy_pa234m < 6))
+    else:
+        idx_bi214     = np.where((radius_bi214 < FV)  & (energy_bi214 > 2) & (energy_bi214 < 6))
+        idx_po214     = np.where((radius_po214 < FV) & (energy_po214 > 2) & (energy_po214 < 6))
+        idx_bi212     = np.where((radius_bi212 < FV) &  (energy_bi212 > 2) & (energy_bi212 < 6))
+        idx_po212     = np.where((radius_po212 < FV) &  (energy_po212 > 2) & (energy_po212 < 6))
+        idx_alphaN_p  = np.where((radius_alphaN_p < FV) &  (energy_alphaN_p > 2) & (energy_alphaN_p < 6))
+        idx_alphaN_d  = np.where((radius_alphaN_d < FV) &  (energy_alphaN_d > 2) & (energy_alphaN_d < 6))
+        idx_tl208     = np.where((radius_tl208 < FV) & (energy_tl208 > 2) & (energy_tl208 < 6))
+        idx_tl210     = np.where((radius_tl210 < FV) &  (energy_tl210 > 2) & (energy_tl210 < 6))
+        idx_B8_nue    = np.where((radius_B8_nue < FV) &  (energy_B8_nue > 2) & (energy_B8_nue < 6))
+        idx_B8_numu   = np.where((radius_B8_numu < FV) &  (energy_B8_numu > 2) & (energy_B8_numu < 6))
+        idx_pa234m    = np.where((radius_pa234m < FV) &  (energy_pa234m > 2) & (energy_pa234m < 6))
 
     # apply idx
-    energy_bi214     = energy_bi214[idx_bi214]
-    energy_po214     = energy_po214[idx_po214]
-    energy_bi212     = energy_bi212[idx_bi212]
-    energy_po212     = energy_po212[idx_po212]
-    energy_alphaN_p  = energy_alphaN_p[idx_alphaN_p]
-    energy_alphaN_d  = energy_alphaN_d[idx_alphaN_d]
-    energy_tl208     = energy_tl208[idx_tl208]
-    energy_tl210     = energy_tl210[idx_tl210]
-    energy_B8_nue    = energy_B8_nue[idx_B8_nue]
-    energy_B8_numu   = energy_B8_numu[idx_B8_numu]
-    energy_pa234m    = energy_pa234m[idx_pa234m]
-
-    # energy_bi214     = nhits_bi214[idx_bi214]
-    # energy_po214     = nhits_po214[idx_po214]
-    # energy_bi212     = nhits_bi212[idx_bi212]
-    # energy_po212     = nhits_po212[idx_po212]
-    # energy_alphaN_p  = nhits_alphaN_p[idx_alphaN_p]
-    # energy_alphaN_d  = nhits_alphaN_d[idx_alphaN_d]
-    # energy_tl208     = nhits_tl208[idx_tl208]
-    # energy_tl210     = nhits_tl210[idx_tl210]
-    # energy_B8_nue    = nhits_B8_nue[idx_B8_nue]
-    # energy_B8_numu   = nhits_B8_numu[idx_B8_numu]
-    # energy_pa234m    = nhits_pa234m[idx_pa234m]
-
-    print("Num BiPo212 in MC: ", energy_bi212.size)
-    # load the data spectrum for this FV and coincidence / itr cut combination
-    # data_file = ROOT.TFile.Open(path + "/data_spectrum_runs/total_spectrum.root")
+    if dist_type == "energy":
+        binning            = np.arange(2.0, 6 + bin_width, bin_width)
+        energy_bi214     = energy_bi214[idx_bi214]
+        energy_po214     = energy_po214[idx_po214]
+        energy_bi212     = energy_bi212[idx_bi212]
+        energy_po212     = energy_po212[idx_po212]
+        energy_alphaN_p  = energy_alphaN_p[idx_alphaN_p]
+        energy_alphaN_d  = energy_alphaN_d[idx_alphaN_d]
+        energy_tl208     = energy_tl208[idx_tl208]
+        energy_tl210     = energy_tl210[idx_tl210]
+        energy_B8_nue    = energy_B8_nue[idx_B8_nue]
+        energy_B8_numu   = energy_B8_numu[idx_B8_numu]
+        energy_pa234m    = energy_pa234m[idx_pa234m]
+    elif dist_type == "nhits_clean":
+        ####################################
+        # don't have this info from MC yet #
+        ####################################
+        pass
+        # binning = np.arange(600, 1500, 10)
+        # energy_bi214     = nhitsclean_bi214[idx_bi214]
+        # energy_po214     = nhitsclean_po214[idx_po214]
+        # energy_bi212     = nhitsclean_bi212[idx_bi212]
+        # energy_po212     = nhitsclean_po212[idx_po212]
+        # energy_alphaN_p  = nhitsclean_alphaN_p[idx_alphaN_p]
+        # energy_alphaN_d  = nhitsclean_alphaN_d[idx_alphaN_d]
+        # energy_tl208     = nhitsclean_tl208[idx_tl208]
+        # energy_tl210     = nhitsclean_tl210[idx_tl210]
+        # energy_B8_nue    = nhitsclean_B8_nue[idx_B8_nue]
+        # energy_B8_numu   = nhitsclean_B8_numu[idx_B8_numu]
+        # energy_pa234m    = nhitsclean_pa234m[idx_pa234m]
+    elif dist_type == "nhits_corrected":
+        binning = np.arange(600, 1500, 10)
+        energy_bi214     = nhitscorrected_bi214[idx_bi214]
+        energy_po214     = nhitscorrected_po214[idx_po214]
+        energy_bi212     = nhitscorrected_bi212[idx_bi212]
+        energy_po212     = nhitscorrected_po212[idx_po212]
+        energy_alphaN_p  = nhitscorrected_alphaN_p[idx_alphaN_p]
+        energy_alphaN_d  = nhitscorrected_alphaN_d[idx_alphaN_d]
+        energy_tl208     = nhitscorrected_tl208[idx_tl208]
+        energy_tl210     = nhitscorrected_tl210[idx_tl210]
+        energy_B8_nue    = nhitscorrected_B8_nue[idx_B8_nue]
+        energy_B8_numu   = nhitscorrected_B8_numu[idx_B8_numu]
+        energy_pa234m    = nhitscorrected_pa234m[idx_pa234m]
+    else:
+        print("Dist type not recognised.")
+        return 0
     
     # map the inputted FV floats to the names (strings) of the data TTrees
     name_map  = {3000.0: "3m", 3500.0: "3p5m", 4000.0: "4m", 4500.0: "4p5m", 5000.0: "5m", 5500.0: "5p5m", 6000.0: "6m"}
     name_tree = name_map[float(FV)]
-    print(name_tree)
-    # if coincidence_cuts == True:
-        # tree = data_file.Get(f"clean_{name_tree}")
-    # if coincidence_cuts == False:
-    #     tree = data_file.Get(f"full_{name_tree}")
-    
-    # iterate through the TTree and extract the energy spectrum
-    # apply ITR cuts if required
-    # energy_data = []
-    energy_data = np.load("./energy_dist_directionality_4500_counts.npy")
-    # energy_data = np.load("clean_4p5m_spectrum_general_coincidence.npy")
-    print(len(energy_data))
-    # for ievent in tree:
-    #     itr    = ievent.ITR
-    #     energy = ievent.energy 
-        
-    #     # check whether to apply ITR cut
-    #     if itr_cuts == True:
-    #         if itr > 0.3 or itr < 0.18:
-    #             continue
-    #         else:
-    #             # pass itr cut!
-    #             energy_data.append(energy)
-    #     if itr_cuts == False:
-    #         # append regardless of ITR value
-    #         energy_data.append(energy)
+    energy_data = np.load(f"./data_energy_spectrums/{dist_type}_dist_directionality_4500.npy")
 
     # load JSON file containing dictionary of isotopes and their calculated expected rates
     expected_backgrounds_rates = open("expected_rates_database.json")
@@ -263,8 +235,6 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, bin_width = 0.05):
         expected_pa234m    = background_rates_db["quiet_period"][name_tree]["Pa234m"]
     
     # scale the MC to the expected number of events
-    binning            = np.arange(2.0, 6 + bin_width, bin_width)
-    # binning = np.arange(600, 1500, 10)
     print(binning)
     scaled_bi214, mids = apply_scaling(energy_bi214, expected_bipo214, binning)
     scaled_bi212, _    = apply_scaling(energy_bi212, expected_bipo212, binning)
@@ -280,7 +250,6 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, bin_width = 0.05):
     counts_data, _ = np.histogram(energy_data, bins = binning)
     error_data = np.sqrt(counts_data)
 
-    
     # create the plot!
     fig, axes = plt.subplots(nrows = 2, ncols = 1, figsize = (12, 12))
     # plt.figure(figsize = (12, 6)) 
@@ -302,61 +271,45 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, bin_width = 0.05):
     counts_data_chi2  = counts_data[10:] # counted and the 10th bin is 2.5 MeV
     counts_model_chi2 = total_model[10:]
     bins_chi2         = mids[10:]
+    
     # only evaluate nonzero data bins
     idx_nonzero = np.nonzero(counts_model_chi2)
 
     chi2 = np.sum(((counts_data_chi2[idx_nonzero] - counts_model_chi2[idx_nonzero])**2/counts_model_chi2[idx_nonzero]))
-    NDF  = len(bins_chi2[idx_nonzero]) - 8 # num PDFs (ignoring Pa234m)
-    axes[0].plot([], [], "", label = r"$\frac{\chi^2}{NDF} = $ " + f"{round(chi2/NDF, 2)}")
-    print(np.sum(total_model), np.sum(counts_data))
+    NDF  = len(bins_chi2[idx_nonzero]) - 8 # num PDFs (ignoring Pa234m as it's outside the ROI zone)
+    axes[0].plot([], [], linestyle = "", label = r"$\frac{\chi^2}{NDF} = $ " + f"{round(chi2/NDF, 2)}")
     axes[0].errorbar(mids, total_model, capsize = 2, marker = "x", markersize = 2, color = "red", label = "Model")
     axes[0].legend(fontsize = 15)
     axes[0].set_title(f"Background Model | FV: {name_tree} | Coincidence Cuts: {coincidence_cuts} | ITR Cut: {itr_cuts}", fontsize = 20)
-    axes[0].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
+    
     axes[0].set_ylabel(f"Counts per {bin_width} MeV Bin", fontsize = 20)
     # axes[0].set_yscale("log")
-    axes[0].set_xlim((2.5,6))
-    axes[0].set_ylim((0, 100))
+    if dist_type == "energy":
+        axes[0].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
+        axes[0].set_xlim((2.5,6))
+        axes[0].set_ylim((0, 100))
+    if dist_type == "nhits_corrected":
+        axes[0].set_xlabel("Nhits Corrected Energy (MeV)", fontsize = 20)
+        axes[0].set_xlim((700,1500))
+        axes[0].set_ylim((0, 100))
     
 
     # draw the Data - Model Residual
     axes[1].scatter(mids, (counts_data - total_model) / error_data, marker = "o", color = "black")
     # axes[1].title(f"Background Model Residual | FV: {name_tree} | Coincidence Cuts: {coincidence_cuts} | ITR Cut: {itr_cuts}")
     axes[1].set_ylabel(r"$\frac{Data - Model}{\sigma_{model}}$", fontsize = 20)
-    axes[1].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
-    axes[1].set_xlim((2.5,6))
-    axes[1].set_ylim((-4, 4))
+    
+    if dist_type == "energy":
+        axes[1].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
+        axes[1].set_xlim((2.5,6))
+        axes[1].set_ylim((-4, 4))
+    if dist_type == "nhits_corrected":
+        axes[1].set_xlabel("Nhits Corrected Energy (MeV)", fontsize = 20)
+        axes[1].set_xlim((700,1500))
+        axes[1].set_ylim((-4, 4))
     axes[1].axhline(y = 0, color = "red")
     # plt.savefig(f"residual_{name_tree}_quiet.png")
-    plt.savefig(f"energy_{name_tree}_general_coincidence.png")
-    plt.savefig(f"energy_{name_tree}_general_coincidence.pdf")
-
-def create_data_spectrum_numpy():
-    """
-    Function loads the total spectrum as obtained from the tagging
-    and creates the numpy array needed for the plotting.
-    """
-
-    data = ROOT.TFile.Open("/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence/total_spectrum.root")
-
-    ntuple = data.Get("clean_4p5m")
-
-    spectrum = []
-    for ientry in ntuple:
-        itr = ientry.ITR
-        x = ientry.x
-        y = ientry.y
-        z = ientry.z
-        
-        r = np.sqrt(x**2 + y**2 + z **2)
-        # if r > 4500:
-        #     continue
-        
-        if itr < 0.21 or itr > 0.3:
-            continue
-        spectrum.append(ientry.energy)
-    print(len(spectrum))
-    np.save("clean_4p5m_spectrum_general_coincidence.npy", spectrum)
+    plt.savefig(f"../../plots/background_models/{dist_type}_{name_tree}.pdf")
 
 def create_data_spectrum_with_runlist():
     """
@@ -365,8 +318,7 @@ def create_data_spectrum_with_runlist():
 
     # set up
     data_path    = "/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence" 
-    run_list     = np.loadtxt("directionality_list.txt", dtype = int)
-    energy_width = 0.05# MeV bin width
+    run_list     = np.loadtxt("../../runlists/directionality_list.txt", dtype = int)
     counter      = 0 
 
     coincidence = True # apply coincidence cuts to data
@@ -379,10 +331,10 @@ def create_data_spectrum_with_runlist():
     missing_runs = []
 
     # outputs to save
-    dist_energy      = []
-    dist_nhits_clean = []
-    inwindow_dist    = []
-    total_livetime   = 0
+    dist_energy          = []
+    dist_nhits_clean     = []
+    dist_nhits_corrected = []
+    total_livetime       = 0
     
     for irun in run_list:
 
@@ -405,29 +357,22 @@ def create_data_spectrum_with_runlist():
         total_livetime += livetime
 
         for ientry in ntuple:
-            x = ientry.x
-            y = ientry.y
-            z = ientry.z
-
-            # r = np.sqrt(x**2 + y**2 + z**2)
-            # if r > fv_cut:
-            #     continue
-            inWindow1 = ientry.alphaBeta212
-            inWindow2 = ientry.alphaBeta214
-            inwindow_dist.append(inWindow1)
-            # if inWindow1 < 0 or inWindow2 < 0:
-            #     continue
+            
+            # apply ITR cut
             itr = ientry.ITR
             if itr < itr_low or itr > itr_high:
                 continue
 
-            energy      = ientry.energy
-            nhits_clean = ientry.nhitsClean
-
+            energy          = ientry.energy
+            nhits_corrected = ientry.nhitsCorrected
+            nhits_clean     = ientry.nhitsClean
             dist_energy.append(energy)
             dist_nhits_clean.append(nhits_clean)
+            dist_nhits_corrected.append(nhits_corrected)
+
         counter += 1 
         print(f"Completed {counter} / {len(run_list)} ({(100 * counter) / len(run_list)} %)")
+    
     print("Num events: ", len(dist_energy))
     print(f"\nTotal Livetime: {total_livetime / (60 * 60)} hrs | {total_livetime / (60 * 60 * 24)} days.")
     print(f"Missing {len(missing_runs)} runs:")
@@ -435,24 +380,9 @@ def create_data_spectrum_with_runlist():
     print(f"Found {len(bad_runs)} bad runs:")
     print(bad_runs)
 
-    # make an energy spectrum plot
-    binning_energy           = np.arange(2.5, 6 + energy_width, energy_width)
-    counts_energy, bin_edges = np.histogram(dist_energy, bins = binning_energy)
-
-    error_energy = np.sqrt(counts_energy)
-    mids_energy  = bin_edges[:-1] + np.diff(bin_edges)[0] / 2
-
-    # plt.figure(figsize = (6, 4))
-
-    # plt.errorbar(mids_energy, counts_energy, yerr = error_energy, capsize = 2, linestyle = "", color = "black", marker = "o")
-    # plt.xlim((2.5, 6.0))
-    # plt.xlabel("Reconstructed Energy (MeV)")
-    # plt.ylabel("Counts")
-    # plt.savefig("new_data_spectrum.png")
-    plt.hist(inwindow_dist, bins = np.linspace(-1000, 100, 50), density = True)
-    plt.savefig("inwindow.png")
-    np.save(f"./energy_dist_directionality_{fv_cut}_counts.npy", dist_energy)
-    np.save(f"./nhit_cleaned_dist_directionality_{fv_cut}_counts.npy", dist_nhits_clean)
+    np.save(f"./data_energy_spectrums/energy_dist_directionality_{fv_cut}.npy", dist_energy)
+    np.save(f"./data_energy_spectrums/nhits_corrected_dist_directionality_{fv_cut}.npy", dist_nhits_corrected)
+    np.save(f"./data_energy_spectrums/nhits_clean_dist_directionality_{fv_cut}.npy", dist_nhits_clean)
 
 
 def compare_energy_dists():
@@ -489,16 +419,7 @@ def count_bump_events():
         num_bump_fv.append(len(bump_events))
 
     print(num_bump_fv)
-# count_bump_events()
-# create_data_spectrum_with_runlist()
-# compare_energy_dists()
 
-# create_data_spectrum_numpy()
-# create_background_model(3000, True, True, 0.1)
-# create_background_model(3500, True, True, 0.1)
-# create_background_model(4000, True, True, 0.1)
-create_background_model(4500, True, True, 0.05)
-# create_background_model(5000, True, True, 0.1)
-# create_background_model(5500, True, True, 0.1)
-# create_background_model(6000, True, True, 0.1)
+# create_data_spectrum_with_runlist()
+create_background_model(4500, True, True, "nhits_corrected", 0.05)
 

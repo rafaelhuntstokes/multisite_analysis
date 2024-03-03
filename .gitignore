@@ -15,3 +15,4 @@ mc_studies/condor/submit
 mc_studies/plots
 mc_studies/run_by_run_pdf
 mc_studies/run_by_run_test
+data_studies/scripts/background_model/data_energy_spectrums
