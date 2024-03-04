@@ -121,6 +121,16 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     nhitscorrected_B8_numu   = np.load(path + "/B8_solar_numu_mc_information/nhits_scaled.npy")
     nhitscorrected_pa234m    = np.load(path + "/Pa234m_mc_information/nhits_scaled.npy")
 
+    nhitsclean_bi214     = np.load(path + "/BiPo214_mc_information/nhits_cleaned.npy")
+    nhitsclean_bi212     = np.load(path + "/BiPo212_mc_information/nhits_cleaned.npy")
+    nhitsclean_alphaN_p  = np.load(path + "/AlphaN_LAB_13C_mc_information/nhits_cleaned.npy") 
+    nhitsclean_alphaN_d  = np.load(path + "/gammas_2p2MeV_mc_information/nhits_cleaned.npy")
+    nhitsclean_tl208     = np.load(path + "/Tl208_mc_information/nhits_cleaned.npy")
+    nhitsclean_tl210     = np.load(path + "/Tl210_mc_information/nhits_cleaned.npy")
+    nhitsclean_B8_nue    = np.load(path + "/B8_solar_nue_mc_information/nhits_cleaned.npy")
+    nhitsclean_B8_numu   = np.load(path + "/B8_solar_numu_mc_information/nhits_cleaned.npy")
+    nhitsclean_pa234m    = np.load(path + "/Pa234m_mc_information/nhits_cleaned.npy")
+
     # isolate MC events which fall within the FV cut
     if itr_cuts == True:
         idx_bi214     = np.where((radius_bi214 < FV) & (itr_bi214 > 0.18) & (itr_bi214 < 0.3) & (energy_bi214 > 2) & (energy_bi214 < 6))
@@ -161,25 +171,20 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
         energy_B8_nue    = energy_B8_nue[idx_B8_nue]
         energy_B8_numu   = energy_B8_numu[idx_B8_numu]
         energy_pa234m    = energy_pa234m[idx_pa234m]
-    elif dist_type == "nhits_clean":
-        ####################################
-        # don't have this info from MC yet #
-        ####################################
-        pass
-        # binning = np.arange(600, 1500, 10)
-        # energy_bi214     = nhitsclean_bi214[idx_bi214]
-        # energy_po214     = nhitsclean_po214[idx_po214]
-        # energy_bi212     = nhitsclean_bi212[idx_bi212]
-        # energy_po212     = nhitsclean_po212[idx_po212]
-        # energy_alphaN_p  = nhitsclean_alphaN_p[idx_alphaN_p]
-        # energy_alphaN_d  = nhitsclean_alphaN_d[idx_alphaN_d]
-        # energy_tl208     = nhitsclean_tl208[idx_tl208]
-        # energy_tl210     = nhitsclean_tl210[idx_tl210]
-        # energy_B8_nue    = nhitsclean_B8_nue[idx_B8_nue]
-        # energy_B8_numu   = nhitsclean_B8_numu[idx_B8_numu]
-        # energy_pa234m    = nhitsclean_pa234m[idx_pa234m]
+    elif dist_type == "nhits_cleaned":
+        
+        binning = np.arange(600, 1500, 20)
+        energy_bi214     = nhitsclean_bi214[idx_bi214]
+        energy_bi212     = nhitsclean_bi212[idx_bi212]
+        energy_alphaN_p  = nhitsclean_alphaN_p[idx_alphaN_p]
+        energy_alphaN_d  = nhitsclean_alphaN_d[idx_alphaN_d]
+        energy_tl208     = nhitsclean_tl208[idx_tl208]
+        energy_tl210     = nhitsclean_tl210[idx_tl210]
+        energy_B8_nue    = nhitsclean_B8_nue[idx_B8_nue]
+        energy_B8_numu   = nhitsclean_B8_numu[idx_B8_numu]
+        energy_pa234m    = nhitsclean_pa234m[idx_pa234m]
     elif dist_type == "nhits_corrected":
-        binning = np.arange(600, 1500, 10)
+        binning = np.arange(600, 1500, 20)
         energy_bi214     = nhitscorrected_bi214[idx_bi214]
         energy_po214     = nhitscorrected_po214[idx_po214]
         energy_bi212     = nhitscorrected_bi212[idx_bi212]
@@ -246,6 +251,8 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     scaled_B8_numu, _  = apply_scaling(energy_B8_numu, expected_B8_numu, binning)
     scaled_pa234m, _   = apply_scaling(energy_pa234m, expected_pa234m, binning)
 
+    print("Number Scaled BiPo212: ", np.sum(scaled_bi212))
+    print("Number Scaled BiPo214: ", np.sum(scaled_bi214))
     # bin the data and find poisson error on the counts
     counts_data, _ = np.histogram(energy_data, bins = binning)
     error_data = np.sqrt(counts_data)
@@ -268,6 +275,7 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     
     # WORK OUT THE Chi2 / NDF for the model!
     # only work it out in the 2.5 --> 6 MeV range I'm interested in
+    print(binning[10])
     counts_data_chi2  = counts_data[10:] # counted and the 10th bin is 2.5 MeV
     counts_model_chi2 = total_model[10:]
     bins_chi2         = mids[10:]
@@ -286,11 +294,15 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     # axes[0].set_yscale("log")
     if dist_type == "energy":
         axes[0].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
-        axes[0].set_xlim((2.5,6))
-        axes[0].set_ylim((0, 100))
+        axes[0].set_xlim((2.0,6))
+        # axes[0].set_ylim((0, 100))
     if dist_type == "nhits_corrected":
-        axes[0].set_xlabel("Nhits Corrected Energy (MeV)", fontsize = 20)
+        axes[0].set_xlabel("Nhits Corrected", fontsize = 20)
         axes[0].set_xlim((700,1500))
+        axes[0].set_ylim((0, 100))
+    if dist_type == "nhits_cleaned":
+        axes[0].set_xlabel("Nhits Clean", fontsize = 20)
+        axes[0].set_xlim((600,1500))
         axes[0].set_ylim((0, 100))
     
 
@@ -301,10 +313,14 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     
     if dist_type == "energy":
         axes[1].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
-        axes[1].set_xlim((2.5,6))
+        axes[1].set_xlim((2.0,6))
         axes[1].set_ylim((-4, 4))
     if dist_type == "nhits_corrected":
-        axes[1].set_xlabel("Nhits Corrected Energy (MeV)", fontsize = 20)
+        axes[1].set_xlabel("Nhits Corrected", fontsize = 20)
+        axes[1].set_xlim((700,1500))
+        axes[1].set_ylim((-4, 4))
+    if dist_type == "nhits_cleaned":
+        axes[1].set_xlabel("Nhits Clean", fontsize = 20)
         axes[1].set_xlim((700,1500))
         axes[1].set_ylim((-4, 4))
     axes[1].axhline(y = 0, color = "red")
@@ -382,7 +398,7 @@ def create_data_spectrum_with_runlist():
 
     np.save(f"./data_energy_spectrums/energy_dist_directionality_{fv_cut}.npy", dist_energy)
     np.save(f"./data_energy_spectrums/nhits_corrected_dist_directionality_{fv_cut}.npy", dist_nhits_corrected)
-    np.save(f"./data_energy_spectrums/nhits_clean_dist_directionality_{fv_cut}.npy", dist_nhits_clean)
+    np.save(f"./data_energy_spectrums/nhits_cleaned_dist_directionality_{fv_cut}.npy", dist_nhits_clean)
 
 
 def compare_energy_dists():
@@ -421,5 +437,7 @@ def count_bump_events():
     print(num_bump_fv)
 
 # create_data_spectrum_with_runlist()
+create_background_model(4500, True, True, "energy", 0.05)
 create_background_model(4500, True, True, "nhits_corrected", 0.05)
+
 

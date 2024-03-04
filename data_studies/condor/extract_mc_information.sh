@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# source /home/hunt-stokes/rat4_env.sh
-source /home/carpinteiroinacio/RAT/env_rat-7-0-14-recoord.sh
+source /home/hunt-stokes/rat_fresh.sh
 
-cd /home/hunt-stokes/multisite_analysis
+cd /data/snoplus3/hunt-stokes/multisite_clean/data_studies/scripts/background_model
 
 python3 extract_mc_information.py ${RUN_NUMBER} ${ISOTOPE}

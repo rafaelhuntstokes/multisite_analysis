@@ -24,6 +24,7 @@ def extract_mc_information(run_number, isotope):
     posR           = []
     rho2           = []
     nhits_scaled   = []
+    nhits_cleaned  = []
     recon_energy   = []
     itr            = []
     time_residuals = []
@@ -101,13 +102,14 @@ def extract_mc_information(run_number, isotope):
             time_residuals.append(residual_recon)
 
         # save the events nhits, energy and ITR
-        nhits_cleaned = reconEvent.GetNhitsCleaned()
+        nhitscleaned = reconEvent.GetNhitsCleaned()
         itr_val       = reconEvent.GetClassifierResult("ITR:scintFitter").GetClassification("ITR")
 
         # apply the scaling factor to cleaned nhits to account for channel efficiency and coverage
-        nhits_scaled_val  = stateCorrUtility.ApplyCorrectionNhits(nhits_cleaned)
+        nhits_scaled_val  = stateCorrUtility.ApplyCorrectionNhits(nhitscleaned)
         nhits_scaled.append(nhits_scaled_val)
         recon_energy.append(reconEnergy)
+        nhits_cleaned.append(nhitscleaned)
         itr.append(itr_val)
         counter += 1
         print("Completed: ", counter)
@@ -121,6 +123,7 @@ def extract_mc_information(run_number, isotope):
     np.save(f"/data/snoplus3/hunt-stokes/clean_multisite/{isotope}_mc_information/energy/energy_{run_number}.npy", recon_energy)
     np.save(f"/data/snoplus3/hunt-stokes/clean_multisite/{isotope}_mc_information/itr/itr_{run_number}.npy", itr)
     np.save(f"/data/snoplus3/hunt-stokes/clean_multisite/{isotope}_mc_information/scaled_nhits/nhitsScaled_{run_number}.npy", nhits_scaled)
+    np.save(f"/data/snoplus3/hunt-stokes/clean_multisite/{isotope}_mc_information/cleaned_nhits/nhitsCleaned_{run_number}.npy", nhits_cleaned)
     np.save(f"/data/snoplus3/hunt-stokes/clean_multisite/{isotope}_mc_information/time_residuals/residuals_{run_number}.npy", time_residuals)
 
 parser = argparse.ArgumentParser()

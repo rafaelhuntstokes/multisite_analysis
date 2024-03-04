@@ -4,9 +4,9 @@ import os
 
 def deploy():
     # load up directionality run list
-    run_list = np.loadtxt("mc_list.txt", dtype = int)
+    run_list = np.loadtxt("../../runlists/mc_list.txt", dtype = int)
 
-    isotope     = "BiPo212"
+    isotope     = "gammas_2p2MeV"
     BATCH_NAME  = f"{isotope}_mc_extraction"
     SUBMIT_PATH = "/data/snoplus3/hunt-stokes/clean_multisite/condor" 
 
@@ -18,9 +18,9 @@ def deploy():
                 continue
             
             # create the .sh file and .submit file for the job
-            with open("extract_mc_information.sh", "r") as infile:
+            with open("../../condor/extract_mc_information.sh", "r") as infile:
                 rawTextSh = string.Template(infile.read())
-            with open("extract_mc_information.submit", "r") as infile:
+            with open("../../condor/extract_mc_information.submit", "r") as infile:
                 rawTextSubmit = string.Template(infile.read())
 
             job_name      = f"{isotope}_mc_extraction_{irun}"
@@ -51,4 +51,5 @@ def check_result():
     for i in missing:
         print(i)
     print(f"Missing {len(missing)} runs.")
-check_result()
+# check_result()
+deploy()
