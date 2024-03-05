@@ -144,8 +144,12 @@ def plot_itr_as_discriminant():
     for ientry in tree_tl208:
         dlogL_tl208.append(ientry.dlogL)
         itr_tl208.append(ientry.itr)
-
-    fig, axes  = plt.subplots(nrows = 2, ncols = 1)
+    
+    # create ROC curves as well
+    signal_accept_itr, background_accept_itr, _ = create_roc(itr_b8, itr_tl208)
+    signal_accept_dlogl, background_accept_dlogl, _ = create_roc(dlogL_b8, dlogL_tl208)
+    
+    fig, axes  = plt.subplots(nrows = 3, ncols = 1, figsize = (12, 12))
     bins_itr   = np.linspace(0.18, 0.3, 100)
     bins_dlogL = np.linspace(-1.115, -1.095, 100) 
     axes[0].hist(dlogL_b8, bins = bins_dlogL, histtype = "step", label = "B8")
@@ -157,6 +161,13 @@ def plot_itr_as_discriminant():
     axes[1].hist(itr_tl208, bins = bins_itr, histtype = "step", label = "Bi214")
     axes[1].legend()
     axes[1].set_xlabel("ITR")
+    
+    axes[2].plot(signal_accept_itr, background_accept_itr, label = "ITR", color = "red")
+    axes[2].plot(signal_accept_dlogl, background_accept_dlogl, label = r"$\Delta log(\mathcal{L})$", color = "black", linestyle = "--")
+    axes[2].set_xlabel("Signal Acceptance")
+    axes[2].set_ylabel("Background Acceptance")
+    axes[2].set_title("Comparison of ITR and Multisite Discriminants")
+    axes[2].legend(frameon = False)
     fig.tight_layout()
     plt.savefig("../plots/itr_dlogL.pdf")
 

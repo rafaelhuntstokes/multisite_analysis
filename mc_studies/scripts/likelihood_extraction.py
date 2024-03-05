@@ -1,0 +1,399 @@
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import ROOT
+import matplotlib.pyplot as plt
+
+class AsimovLikelihoodExtraction():
+    """
+    1. Create Asimov dataset from Tl208 and B8 MC, with a given fraction of B8 in the 2.5 --> 5 MeV region of interest.
+    2. Chi2 minimisation of B8 number in each energy bin
+    3. Multisite Discrimination to return optimal number B8 in each energy bin
+    4. Comparison plots of each method discriminant vs B8 number vs true number of B8 in each bin.
+    """
+    
+    def apply_scaling(self, energy_spectrum, expected_number, binning):
+        """
+        Function takes in the unbinned energy spectrum from MC, bins and scales it such that the sum of
+        the counts is equal to the expected number of events given by the background model calculations.
+
+        The poisson error on these scaled counts is calculated.
+
+        INPUTS : raw energy spectrum of MC background
+                expected number of events given by background model
+                energy spectrum binning to be applied
+
+        RETURNS: scaled counts, poisson error on counts, midpoint of bins.
+        """
+
+        # bin the raw energy spectrum
+        unscaled_counts, bins = np.histogram(energy_spectrum, bins = binning)
+
+        # scale the counts such that the sum of counts equals expected number of events
+        scaled_counts = ( unscaled_counts / sum(unscaled_counts) ) * expected_number
+
+        # find the midpoint of the bins for plotting
+        mid_points = binning + np.diff(binning)[0] / 2
+
+        # calculate the poisson error on the counts of each bin # 
+        ################## TO BE IMPLEMENTED ####################
+
+        return scaled_counts, mid_points[:-1] 
+
+    def loop_over_entries(self, ntuple, fv_cut):
+        
+        energy = []
+        dlogL  = []
+        for ientry in ntuple:
+                x = ientry.x
+                y = ientry.y
+                z = ientry.z
+                e = ientry.energy
+                L = ientry.dlogL
+                
+                # apply FV cut
+                r = np.sqrt(x**2 + y**2 + z**2)
+                if r < fv_cut:
+                    continue
+
+                # energy cut already applied on the branch 2.5 --> 5 MeV
+                energy.append(e)
+                dlogL.append(L)
+        
+        return energy, dlogL
+    
+    def create_asimov_and_pdfs(self, fraction_b8, fv_cut, binning):
+        """
+        Function loads up Tl208 and B8 MC and creates a combined data spectrum. This spectrum is then binned in
+        the ROI (2.5 --> 5 MeV) range, and scaled so the B8 is a given fraction of the spectrum.
+
+        Also builds the dlogL PDFs for use in the multisite likelihood.
+
+        fraction_b8, float, between 0 --> 1, % of asimov spectrum B8 events
+        fv_Cut, float, FV cut to apply in mm
+        binning, np.array, defined bin edges to bin data spectrum in
+        """
+
+        # load up the mc run list
+        runlist = np.loadtxt("../runlists/additional_test_runlist.txt", dtype = int)
+
+        # use half the MC for the asimov dataset - the other half will be used to create the dlog(L) PDFs
+        split_model = int(len(runlist) / 2)
+        asimov_runs = runlist[:split_model]  # runs to build dataset
+        pdf_runs   = runlist[split_model:]  # different runs to build dlog(L) PDFs
+
+        energy_b8        = [] # for asimov data spectrum
+        energy_tl208     = [] # for asimov data spectrum
+        energy_dataset   = [] # combined energy spectrum of dataset
+        dlogL_dataset    = [] # combined dlogL spectrum of dataset
+        dlogL_b8_pdf     = [] # for dlogL PDF creation
+        dlogL_tl208_pdf  = [] # for dlogL PDF creation
+        energy_b8_pdf    = [] # for dlogL PDF creation
+        energy_tl208_pdf = [] # for dlogL PDF creation
+        failedB8 = 0
+        failedTl208 = 0
+        # loop over the asimov runs
+        for irun in asimov_runs:
+            file_b8    = ROOT.TFile.Open(f"../run_by_run_test/B8_solar_nue/{irun}.root")
+            file_tl208 = ROOT.TFile.Open(f"../run_by_run_test/Tl208/{irun}.root")
+
+            # extract information from the 2.0 --> 5.0 MeV branch
+            ntuple_b8    = file_b8.Get("2p5_5p0")
+            ntuple_tl208 = file_tl208.Get("2p5_5p0")
+
+            try:
+                b8_e, b8_l    = self.loop_over_entries(ntuple_b8, fv_cut)
+            except:
+                failedB8+=1 
+                pass
+            try:
+                tl208_e, tl208_l = self.loop_over_entries(ntuple_tl208, fv_cut)
+            except:
+                failedTl208 +=1 
+                pass
+            energy_b8     += b8_e
+            energy_tl208  += tl208_e
+            dlogL_dataset += b8_l
+            dlogL_dataset += tl208_l
+            energy_dataset += b8_e
+            energy_dataset += tl208_e
+        print(f"Failed B8: {failedB8}\nFailed Tl208: {failedTl208}")
+        energy_dataset = np.array(energy_dataset)
+        dlogL_dataset  = np.array(dlogL_dataset)
+
+        # create dlogL distributions for each energy bin
+        DLOGL_DATA_PER_BIN = [] # list of distributions
+        for i in range(len(binning) -1):
+            min_energy = binning[i]
+            max_energy = binning[i+1]
+
+            dlog = dlogL_dataset[(energy_dataset >= min_energy) & (energy_dataset < max_energy)]
+            DLOGL_DATA_PER_BIN.append(dlog)
+
+        # now we have the energy spectrum between 2.5 --> 5 MeV we can bin it
+        asimov_b8, _    = np.histogram(energy_b8, bins = binning)
+        asimov_tl208, _ = np.histogram(energy_tl208, bins = binning)
+
+        error_b8    = np.sqrt(asimov_b8) 
+        error_tl208 = np.sqrt(asimov_tl208)
+        error_total = np.sqrt(asimov_b8 + asimov_tl208)
+        total_spectrum = np.sum(asimov_b8 + asimov_tl208)
+        total_b8       = np.sum(asimov_b8)
+        total_tl208    = np.sum(asimov_tl208)
+        print(f"Before scaling Numbers:\nTl208: {total_tl208} | {round(total_tl208/total_spectrum, 2)}\nB8: {total_b8} | {round(total_b8/total_spectrum, 2)}\nTotal: {total_spectrum}")
+
+        # find the desired number of B8 events in the spectrum, given the input % B8
+        desired_b8_number    = total_spectrum * fraction_b8
+        desired_tl208_number = total_spectrum * (1-fraction_b8)
+
+        # apply this scaling to the asimov energy spectrum of each component
+        scaled_b8, _    = self.apply_scaling(energy_b8, desired_b8_number, binning)
+        scaled_tl208, _ = self.apply_scaling(energy_tl208, desired_tl208_number, binning) 
+        
+        total_asimov_counts  = np.sum(scaled_b8 + scaled_tl208)
+        print(f"Fraction of events B8 after scaling: {np.sum(scaled_b8)/total_asimov_counts}")
+
+        # add the counts together to get the total asimov dataset
+        asimov_data  = scaled_b8 + scaled_tl208
+        asimov_data  = asimov_b8 + asimov_tl208
+        scaled_b8 = asimov_b8
+        scaled_tl208 = asimov_tl208
+        # plot the asimov dataset
+        plt.figure(figsize = (12, 6))
+        plt.errorbar(binning[0:-1] + np.diff(binning)[0]/2, asimov_data, yerr = np.sqrt(asimov_data), xerr = np.diff(binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "black", label = "Total Spectrum")
+        plt.errorbar(binning[0:-1] + np.diff(binning)[0]/2, scaled_b8, yerr = np.sqrt(scaled_b8), xerr = np.diff(binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "red", label = "B8")
+        plt.errorbar(binning[0:-1] + np.diff(binning)[0]/2, scaled_tl208, yerr = np.sqrt(scaled_tl208), xerr = np.diff(binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "green", label = "Tl208")
+        plt.xlim((2.5, 5.0))
+        plt.ylim((0, np.max(asimov_data)* 1.1))
+        plt.legend()
+        plt.xlabel("Reconstructed Energy (MeV)", fontsize = 20)
+        plt.ylabel(f"Counts per {np.diff(binning)[0]} MeV Bin", fontsize = 20)
+        plt.title("Asimov Dataset", fontsize = 20)
+        plt.savefig("../plots/asimov_study/asimov_dataset.png")
+        plt.close()
+
+        #############################
+        # create the multisite PDFs #
+        #############################
+
+        # create some output plots of the PDFS for each energy bin
+        fig, axes = plt.subplots(nrows = 1, ncols = len(binning) -1, figsize = (24, 6))
+
+        # loop over all the runs in the PDF runlist
+        for irun in pdf_runs:
+            file_b8    = ROOT.TFile.Open(f"../run_by_run_test/B8_solar_nue/{irun}.root")
+            file_tl208 = ROOT.TFile.Open(f"../run_by_run_test/Tl208/{irun}.root")
+
+            # extract information from the 2.0 --> 5.0 MeV branch
+            ntuple_b8    = file_b8.Get("2p5_5p0")
+            ntuple_tl208 = file_tl208.Get("2p5_5p0")
+
+            try:
+                b8_e, b8_l       = self.loop_over_entries(ntuple_b8, fv_cut)
+            except:
+                pass
+            try:
+                tl208_e, tl208_l = self.loop_over_entries(ntuple_tl208, fv_cut)
+            except:
+                pass
+            
+            # save the energy and dlogL of each event
+            dlogL_b8_pdf     += b8_l
+            dlogL_tl208_pdf  += tl208_l
+            energy_b8_pdf    += b8_e
+            energy_tl208_pdf += tl208_e
+        
+        # cast to a np array for numpy conditional indexing
+        dlogL_b8_pdf     = np.array(dlogL_b8_pdf)
+        dlogL_tl208_pdf  = np.array(dlogL_tl208_pdf)
+        energy_tl208_pdf = np.array(energy_tl208_pdf)
+        energy_b8_pdf    = np.array(energy_b8_pdf)
+        
+        # for each bin in the energy spectrum, create a dlog(L) PDF
+        LIST_OF_DLOGL_B8_PDFS    = []
+        LIST_OF_DLOGL_TL208_PDFS = []
+        for i in range(len(binning) - 1):
+            
+            # define the energy bins for PDF
+            min_bin_energy = binning[i]
+            max_bin_energy = binning[i+1]
+
+            # apply energy cuts to extract dlogL values corresponding to this energy bin
+            pdf_vals_b8    = dlogL_b8_pdf[(energy_b8_pdf >= min_bin_energy) & (energy_b8_pdf < max_bin_energy)]
+            pdf_vals_tl208 = dlogL_tl208_pdf[(energy_tl208_pdf >= min_bin_energy) & (energy_tl208_pdf < max_bin_energy)] 
+
+            # update the PDF plot
+            axes[i].hist(pdf_vals_b8, bins = 50, density = True,  histtype = "step", label = "B8")
+            axes[i].hist(pdf_vals_tl208, bins = 50, density = True, histtype = "step", label = "Tl208")
+            axes[i].set_title(f"{min_bin_energy}" + r"$\rightarrow$" +  f"{max_bin_energy} MeV", fontsize = 20)
+            axes[i].set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 20)
+            axes[i].set_ylabel("Counts", fontsize = 20)
+            axes[i].legend()
+            axes[i].tick_params(axis = "x", rotation = 45)
+
+            # save the PDF array into a list. Each entry in the list is a PDF
+            LIST_OF_DLOGL_B8_PDFS.append(pdf_vals_b8)
+            LIST_OF_DLOGL_TL208_PDFS.append(pdf_vals_tl208)
+        
+        fig.tight_layout()
+        plt.savefig("../plots/asimov_study/dlogL_pdfs.png")
+        plt.close()
+        
+        # return the total data spectrum and the number of Tl208 and B8 counts in each bin
+        # along with the arrays of corresponding dlogL PDFs
+        return asimov_data, scaled_b8, scaled_tl208, DLOGL_DATA_PER_BIN, LIST_OF_DLOGL_B8_PDFS, LIST_OF_DLOGL_TL208_PDFS
+
+    def perform_loglikelihood_minimisation(self, number_data, number_model, values_b8):
+        """
+        For a given energy bin, a simple grid search over number of B8 events
+        is performed. For each number of B8 tested, the chi2 (-2log(L)) is 
+        evaluated and saved. 
+        
+        The chi2 vs number of B8 events in the model is returned.
+        """
+
+        chi2 = []
+        for i in range(len(values_b8)):
+
+            # increase the number in the model by the number of B8 events assumed
+            updated_model = number_model + values_b8[i]
+
+            # calculate the chi2 between model and data for this number of B8
+            fit_goodness = (number_data - updated_model)**2 / updated_model
+
+            chi2.append(fit_goodness)
+
+        return chi2
+    
+    def perform_multisite_minimisation(self, values_b8, value_tl208, dlogL_data, pdf_b8, pdf_tl208, pdf_binning, scaled_counts):
+        """
+        Function performs the B8 fit taking into account the multisite PDFs.
+        
+        INPUTS: 
+                values_b8, list of assumed numbers of B8 events in given energy bin
+                value_tl208, float, fixed number of Tl208 events assumed by model in energy bin
+                dlogL_data, array, value of multisite discriminant for every event in this energy bin
+                pdf_b8, array, normalised PDF for given energy bin for single-site events (counts)
+                pdf_tl208, array, normalised PDF for given energy bin for multi-site events (counts)
+                pdf_binning, the bin edges used to bin the dlogL pdfs
+                chi2, array, the chi2 prefactor found previously for each assumed number of B8 events
+
+        RETURNS: 
+                loglikelihood, array, array of loglikelihood vs assumed B8 numbers
+        """
+
+        # calculate the probability each event is signal given dlogL
+        multisite_bin_idx  = np.digitize(dlogL_data, bins = pdf_binning) - 1 # the bin IDX each event's dlogL value falls into
+        plt.figure()
+        
+        plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, pdf_tl208, label = "Tl208 PDF")
+        plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, pdf_b8, label = "B8 PDF")
+        plt.hist(dlogL_data, bins = 50, histtype = "step", label = "dlogL Data", density = True, linewidth = 2)
+        plt.xlabel("Multisite Discriminant Value")
+        plt.legend()
+        plt.savefig(f"../plots/asimov_study/understanding/dlogL_data_{i_energy_bin}.png")
+        plt.close()
+        # find the signal and background probability arrays from binned data dlogL and pdfs
+        # these arrays do not change so no need to recompute the loop over events
+        probability_signal     = pdf_b8[multisite_bin_idx]
+        probability_background = pdf_tl208[multisite_bin_idx]
+        print(value_tl208)
+        print(f"Num data events in bin: {len(dlogL_data)}")
+        # loop over each assumed number of B8 events
+        loglikelihood = []
+        output = []
+        output_sig = []
+        output_back = []
+        for i in range(len(values_b8)):
+
+            model_expectation = values_b8[i] + value_tl208
+            
+            # multisite part of likelihood
+            fraction_b8 = values_b8[i] / model_expectation
+
+            multisite   = fraction_b8 * probability_signal + (1-fraction_b8) * probability_background
+            multisite[multisite == 0] = 1e9
+            # print(f"Prob Signal: {probability_signal}\nProb Backg: {probability_background}\nFrac B8: {fraction_b8}\n")
+            output.append(np.sum(multisite))
+            output_sig.append(fraction_b8* np.sum(probability_signal))
+            output_back.append((1-fraction_b8)* np.sum(probability_background))
+            # multisite   = np.sum(np.log(multisite))
+            multisite   = np.sum(np.log(multisite))
+
+            # poisson statistics part of likelihood
+            poisson = model_expectation - scaled_counts * np.log(model_expectation)
+            # print(f"Poisson Part: {poisson}\nMultisite Part: {multisite}")
+            # loglikelihood.append(poisson-multisite)
+    
+            # loglikelihood.append(poisson-multisite)
+            loglikelihood.append(poisson - multisite)
+
+            # multiply by chi2 prefactor
+            # val = chi2[i] * val
+
+            # take log
+            # loglikelihood.append(-2*np.log(val))
+
+        return loglikelihood, output, output_sig, output_back
+
+# define inputs to the analysis function
+energy_binning = np.arange(2.5, 5.5, 0.5)
+pdf_binning    = np.linspace(-1.12, -1.09, 50)
+fraction_b8    = 0.1
+fv_cut         = 4500
+values_b8      = np.arange(0, 4000, 1)
+
+# create THE ANALYSIS OBJECT
+X = AsimovLikelihoodExtraction()
+
+# create asimov dataset, the true number of events in each energy bin, and the bin-by-bin dlogL PDFs for multisite
+asimov_dataset, num_b8_per_bin, num_tl208_per_bin, dlogL_data, pdfs_b8, pdfs_tl208 = X.create_asimov_and_pdfs(fraction_b8, fv_cut, energy_binning)
+print(num_b8_per_bin, num_tl208_per_bin)
+print(asimov_dataset[1], len(dlogL_data[1]), num_tl208_per_bin[1])
+# create an output plot showing the chi2 minimisation
+fig, axes = plt.subplots(nrows = 1, ncols = len(asimov_dataset), figsize = (34, 6))
+
+# run bin-by-bin chi2 fitting for number of B8 events in each bin
+chi2_minimisation = [] # list of lists --> each contains the chi2 for a given number of B8 events
+for i_energy_bin in range(len(asimov_dataset)):
+    
+    # do the chi2 minimisation
+    chi2 = X.perform_loglikelihood_minimisation(asimov_dataset[i_energy_bin], num_tl208_per_bin[i_energy_bin], values_b8)
+    chi2_minimisation.append(chi2)
+
+    # do the multisite minimisation
+
+    # bin and normalise the PDFs
+    normed_b8_pdf, _    = np.histogram(pdfs_b8[i_energy_bin], bins = pdf_binning, density = True)
+    normed_tl208_pdf, _ = np.histogram(pdfs_tl208[i_energy_bin], bins = pdf_binning, density = True)
+    print(len(normed_b8_pdf), len(normed_tl208_pdf))
+
+    logL, full, sig, back = X.perform_multisite_minimisation(values_b8, num_tl208_per_bin[i_energy_bin], dlogL_data[i_energy_bin], normed_b8_pdf, normed_tl208_pdf, pdf_binning, asimov_dataset[i_energy_bin])
+
+    # plt.figure()
+    # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), full, color = "black", label = "Total")
+    # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), sig, label = "Signal Term")
+    # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), back, label = "Background Term")
+    # plt.xlabel(r"$F_s$")
+    # plt.legend()
+    # plt.savefig(f"../plots/asimov_study/understanding/{i_energy_bin}.png")
+    # plt.close()
+
+    # create the output plot
+    axes[i_energy_bin].plot(values_b8, chi2, label = r"$\chi^2$")
+    
+    axes[i_energy_bin].plot([], [], color = "orange", label = r"$-log(\mathcal{L})$")
+    axes[i_energy_bin].set_xlabel("Number of B8", fontsize = 20)
+    axes[i_energy_bin].set_ylabel(r"$\chi ^2$", fontsize = 20)
+    axes[i_energy_bin].set_title(f"{energy_binning[i_energy_bin]}" + r"$\rightarrow$" + f"{energy_binning[i_energy_bin + 1]} MeV", fontsize = 20)
+    axes[i_energy_bin].axvline(num_b8_per_bin[i_energy_bin], color = "red", label = f"True Num. B8: {round(num_b8_per_bin[i_energy_bin], 2)}")
+    axes[i_energy_bin].plot([], [], linestyle = "", label = r"$\chi ^2$" + f" Fitted Num. B8: {round(values_b8[np.argmin(chi2)], 2)}\n" + r"$-log(\mathcal{L})$" + f" Fitted Num. B8: {round(values_b8[np.argmin(logL)], 2)}")
+    axes[i_energy_bin].legend(frameon = False, loc = "upper left")
+
+    ax2 = axes[i_energy_bin].twinx()
+    ax2.plot(values_b8, logL, color = "orange")
+    ax2.set_xlabel(r"-log(\mathcal{L})")
+
+fig.tight_layout()
+plt.savefig("../plots/asimov_study/chi2_minimisation_multisite.pdf")
+plt.close()
