@@ -62,7 +62,7 @@ class AsimovLikelihoodExtraction():
         
         return energy, dlogL
     
-    def create_asimov_and_pdfs(self, fraction_b8, fv_cut, binning):
+    def create_asimov_and_pdfs(self, fraction_b8, fv_cut, binning, pdf_binning):
         """
         Function loads up Tl208 and B8 MC and creates a combined data spectrum. This spectrum is then binned in
         the ROI (2.5 --> 5 MeV) range, and scaled so the B8 is a given fraction of the spectrum.
@@ -78,7 +78,8 @@ class AsimovLikelihoodExtraction():
         runlist = np.loadtxt("../runlists/additional_test_runlist.txt", dtype = int)
 
         # use half the MC for the asimov dataset - the other half will be used to create the dlog(L) PDFs
-        split_model = int(len(runlist) / 2)
+        split_model = int(len(runlist) *0.5)
+        print(split_model)
         asimov_runs = runlist[:split_model]  # runs to build dataset
         pdf_runs   = runlist[split_model:]  # different runs to build dlog(L) PDFs
 
@@ -180,7 +181,11 @@ class AsimovLikelihoodExtraction():
         fig, axes = plt.subplots(nrows = 1, ncols = len(binning) -1, figsize = (24, 6))
 
         # loop over all the runs in the PDF runlist
+        # fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6))
+        # counter = 0
         for irun in pdf_runs:
+            # if counter > 9: 
+            #     break
             file_b8    = ROOT.TFile.Open(f"../run_by_run_test/B8_solar_nue/{irun}.root")
             file_tl208 = ROOT.TFile.Open(f"../run_by_run_test/Tl208/{irun}.root")
 
@@ -200,9 +205,18 @@ class AsimovLikelihoodExtraction():
             # save the energy and dlogL of each event
             dlogL_b8_pdf     += b8_l
             dlogL_tl208_pdf  += tl208_l
+
+            
+            # axes[0].hist(b8_l, bins = 10, density = True, histtype = "step", label = f"Run {irun}")
+            # axes[1].hist(tl208_l, bins = 10, density=True, histtype = "step", label = f"Run {irun}")
+            # axes[0].legend()
+            # axes[1].legend()
+            # counter += 1
             energy_b8_pdf    += b8_e
             energy_tl208_pdf += tl208_e
-        
+        # plt.tight_layout()
+        # plt.savefig("../plots/asimov_study/understanding/run_id_dlogL.pdf")
+        # plt.close()
         # cast to a np array for numpy conditional indexing
         dlogL_b8_pdf     = np.array(dlogL_b8_pdf)
         dlogL_tl208_pdf  = np.array(dlogL_tl208_pdf)
@@ -223,13 +237,20 @@ class AsimovLikelihoodExtraction():
             pdf_vals_tl208 = dlogL_tl208_pdf[(energy_tl208_pdf >= min_bin_energy) & (energy_tl208_pdf < max_bin_energy)] 
 
             # update the PDF plot
-            axes[i].hist(pdf_vals_b8, bins = 50, density = True,  histtype = "step", label = "B8")
-            axes[i].hist(pdf_vals_tl208, bins = 50, density = True, histtype = "step", label = "Tl208")
+            axes[i].hist(pdf_vals_b8, bins = pdf_binning, density = True,  histtype = "step", label = f"B8 | Events: {len(pdf_vals_b8)}")
+            axes[i].hist(pdf_vals_tl208, bins = pdf_binning, density = True, histtype = "step", label = f"Tl208 | Events: {len(pdf_vals_tl208)}")
             axes[i].set_title(f"{min_bin_energy}" + r"$\rightarrow$" +  f"{max_bin_energy} MeV", fontsize = 20)
             axes[i].set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 20)
             axes[i].set_ylabel("Counts", fontsize = 20)
             axes[i].legend()
             axes[i].tick_params(axis = "x", rotation = 45)
+            # axes.hist(pdf_vals_b8, bins = pdf_binning, density = True,  histtype = "step", label = f"B8 | Events: {len(pdf_vals_b8)}")
+            # axes.hist(pdf_vals_tl208, bins = pdf_binning, density = True, histtype = "step", label = f"Tl208 | Events: {len(pdf_vals_tl208)}")
+            # axes.set_title(f"{min_bin_energy}" + r"$\rightarrow$" +  f"{max_bin_energy} MeV", fontsize = 20)
+            # axes.set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 20)
+            # axes.set_ylabel("Counts", fontsize = 20)
+            # axes.legend()
+            # axes.tick_params(axis = "x", rotation = 45)
 
             # save the PDF array into a list. Each entry in the list is a PDF
             LIST_OF_DLOGL_B8_PDFS.append(pdf_vals_b8)
@@ -284,8 +305,8 @@ class AsimovLikelihoodExtraction():
 
         # calculate the probability each event is signal given dlogL
         multisite_bin_idx  = np.digitize(dlogL_data, bins = pdf_binning) - 1 # the bin IDX each event's dlogL value falls into
-        plt.figure()
         
+        plt.figure()
         plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, pdf_tl208, label = "Tl208 PDF")
         plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, pdf_b8, label = "B8 PDF")
         plt.hist(dlogL_data, bins = 50, histtype = "step", label = "dlogL Data", density = True, linewidth = 2)
@@ -297,36 +318,46 @@ class AsimovLikelihoodExtraction():
         # these arrays do not change so no need to recompute the loop over events
         probability_signal     = pdf_b8[multisite_bin_idx]
         probability_background = pdf_tl208[multisite_bin_idx]
+        print(probability_signal)
         print(value_tl208)
         print(f"Num data events in bin: {len(dlogL_data)}")
         # loop over each assumed number of B8 events
-        loglikelihood = []
+        loglikelihood  = []
+        multisite_vals = []
+        poisson_vals   = []
         output = []
         output_sig = []
         output_back = []
         for i in range(len(values_b8)):
-
+            # if i >= 1000:
+            #     break
             model_expectation = values_b8[i] + value_tl208
             
             # multisite part of likelihood
             fraction_b8 = values_b8[i] / model_expectation
-
+            # print(model_expectation, fraction_b8)
             multisite   = fraction_b8 * probability_signal + (1-fraction_b8) * probability_background
-            multisite[multisite == 0] = 1e9
+            # multisite = fraction_b8 * probability_background + (1-fraction_b8) * probability_signal
+            # multisite[multisite == 0] = 1e9
             # print(f"Prob Signal: {probability_signal}\nProb Backg: {probability_background}\nFrac B8: {fraction_b8}\n")
-            output.append(np.sum(multisite))
-            output_sig.append(fraction_b8* np.sum(probability_signal))
-            output_back.append((1-fraction_b8)* np.sum(probability_background))
-            # multisite   = np.sum(np.log(multisite))
-            multisite   = np.sum(np.log(multisite))
+            # output.append(np.sum(np.log(multisite)))
+            # output_sig.append(fraction_b8* np.sum(probability_signal))
+            # output_back.append((1-fraction_b8)* np.sum(probability_background))
+            multisite   = np.sum(-np.log(multisite))
+            # print(multisite)
+            # multisite = np.prod(multisite)
+            #multisite   = np.sum(multisite)
 
             # poisson statistics part of likelihood
             poisson = model_expectation - scaled_counts * np.log(model_expectation)
             # print(f"Poisson Part: {poisson}\nMultisite Part: {multisite}")
             # loglikelihood.append(poisson-multisite)
-    
-            # loglikelihood.append(poisson-multisite)
-            loglikelihood.append(poisson - multisite)
+            multisite_vals.append(multisite)
+            poisson_vals.append(poisson)
+            # loglikelihood.append(multisite)
+            
+            # loglikelihood.append(poisson + multisite)
+            # print(multisite)
 
             # multiply by chi2 prefactor
             # val = chi2[i] * val
@@ -334,32 +365,51 @@ class AsimovLikelihoodExtraction():
             # take log
             # loglikelihood.append(-2*np.log(val))
 
+        alpha = 1
+        # normalise the poisson and multisite parts of the likelihood
+        poisson_vals = np.array(poisson_vals)
+        multisite_vals = np.array(multisite_vals)
+
+        poisson_vals = poisson_vals / np.max(poisson_vals)
+        multisite_vals = multisite_vals / np.max(multisite_vals)
+        print("Poisson Range: ", min(poisson_vals), max(poisson_vals))
+        print("Multisite Range: ", min(multisite_vals), max(multisite_vals))
+        loglikelihood = - (alpha *multisite_vals + poisson_vals)
         return loglikelihood, output, output_sig, output_back
 
 # define inputs to the analysis function
-energy_binning = np.arange(2.5, 5.5, 0.5)
-pdf_binning    = np.linspace(-1.12, -1.09, 50)
+energy_binning = np.arange(2.5, 5.0, 0.5)
+pdf_binning    = np.linspace(-1.13, -1.08, 50)
 fraction_b8    = 0.1
 fv_cut         = 4500
 values_b8      = np.arange(0, 4000, 1)
-
+# values_b8 = values_b8[:1000]
+print(values_b8[-1])
+print("Number B8 values: ", len(values_b8))
 # create THE ANALYSIS OBJECT
 X = AsimovLikelihoodExtraction()
 
 # create asimov dataset, the true number of events in each energy bin, and the bin-by-bin dlogL PDFs for multisite
-asimov_dataset, num_b8_per_bin, num_tl208_per_bin, dlogL_data, pdfs_b8, pdfs_tl208 = X.create_asimov_and_pdfs(fraction_b8, fv_cut, energy_binning)
+asimov_dataset, num_b8_per_bin, num_tl208_per_bin, dlogL_data, pdfs_b8, pdfs_tl208 = X.create_asimov_and_pdfs(fraction_b8, fv_cut, energy_binning, pdf_binning)
 print(num_b8_per_bin, num_tl208_per_bin)
-print(asimov_dataset[1], len(dlogL_data[1]), num_tl208_per_bin[1])
+# print(asimov_dataset[1], len(dlogL_data[1]), num_tl208_per_bin[1])
 # create an output plot showing the chi2 minimisation
-fig, axes = plt.subplots(nrows = 1, ncols = len(asimov_dataset), figsize = (34, 6))
-
+fig, axes = plt.subplots(nrows = 2, ncols = 2, figsize = (17, 12))
+# fig, axes = plt.subplots(nrows = 1, ncols = len(asimov_dataset), figsize = (12, 6))
 # run bin-by-bin chi2 fitting for number of B8 events in each bin
 chi2_minimisation = [] # list of lists --> each contains the chi2 for a given number of B8 events
+row = 0
+col = 0
+count = 0
 for i_energy_bin in range(len(asimov_dataset)):
+    if count == 2:
+        row = 1
+        col = 0
     
+
     # do the chi2 minimisation
     chi2 = X.perform_loglikelihood_minimisation(asimov_dataset[i_energy_bin], num_tl208_per_bin[i_energy_bin], values_b8)
-    chi2_minimisation.append(chi2)
+    
 
     # do the multisite minimisation
 
@@ -368,32 +418,72 @@ for i_energy_bin in range(len(asimov_dataset)):
     normed_tl208_pdf, _ = np.histogram(pdfs_tl208[i_energy_bin], bins = pdf_binning, density = True)
     print(len(normed_b8_pdf), len(normed_tl208_pdf))
 
+    # replace any zero count bins in the PDFs with a tiny number
+    normed_b8_pdf[normed_b8_pdf == 0] = 1e-6
+    normed_tl208_pdf[normed_tl208_pdf ==0] = 1e-6
+
     logL, full, sig, back = X.perform_multisite_minimisation(values_b8, num_tl208_per_bin[i_energy_bin], dlogL_data[i_energy_bin], normed_b8_pdf, normed_tl208_pdf, pdf_binning, asimov_dataset[i_energy_bin])
+
+    min_chi2_idx = np.argmin(chi2)
+    min_logl_idx = np.argmin(logL)
+
+    diff_from_zero_chi2 = 0 - chi2[min_chi2_idx]
+    diff_from_zero_logl = 0 - logL[min_logl_idx]
+
+    chi2 = chi2 + diff_from_zero_chi2
+    logL = logL + diff_from_zero_logl 
+
+    print(min(logL), max(logL))
+    print(min(chi2), max(chi2))
 
     # plt.figure()
     # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), full, color = "black", label = "Total")
-    # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), sig, label = "Signal Term")
-    # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), back, label = "Background Term")
+    # # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), sig, label = "Signal Term")
+    # # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), back, label = "Background Term")
     # plt.xlabel(r"$F_s$")
     # plt.legend()
     # plt.savefig(f"../plots/asimov_study/understanding/{i_energy_bin}.png")
     # plt.close()
 
     # create the output plot
-    axes[i_energy_bin].plot(values_b8, chi2, label = r"$\chi^2$")
+    print(row, col, count)
+    axes[row, col].plot(values_b8, chi2, label = r"$\chi^2$")
     
-    axes[i_energy_bin].plot([], [], color = "orange", label = r"$-log(\mathcal{L})$")
-    axes[i_energy_bin].set_xlabel("Number of B8", fontsize = 20)
-    axes[i_energy_bin].set_ylabel(r"$\chi ^2$", fontsize = 20)
-    axes[i_energy_bin].set_title(f"{energy_binning[i_energy_bin]}" + r"$\rightarrow$" + f"{energy_binning[i_energy_bin + 1]} MeV", fontsize = 20)
-    axes[i_energy_bin].axvline(num_b8_per_bin[i_energy_bin], color = "red", label = f"True Num. B8: {round(num_b8_per_bin[i_energy_bin], 2)}")
-    axes[i_energy_bin].plot([], [], linestyle = "", label = r"$\chi ^2$" + f" Fitted Num. B8: {round(values_b8[np.argmin(chi2)], 2)}\n" + r"$-log(\mathcal{L})$" + f" Fitted Num. B8: {round(values_b8[np.argmin(logL)], 2)}")
-    axes[i_energy_bin].legend(frameon = False, loc = "upper left")
+    axes[row, col].plot([], [], color = "orange", label = r"$-log(\mathcal{L})$")
+    axes[row, col].set_xlabel("Number of B8", fontsize = 20)
+    axes[row, col].set_ylabel(r"$\chi ^2$", fontsize = 20)
+    axes[row, col].set_title(f"{energy_binning[i_energy_bin]}" + r"$\rightarrow$" + f"{energy_binning[i_energy_bin + 1]} MeV", fontsize = 20)
+    axes[row, col].axvline(num_b8_per_bin[i_energy_bin], color = "red", label = f"True Num. B8: {round(num_b8_per_bin[i_energy_bin], 2)}")
+    axes[row, col].plot([], [], linestyle = "", label = r"$\chi ^2$" + f" Fitted Num. B8: {round(values_b8[np.argmin(chi2)], 2)}\n" + r"$-log(\mathcal{L})$" + f" Fitted Num. B8: {round(values_b8[np.argmin(logL)], 2)}")
+    # axes[i_energy_bin].plot(values_b8, logL, color = "orange")
+    axes[row,col].legend(frameon = False, loc = "upper left")
 
-    ax2 = axes[i_energy_bin].twinx()
+    # find the minima of the chi2 and the logL and scale them both so the minima is at 0
+    
+    ax2 = axes[row, col].twinx()
+    # axes.plot(values_b8, chi2, label = r"$\chi^2$")
+    
+    # axes.plot([], [], color = "orange", label = r"$-log(\mathcal{L})$")
+    # axes.set_xlabel("Number of B8", fontsize = 20)
+    # axes.set_ylabel(r"$\chi ^2$", fontsize = 20)
+    # axes.set_title(f"{energy_binning[i_energy_bin]}" + r"$\rightarrow$" + f"{energy_binning[i_energy_bin + 1]} MeV", fontsize = 20)
+    # axes.axvline(num_b8_per_bin[i_energy_bin], color = "red", label = f"True Num. B8: {round(num_b8_per_bin[i_energy_bin], 2)}")
+    # axes.plot([], [], linestyle = "", label = r"$\chi ^2$" + f" Fitted Num. B8: {round(values_b8[np.argmin(chi2)], 2)}\n" + r"$-log(\mathcal{L})$" + f" Fitted Num. B8: {round(values_b8[np.argmin(logL)], 2)}")
+    
+    
+    
+    # axes.legend(frameon = False, loc = "upper left")
+
+    # ax2 = axes.twinx()
     ax2.plot(values_b8, logL, color = "orange")
-    ax2.set_xlabel(r"-log(\mathcal{L})")
+    ax2.set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
+    count +=1
+    col += 1
+    
+    # axes.set_xlim((0,1000))
+    # axes.set_ylim((-100, 200))
+    # ax2.set_ylim((-7400, -7300))
 
 fig.tight_layout()
-plt.savefig("../plots/asimov_study/chi2_minimisation_multisite.pdf")
+plt.savefig("../plots/asimov_study/chi2_minimisation_both.pdf")
 plt.close()
