@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 """
 Script to test multisite likelihod signal extraction code using a fake dataset.
@@ -12,6 +13,9 @@ The multisite and/or poisson likelihood is calculated for a grid search number o
 
 The code is done in a modular way, ultimately to create logL curves of multisite for different PDF separations.
 """
+
+def quadratic_fit(X, A, B, C):
+    return A*X**2 + B*X + C
 
 def create_pdfs_and_dataset(separation, width, pdf_samples, sig_samples, backg_samples):
     """
@@ -51,7 +55,7 @@ def evaluate_loglikelihood(true_num_signal, true_num_backg, asimov_dataset, pdf_
     multisite_vals = []
     poisson_vals   = []
     chi2_vals      = []
-    for isig in range(int(true_num_signal*1.5)):
+    for isig in range(2500, int(true_num_signal*1.5)):
 
         total_hypothesised_counts = isig + true_num_backg
         fraction_sig_counts       = isig / total_hypothesised_counts
@@ -59,25 +63,25 @@ def evaluate_loglikelihood(true_num_signal, true_num_backg, asimov_dataset, pdf_
         # multisite loglikelihood
         multisite_l = fraction_sig_counts * prob_sig + (1-fraction_sig_counts) * prob_backg
         multisite_l = -np.sum(np.log(multisite_l))
-        multisite_vals.append(multisite_l)
+        multisite_vals.append(2*multisite_l)
 
         # poisson counting loglikelihood
         poisson_l   = total_hypothesised_counts - len(asimov_dataset) * np.log(total_hypothesised_counts)
-        poisson_vals.append(poisson_l)
+        poisson_vals.append(2*poisson_l)
 
         # chi2 result
-        chi2        = (total_hypothesised_counts - len(asimov_dataset))**2 / total_hypothesised_counts
+        chi2        = (len(asimov_dataset) - total_hypothesised_counts)**2 / total_hypothesised_counts
         chi2_vals.append(chi2)
 
     return multisite_vals, poisson_vals, chi2_vals
 
-def create_output_plot(multsite, poisson, chi2, true_signal, pdf_sig, pdf_backg, pdf_binning):
+def create_output_plot(multsite, poisson, chi2, true_signal, pdf_sig, pdf_backg, pdf_binning, separation):
     """
     Create a plot of the multisite, poisson, chi2 and full multisite + poisson loglikelihood as a function of signal hypothesis.
     """
 
-    signal_hypothesis = np.arange(0, int(true_signal * 1.5), 1)
-    
+    signal_hypothesis = np.arange(2500, int(true_signal * 1.5), 1)
+
     # cast to array to perform elementwise shifts and additions
     chi2     = np.array(chi2)
     multsite = np.array(multsite)
@@ -101,59 +105,115 @@ def create_output_plot(multsite, poisson, chi2, true_signal, pdf_sig, pdf_backg,
     poisson  = poisson + diff_from_zero_poisson
     full_l   = full_l + diff_from_zero_full_l
 
+    # fit a quadratic to the full likelihood function
+    # popt, pcov = curve_fit(quadratic_fit, np.arange(2500, int(true_signal * 1.5), 1), full_l)
+    # print(f"Equation of fit: {popt[0]}X^2+ {popt[1]}X + {popt[2]}.")
+
     # 3 plots: chi2 vs poisson likelihood; chi2 vs multisite likelihood; chi2 vs full likelihood
-    fig, axes = plt.subplots(nrows = 1, ncols = 3, figsize = (20, 8))
+    fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (20, 10))
     
     # poisson
-    axes[0].plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
-    ax2 = axes[0].twinx()
-    ax2.plot(signal_hypothesis, poisson, color = "orange", label = "Poisson Likelihood")
+    # axes[0].plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
+    # axes[0].plot(signal_hypothesis, poisson, color = "orange", label = "Poisson Likelihood")
+    # axes[0].plot(signal_hypothesis, multsite, color = "green", label = "Multisite Likelihood")
+    # axes[0].plot(signal_hypothesis, full_l, color = "black", label = "Full Likelihood")
+    # axes[0].set_xlabel("Number of Signal Events", fontsize = 20)
+    # axes[0].set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
+    # axes[0].set_title(r"$\chi ^2$ vs Poisson LogLikelihood", fontsize = 20)
+    # axes[0].axvline(true_signal, color = "red", label = "True Signal Number")
+    # axes[0].set_xlim((1000, int(true_signal*1.5)))
+    # axes[0].set_ylim((0, 500))
+    # axes[0].legend(fancybox = False, fontsize = 20)
+
+    # # multisite
+    # axes[1].plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
+    
+    # axes[1].set_xlabel("Number of Signal Events", fontsize = 20)
+    # axes[1].set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
+    # axes[1].set_title(r"$\chi ^2$ vs Multisite LogLikelihood", fontsize = 20)
+    # axes[1].axvline(true_signal, color = "red", label = "True Signal Number")
+    # axes[1].set_xlim((1000, int(true_signal*1.5)))
+    # axes[1].set_ylim((0, 500))
+    # axes[1].legend(fancybox = False, fontsize = 20)
+
+    # # multisite + poisson
+    # axes[2].plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
+    
+    # axes[2].set_xlabel("Number of Signal Events", fontsize = 20)
+    # axes[2].set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
+    # axes[2].set_title(r"$\chi ^2$ vs Full LogLikelihood", fontsize = 20)
+    # axes[2].axvline(true_signal, color = "red", label = "True Signal Number")
+    # axes[2].set_xlim((1000, int(true_signal*1.5)))
+    # axes[2].set_ylim((0, 500))
+    # axes[2].legend(fancybox = False, fontsize = 20)
+
+    # fig.tight_layout()
+    
+    
+    # add 1,2,3 sigma uncertainty lines
+    sig1 = 0.5
+    sig2 = 2
+    sig3 = 4.5
+    axes[0].axhline(sig1, color = "red", linestyle = "dotted", label = r"$1 \sigma$")
+    # axes.axhline(sig2, color = "red", linestyle = "--")
+    # axes.axhline(sig3, color = "red", linestyle = "--")
+    
+    # find the values of signal that these uncertainties correspond to
+    # can see no 'easy' analytic way to find this so just finding corresponding X-axis closest to the sigma line
+
+    # find an array of absolute differences to the sigma level and then return idx of array element corresponding to it
+    idx_1sig_full    = np.argmin(np.abs(full_l - sig1))
+    idx_1sig_poisson = np.argmin(np.abs(poisson - sig1))
+
+    # find the second smallest difference (i.e. the other end of the confidence interval)
+    masked_1sig_full    = np.ma.masked_array(full_l, mask = False).copy()
+
+    # now remove the smallest value
+    masked_1sig_full[idx_1sig_full] = True # True means value is masked out and not considered in subsequent operations
+
+    # repeat finding the smallest difference
+    idx2_1sig_full = np.argmin(np.abs(masked_1sig_full-sig1))
+
+    # repeat for the poisson likelihood
+    masked_1sig_poisson = np.ma.masked_array(poisson, mask = False).copy()
+    masked_1sig_poisson[idx_1sig_poisson] = True
+    idx2_1sig_poisson = np.argmin(np.abs(masked_1sig_poisson-sig1))
+
+    signal_1sig_full     = signal_hypothesis[idx_1sig_full]
+    signal_1sig_full2    = signal_hypothesis[idx2_1sig_full]
+    signal_1sig_poisson  = signal_hypothesis[idx_1sig_poisson]
+    signal_1sig_poisson2 = signal_hypothesis[idx2_1sig_poisson]
+
+    # axes.plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
+    axes[0].plot(signal_hypothesis, poisson, color = "orange", label = f"Poisson Likelihood | Signal: {signal_hypothesis[np.argmin(poisson)]}" + r" $\pm$ " + f"{np.abs(signal_1sig_poisson-signal_1sig_poisson2)/2} ")
+    # axes.plot(signal_hypothesis, multsite, color = "green", label = "Multisite Likelihood")
+    axes[0].plot(signal_hypothesis, full_l, color = "black", label = f"Poisson + Multisite | Signal: {signal_hypothesis[np.argmin(full_l)]}" r" $\pm$ "+  f"{np.abs(signal_1sig_full-signal_1sig_full2)/2} ")
+    
+    axes[0].vlines(x = signal_1sig_full, ymin = 0, ymax = 0.5, color = "black", linestyle = "dashed")
+    axes[0].vlines(x = signal_1sig_full2, ymin = 0, ymax = sig1, color = "black", linestyle = "dashed")
+    axes[0].vlines(x = signal_1sig_poisson, ymin = 0, ymax = sig1, color = "orange", linestyle = "dashed")
+    axes[0].vlines(x = signal_1sig_poisson2, ymin = 0, ymax = sig1, color = "orange", linestyle = "dashed")
     axes[0].set_xlabel("Number of Signal Events", fontsize = 20)
-    axes[0].set_ylabel(r"$\chi ^2$", fontsize = 20)
-    ax2.set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
-    axes[0].set_title(r"$\chi ^2$ vs Poisson LogLikelihood", fontsize = 20)
-    axes[0].plot([], [], "", marker = "", color = "orange", label = "Poisson Likelihood")
+    axes[0].set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
+    axes[0].set_title(r"Poisson vs Multisite LogLikelihood", fontsize = 20)
     axes[0].axvline(true_signal, color = "red", label = "True Signal Number")
-    axes[0].legend(fancybox = False, fontsize = 20)
-
-    # multisite
-    axes[1].plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
-    ax2 = axes[1].twinx()
-    ax2.plot(signal_hypothesis, multsite, color = "orange", label = "Multisite Likelihood")
-    axes[1].set_xlabel("Number of Signal Events", fontsize = 20)
-    axes[1].set_ylabel(r"$\chi ^2$", fontsize = 20)
-    ax2.set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
-    axes[1].set_title(r"$\chi ^2$ vs Multisite LogLikelihood", fontsize = 20)
-    axes[1].plot([], [], "", marker = "", color = "orange", label = "Multisite Likelihood")
-    axes[1].axvline(true_signal, color = "red", label = "True Signal Number")
-    axes[1].legend(fancybox = False, fontsize = 20)
-
-    # multisite + poisson
-    axes[2].plot(signal_hypothesis, chi2, color = "blue", label = r"$\chi ^2$")
-    ax2 = axes[2].twinx()
-    ax2.plot(signal_hypothesis, full_l, color = "orange", label = "Full Likelihood")
-    axes[2].set_xlabel("Number of Signal Events", fontsize = 20)
-    axes[2].set_ylabel(r"$\chi ^2$", fontsize = 20)
-    ax2.set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
-    axes[2].set_title(r"$\chi ^2$ vs Full LogLikelihood", fontsize = 20)
-    axes[2].plot([], [], "", marker = "", color = "orange", label = "Full Likelihood")
-    axes[2].axvline(true_signal, color = "red", label = "True Signal Number")
-    axes[2].legend(fancybox = False, fontsize = 20)
-
-    fig.tight_layout()
-
-    plt.savefig("../plots/asimov_study/fake_dataset/test.png")
-    plt.close()
-
+    axes[0].set_xlim((2750, 3250))
+    axes[0].set_ylim((0, sig3+1))
+    axes[0].legend(fancybox = False, fontsize = 15)
+    axes[0].tick_params(axis='x', labelsize=15)
+    axes[0].tick_params(axis='y', labelsize=15)
+    
     # plot the multisite PDFs
-    plt.figure()
-    plt.hist(pdf_sig, bins = pdf_binning, density = True, histtype = "step", label = "Signal")
-    plt.hist(pdf_backg, bins = pdf_binning, density = True, histtype = "step", label = "Background")
-    plt.title("Multisite PDFs")
-    plt.xlabel(r"$\Delta log(\mathcal{L})$")
-    plt.ylabel("Normalised Counts")
-    plt.legend()
-    plt.savefig("../plots/asimov_study/fake_dataset/pdfs.png")
+    axes[1].hist(pdf_sig, bins = pdf_binning, density = True, color = "black", linewidth = 2, histtype = "step", label = f"Signal | Mean: {separation}")
+    axes[1].hist(pdf_backg, bins = pdf_binning, density = True, color = "orange", linewidth = 2, histtype = "step", label = "Background")
+    axes[1].set_title("Multisite PDFs", fontsize = 20)
+    axes[1].set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 20)
+    axes[1].set_ylabel("Normalised Counts", fontsize = 20)
+    axes[1].legend(fancybox = False, fontsize = 15)
+    axes[1].tick_params(axis='x', labelsize=15)
+    axes[1].tick_params(axis='y', labelsize=15)
+
+    plt.savefig(f"../plots/asimov_study/fake_dataset/result_{separation}.png")
     plt.close()
 
 def run_analysis():
@@ -167,10 +227,10 @@ def run_analysis():
     num_backg_events = 7000
 
     # define the width and offset of the PDFs used to generate dataset and evaluate logL
-    separation      = 5
+    separation      = 0
     width           = 1
     num_pdf_samples = 20000                                          # how many events to sample from analytic PDF to create the binned PDF used to eval loglikelihood
-    pdf_binning     = np.linspace(-separation*2, separation * 2, 50) # binning of PDF samples --> ensure range covers full spectrum of dataset otherwise gives out of range error
+    pdf_binning     = np.arange(0-(5+separation*5), 0+(5+separation * 5), 0.2) # binning of PDF samples --> ensure range covers full spectrum of dataset otherwise gives out of range error
     pdf_sig, pdf_backg, asimov_dataset = create_pdfs_and_dataset(separation, width, num_pdf_samples, num_sig_events, num_backg_events)
 
     # bin the PDFs and return counts in each bin --> normalised so area = 1
@@ -185,6 +245,6 @@ def run_analysis():
     multisite_l, poisson_l, chi2_l = evaluate_loglikelihood(num_sig_events, num_backg_events, asimov_dataset, pdf_sig_counts, pdf_backg_counts, pdf_binning)
 
     # create the output plots
-    create_output_plot(multisite_l, poisson_l, chi2_l, num_sig_events, pdf_sig, pdf_backg, pdf_binning)
+    create_output_plot(multisite_l, poisson_l, chi2_l, num_sig_events, pdf_sig, pdf_backg, pdf_binning, separation)
 
 run_analysis()

@@ -53,7 +53,7 @@ class AsimovLikelihoodExtraction():
                 
                 # apply FV cut
                 r = np.sqrt(x**2 + y**2 + z**2)
-                if r < fv_cut:
+                if r > fv_cut:
                     continue
 
                 # energy cut already applied on the branch 2.5 --> 5 MeV
@@ -178,7 +178,7 @@ class AsimovLikelihoodExtraction():
         #############################
 
         # create some output plots of the PDFS for each energy bin
-        fig, axes = plt.subplots(nrows = 1, ncols = len(binning) -1, figsize = (24, 6))
+        fig, axes = plt.subplots(nrows = 2, ncols = 2, figsize = (17, 12))
 
         # loop over all the runs in the PDF runlist
         # fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 6))
@@ -226,7 +226,13 @@ class AsimovLikelihoodExtraction():
         # for each bin in the energy spectrum, create a dlog(L) PDF
         LIST_OF_DLOGL_B8_PDFS    = []
         LIST_OF_DLOGL_TL208_PDFS = []
+        row = 0
+        col = 0
+        count = 0
         for i in range(len(binning) - 1):
+            if count == 2:
+                row = 1
+                col = 0
             
             # define the energy bins for PDF
             min_bin_energy = binning[i]
@@ -237,13 +243,14 @@ class AsimovLikelihoodExtraction():
             pdf_vals_tl208 = dlogL_tl208_pdf[(energy_tl208_pdf >= min_bin_energy) & (energy_tl208_pdf < max_bin_energy)] 
 
             # update the PDF plot
-            axes[i].hist(pdf_vals_b8, bins = pdf_binning, density = True,  histtype = "step", label = f"B8 | Events: {len(pdf_vals_b8)}")
-            axes[i].hist(pdf_vals_tl208, bins = pdf_binning, density = True, histtype = "step", label = f"Tl208 | Events: {len(pdf_vals_tl208)}")
-            axes[i].set_title(f"{min_bin_energy}" + r"$\rightarrow$" +  f"{max_bin_energy} MeV", fontsize = 20)
-            axes[i].set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 20)
-            axes[i].set_ylabel("Counts", fontsize = 20)
-            axes[i].legend()
-            axes[i].tick_params(axis = "x", rotation = 45)
+            axes[row, col].hist(pdf_vals_b8, bins = pdf_binning, density = True,  color = "black", linewidth = 2, histtype = "step", label = f"B8 | Events: {len(pdf_vals_b8)}")
+            axes[row, col].hist(pdf_vals_tl208, bins = pdf_binning, density = True, color = "orange", linewidth = 2, histtype = "step", label = f"Tl208 | Events: {len(pdf_vals_tl208)}")
+            axes[row, col].set_title(f"{min_bin_energy}" + r"$\rightarrow$" +  f"{max_bin_energy} MeV", fontsize = 20)
+            axes[row, col].set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 20)
+            axes[row, col].set_ylabel("Counts", fontsize = 20)
+            axes[row, col].legend(fontsize = 15)
+            axes[row, col].tick_params(axis = "x", rotation = 45, labelsize = 15)
+            axes[row, col].tick_params(axis = "y", labelsize = 15)
             # axes.hist(pdf_vals_b8, bins = pdf_binning, density = True,  histtype = "step", label = f"B8 | Events: {len(pdf_vals_b8)}")
             # axes.hist(pdf_vals_tl208, bins = pdf_binning, density = True, histtype = "step", label = f"Tl208 | Events: {len(pdf_vals_tl208)}")
             # axes.set_title(f"{min_bin_energy}" + r"$\rightarrow$" +  f"{max_bin_energy} MeV", fontsize = 20)
@@ -255,6 +262,9 @@ class AsimovLikelihoodExtraction():
             # save the PDF array into a list. Each entry in the list is a PDF
             LIST_OF_DLOGL_B8_PDFS.append(pdf_vals_b8)
             LIST_OF_DLOGL_TL208_PDFS.append(pdf_vals_tl208)
+
+            count +=1
+            col += 1
         
         fig.tight_layout()
         plt.savefig("../plots/asimov_study/dlogL_pdfs.png")
@@ -352,11 +362,11 @@ class AsimovLikelihoodExtraction():
             poisson = model_expectation - scaled_counts * np.log(model_expectation)
             # print(f"Poisson Part: {poisson}\nMultisite Part: {multisite}")
             # loglikelihood.append(poisson-multisite)
-            multisite_vals.append(multisite)
-            poisson_vals.append(poisson)
+            multisite_vals.append(2*multisite)
+            poisson_vals.append(2*poisson)
             # loglikelihood.append(multisite)
             
-            # loglikelihood.append(poisson + multisite)
+            loglikelihood.append(2*poisson + 2*multisite)
             # print(multisite)
 
             # multiply by chi2 prefactor
@@ -365,24 +375,14 @@ class AsimovLikelihoodExtraction():
             # take log
             # loglikelihood.append(-2*np.log(val))
 
-        alpha = 1
-        # normalise the poisson and multisite parts of the likelihood
-        poisson_vals = np.array(poisson_vals)
-        multisite_vals = np.array(multisite_vals)
-
-        poisson_vals = poisson_vals / np.max(poisson_vals)
-        multisite_vals = multisite_vals / np.max(multisite_vals)
-        print("Poisson Range: ", min(poisson_vals), max(poisson_vals))
-        print("Multisite Range: ", min(multisite_vals), max(multisite_vals))
-        loglikelihood = - (alpha *multisite_vals + poisson_vals)
-        return loglikelihood, output, output_sig, output_back
+        return loglikelihood, poisson_vals
 
 # define inputs to the analysis function
 energy_binning = np.arange(2.5, 5.0, 0.5)
-pdf_binning    = np.linspace(-1.13, -1.08, 50)
+pdf_binning    = np.arange(-1.13, -1.08, 0.0005)
 fraction_b8    = 0.1
 fv_cut         = 4500
-values_b8      = np.arange(0, 4000, 1)
+values_b8      = np.arange(0, 7000, 1)
 # values_b8 = values_b8[:1000]
 print(values_b8[-1])
 print("Number B8 values: ", len(values_b8))
@@ -422,19 +422,22 @@ for i_energy_bin in range(len(asimov_dataset)):
     normed_b8_pdf[normed_b8_pdf == 0] = 1e-6
     normed_tl208_pdf[normed_tl208_pdf ==0] = 1e-6
 
-    logL, full, sig, back = X.perform_multisite_minimisation(values_b8, num_tl208_per_bin[i_energy_bin], dlogL_data[i_energy_bin], normed_b8_pdf, normed_tl208_pdf, pdf_binning, asimov_dataset[i_energy_bin])
+    logL, poisson = X.perform_multisite_minimisation(values_b8, num_tl208_per_bin[i_energy_bin], dlogL_data[i_energy_bin], normed_b8_pdf, normed_tl208_pdf, pdf_binning, asimov_dataset[i_energy_bin])
 
-    min_chi2_idx = np.argmin(chi2)
-    min_logl_idx = np.argmin(logL)
+    min_chi2_idx    = np.argmin(chi2)
+    min_logl_idx    = np.argmin(logL)
+    min_poisson_idx = np.argmin(poisson)
 
-    diff_from_zero_chi2 = 0 - chi2[min_chi2_idx]
-    diff_from_zero_logl = 0 - logL[min_logl_idx]
-
-    chi2 = chi2 + diff_from_zero_chi2
-    logL = logL + diff_from_zero_logl 
+    diff_from_zero_chi2    = 0 - chi2[min_chi2_idx]
+    diff_from_zero_logl    = 0 - logL[min_logl_idx]
+    diff_from_zero_poisson = 0 - poisson[min_poisson_idx]
+    chi2    = chi2 + diff_from_zero_chi2
+    logL    = logL + diff_from_zero_logl
+    poisson = poisson + diff_from_zero_poisson  
 
     print(min(logL), max(logL))
     print(min(chi2), max(chi2))
+    print(min(poisson), max(poisson))
 
     # plt.figure()
     # plt.plot(values_b8 / (values_b8 + num_tl208_per_bin[i_energy_bin]), full, color = "black", label = "Total")
@@ -445,22 +448,67 @@ for i_energy_bin in range(len(asimov_dataset)):
     # plt.savefig(f"../plots/asimov_study/understanding/{i_energy_bin}.png")
     # plt.close()
 
+    # calculate the 1 sigma confidence intervals
+    sig1 = 0.5
+    idx_1sig_full    = np.argmin(np.abs(logL - sig1))
+    idx_1sig_poisson = np.argmin(np.abs(poisson - sig1))
+
+    # find the second smallest difference (i.e. the other end of the confidence interval)
+    masked_1sig_full    = np.ma.masked_array(logL, mask = False).copy()
+
+    # now remove the smallest value
+    masked_1sig_full[idx_1sig_full] = True # True means value is masked out and not considered in subsequent operations
+
+    # repeat finding the smallest difference
+    idx2_1sig_full = np.argmin(np.abs(masked_1sig_full-sig1))
+
+    # repeat for the poisson likelihood
+    masked_1sig_poisson = np.ma.masked_array(poisson, mask = False).copy()
+    masked_1sig_poisson[idx_1sig_poisson] = True
+    idx2_1sig_poisson = np.argmin(np.abs(masked_1sig_poisson-sig1))
+
+    signal_1sig_full     = values_b8[idx_1sig_full]
+    signal_1sig_full2    = values_b8[idx2_1sig_full]
+    signal_1sig_poisson  = values_b8[idx_1sig_poisson]
+    signal_1sig_poisson2 = values_b8[idx2_1sig_poisson]
+
     # create the output plot
     print(row, col, count)
+    axes[row, col].vlines(x = signal_1sig_full, ymin = 0, ymax = 0.5, color = "black", linestyle = "dashed")
+    axes[row, col].vlines(x = signal_1sig_full2, ymin = 0, ymax = sig1, color = "black", linestyle = "dashed")
+    axes[row, col].vlines(x = signal_1sig_poisson, ymin = 0, ymax = sig1, color = "orange", linestyle = "dashed")
+    axes[row, col].vlines(x = signal_1sig_poisson2, ymin = 0, ymax = sig1, color = "orange", linestyle = "dashed")
     axes[row, col].plot(values_b8, chi2, label = r"$\chi^2$")
-    
-    axes[row, col].plot([], [], color = "orange", label = r"$-log(\mathcal{L})$")
+    axes[row, col].plot(values_b8, logL, color = "black")
+    axes[row, col].plot(values_b8, poisson, color = "orange")
+    axes[row, col].plot([], [], color = "black", label = r"Full $-log(\mathcal{L})$")
+    axes[row, col].plot([], [], color = "orange", label = r"Poisson $-log(\mathcal{L})$")
     axes[row, col].set_xlabel("Number of B8", fontsize = 20)
-    axes[row, col].set_ylabel(r"$\chi ^2$", fontsize = 20)
+    axes[row, col].axhline(0.5, color = "red", linestyle = "dotted", label = r"$1 \sigma$")
+    # axes[row, col].set_ylabel(r"$\chi ^2$", fontsize = 20)
     axes[row, col].set_title(f"{energy_binning[i_energy_bin]}" + r"$\rightarrow$" + f"{energy_binning[i_energy_bin + 1]} MeV", fontsize = 20)
     axes[row, col].axvline(num_b8_per_bin[i_energy_bin], color = "red", label = f"True Num. B8: {round(num_b8_per_bin[i_energy_bin], 2)}")
-    axes[row, col].plot([], [], linestyle = "", label = r"$\chi ^2$" + f" Fitted Num. B8: {round(values_b8[np.argmin(chi2)], 2)}\n" + r"$-log(\mathcal{L})$" + f" Fitted Num. B8: {round(values_b8[np.argmin(logL)], 2)}")
+    axes[row, col].plot([], [], linestyle = "", label = r"$\chi ^2$" + f" Fitted Num. B8: {round(values_b8[np.argmin(chi2)], 2)}\n" + r"Full $-log(\mathcal{L})$" + f" Fitted Num. B8: {round(values_b8[np.argmin(logL)], 2)}" + r" $\pm$ " + f"{np.abs(signal_1sig_full-signal_1sig_full2)/2}\nPoisson " + r"$-log(\mathcal{L})$ Fitted Num. B8: " + f"{round(values_b8[np.argmin(poisson)], 2)}" + r" $\pm$ " + f"{np.abs(signal_1sig_poisson-signal_1sig_poisson2)/2}")
     # axes[i_energy_bin].plot(values_b8, logL, color = "orange")
-    axes[row,col].legend(frameon = False, loc = "upper left")
 
+    axes[row, col].legend(frameon = True, facecolor = "lightgrey", loc = "upper left", fontsize = 10)
+    # set some axis boundaries to visualise likelihood around the true minima
+    # find idx of likelihood functions corresponding to the true value of B8 in that bin
+    print(num_b8_per_bin[i_energy_bin])
+    idx_x  = np.where(values_b8 == num_b8_per_bin[i_energy_bin])[0]
+    length = 300
+    print(idx_x)
+    print(values_b8[idx_x-length], values_b8[idx_x + length])
+    axes[row,col].set_xlim((values_b8[idx_x-length], values_b8[idx_x+length]))
+
+    # cut the y-axis off at 3 sigma
+    axes[row, col].set_ylim(0, 3**2/2)
+    axes[row, col].tick_params(axis = "x", labelsize = 15)
+    axes[row, col].tick_params(axis = "y", labelsize = 15)
+    
     # find the minima of the chi2 and the logL and scale them both so the minima is at 0
     
-    ax2 = axes[row, col].twinx()
+    # ax2 = axes[row, col].twinx()
     # axes.plot(values_b8, chi2, label = r"$\chi^2$")
     
     # axes.plot([], [], color = "orange", label = r"$-log(\mathcal{L})$")
@@ -475,8 +523,8 @@ for i_energy_bin in range(len(asimov_dataset)):
     # axes.legend(frameon = False, loc = "upper left")
 
     # ax2 = axes.twinx()
-    ax2.plot(values_b8, logL, color = "orange")
-    ax2.set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
+    
+    axes[row, col].set_ylabel(r"$-log(\mathcal{L})$", fontsize = 20)
     count +=1
     col += 1
     
