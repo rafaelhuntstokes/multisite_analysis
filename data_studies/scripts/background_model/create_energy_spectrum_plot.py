@@ -294,8 +294,8 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     # axes[0].set_yscale("log")
     if dist_type == "energy":
         axes[0].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
-        axes[0].set_xlim((2.0,6))
-        # axes[0].set_ylim((0, 100))
+        axes[0].set_xlim((2.5,6))
+        axes[0].set_ylim((0, 100))
     if dist_type == "nhits_corrected":
         axes[0].set_xlabel("Nhits Corrected", fontsize = 20)
         axes[0].set_xlim((700,1500))
@@ -313,7 +313,7 @@ def create_background_model(FV, coincidence_cuts, itr_cuts, dist_type, bin_width
     
     if dist_type == "energy":
         axes[1].set_xlabel("Reconstructed Energy (MeV)", fontsize = 20)
-        axes[1].set_xlim((2.0,6))
+        axes[1].set_xlim((2.5,6))
         axes[1].set_ylim((-4, 4))
     if dist_type == "nhits_corrected":
         axes[1].set_xlabel("Nhits Corrected", fontsize = 20)

@@ -78,7 +78,7 @@ class AsimovLikelihoodExtraction():
         runlist = np.loadtxt("../runlists/additional_test_runlist.txt", dtype = int)
 
         # use half the MC for the asimov dataset - the other half will be used to create the dlog(L) PDFs
-        split_model = int(len(runlist) *0.5)
+        split_model = int(len(runlist) *0.25)
         print(split_model)
         asimov_runs = runlist[:split_model]  # runs to build dataset
         pdf_runs   = runlist[split_model:]  # different runs to build dlog(L) PDFs
@@ -164,7 +164,7 @@ class AsimovLikelihoodExtraction():
         plt.errorbar(binning[0:-1] + np.diff(binning)[0]/2, asimov_data, yerr = np.sqrt(asimov_data), xerr = np.diff(binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "black", label = "Total Spectrum")
         plt.errorbar(binning[0:-1] + np.diff(binning)[0]/2, scaled_b8, yerr = np.sqrt(scaled_b8), xerr = np.diff(binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "red", label = "B8")
         plt.errorbar(binning[0:-1] + np.diff(binning)[0]/2, scaled_tl208, yerr = np.sqrt(scaled_tl208), xerr = np.diff(binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "green", label = "Tl208")
-        plt.xlim((2.5, 5.0))
+        plt.xlim((2.5, 4.5))
         plt.ylim((0, np.max(asimov_data)* 1.1))
         plt.legend()
         plt.xlabel("Reconstructed Energy (MeV)", fontsize = 20)
@@ -401,6 +401,8 @@ chi2_minimisation = [] # list of lists --> each contains the chi2 for a given nu
 row = 0
 col = 0
 count = 0
+fitted_b8    = []
+error_fit_b8 = []
 for i_energy_bin in range(len(asimov_dataset)):
     if count == 2:
         row = 1
@@ -528,10 +530,30 @@ for i_energy_bin in range(len(asimov_dataset)):
     count +=1
     col += 1
     
+    fitted_b8.append(values_b8[np.argmin(logL)])
+    error_fit_b8.append(np.abs(signal_1sig_full-signal_1sig_full2)/2)
     # axes.set_xlim((0,1000))
     # axes.set_ylim((-100, 200))
     # ax2.set_ylim((-7400, -7300))
 
 fig.tight_layout()
-plt.savefig("../plots/asimov_study/chi2_minimisation_both.pdf")
+plt.savefig("../plots/asimov_study/minimisation_both.pdf")
+plt.savefig("../plots/asimov_study/minimisation_both.png")
+plt.close()
+
+# create a picture of the asimov dataset with the fitted model and the observed data
+plt.figure(figsize = (12, 6))
+print(len(energy_binning[0:-1]), len(asimov_dataset[:-1]))
+plt.errorbar(energy_binning[0:-1] + np.diff(energy_binning)[0]/2, asimov_dataset, yerr = np.sqrt(asimov_dataset), xerr = np.diff(energy_binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "black", label = "Observed Counts")
+# plt.errorbar(energy_binning[0:-1] + np.diff(energy_binning)[0]/2, num_tl208_per_bin, yerr = np.sqrt(num_tl208_per_bin), xerr = np.diff(energy_binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "red", label = "Tl208")
+# plt.errorbar(energy_binning[0:-1] + np.diff(energy_binning)[0]/2, fitted_b8, yerr = error_fit_b8, xerr = np.diff(energy_binning)[0]/2, capsize = 2, linestyle = "", marker = "o", color = "green", label = "Fitted B8")
+plt.errorbar(energy_binning[0:-1] + np.diff(energy_binning)[0]/2, fitted_b8+num_tl208_per_bin, xerr = 0.25, color = "orange", label = "Total Model")
+plt.xlim((2.5, 4.5))
+plt.ylim((0, np.max(asimov_dataset)* 1.1))
+plt.legend()
+plt.xlabel("Reconstructed Energy (MeV)", fontsize = 20)
+plt.ylabel(f"Counts per {np.diff(energy_binning)[0]} MeV Bin", fontsize = 20)
+plt.title("Asimov Dataset", fontsize = 20)
+plt.yscale("log")
+plt.savefig("../plots/asimov_study/asimov_dataset_fitted_onlyModelData_log.png")
 plt.close()

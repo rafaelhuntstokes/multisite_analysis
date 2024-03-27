@@ -217,36 +217,45 @@ def plot_pdf_energy_bins():
     energy_B8    = []
     
     for ientry in event_info_B8:
-        print("B8: ", ientry)
+        # print("B8: ", ientry)
         energy_B8.append(ientry.energy)
     for ientry in event_info_Tl208:
-        print("Tl208: ", ientry)
+        # print("Tl208: ", ientry)
         energy_Tl208.append(ientry.energy)
         
     # create the plots with energy bins overlaid
-    energy_bin_lines = [2.5, 3.125, 3.75, 4.375, 5.0]
-    energy_binning = np.arange(2.0, 6.0, 0.05)
+    energy_bin_lines = [2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    energy_binning = np.arange(2.5, 5.5, 0.5)
     
     plt.figure(figsize = (8,4))
-    #plt.hist(energy_B8, bins = energy_binning, histtype = "step", density = True, label = r"$^8B$")
-    plt.hist(energy_Tl208, bins = energy_binning, histtype = "step", density = True, label = r"$^{208}Tl$")
-    
+    counts_b8, _, _     = plt.hist(energy_B8, bins = energy_binning, histtype = "step", density = False, label = r"$^8B$")
+    counts_tl208, _, _ = plt.hist(energy_Tl208, bins = energy_binning, histtype = "step", density = False, label = r"$^{208}Tl$")
+    print(counts_tl208)
     for line in energy_bin_lines:
         plt.axvline(line, color = "black")
     
     plt.legend()
     plt.xlim((2.5, 5.0))
     plt.xlabel("Reconstructed Energy (MeV)")
-    plt.ylabel("Normalised Counts per 0.05 MeV")
+    plt.ylabel("Counts per 0.05 MeV")
     plt.savefig("../plots/pdf_analytics/pdf_energy_binning.pdf")
+
+    tot_b8 = np.sum(counts_b8)
+    tot_tl = np.sum(counts_tl208)
+    print("Percentage of B8 events in each energy bin:\n")
+    print(f"{counts_b8[0]/tot_b8}, {counts_b8[1]/tot_b8}, {counts_b8[2]/tot_b8}, {counts_b8[3]/tot_b8}")
+    print("\n")
+    print("Percentage of Tl events in each energy bin:\n")
+    print(f"{counts_tl208[0]/tot_tl}, {counts_tl208[1]/tot_tl}, {counts_tl208[2]/tot_tl}, {counts_tl208[3]/tot_tl}")
+    print("\n")
     
     
         
     
-# plot_pdf_energy_bins()
+plot_pdf_energy_bins()
     
-plot_pdf_analytics("2.5_5.0")
-plot_pdf_analytics("2.5_3.125")
-plot_pdf_analytics("3.125_3.75")
-plot_pdf_analytics("3.75_4.375")
-plot_pdf_analytics("4.375_5.0")
+# plot_pdf_analytics("2.5_5.0")
+# plot_pdf_analytics("2.5_3.125")
+# plot_pdf_analytics("3.125_3.75")
+# plot_pdf_analytics("3.75_4.375")
+# plot_pdf_analytics("4.375_5.0")

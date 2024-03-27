@@ -17,27 +17,155 @@ The code is done in a modular way, ultimately to create logL curves of multisite
 def quadratic_fit(X, A, B, C):
     return A*X**2 + B*X + C
 
-def create_pdfs_and_dataset(separation, width, pdf_samples, sig_samples, backg_samples):
+def create_pdfs_and_dataset(separation, width, pdf_samples, pdf_binning, sig_samples, backg_samples):
     """
     Create a single site and a multisite dlogL PDF as two gaussians of a given width and separation.
     Generate some samples and bin them to create the binned multisite PDFs used to evaluate the logL.
 
-    Sample num_sig and num_backg respectively to create the dataset.
+    Bin the PDF samples to create normalised PDFs. These normalised PDFs are then scaled to produce the asimov dataset.
     """
 
     # create pdfs
     pdf_samples_sig    = np.random.normal(loc = separation, scale = width, size = pdf_samples) # offset the signal PDF from background (centred at 0)
     pdf_samples_backg  = np.random.normal(loc = 0, scale = width, size = pdf_samples)
 
-    # generate dataset according to pdfs
+    # bin and normalise the PDFs
+    signal_pdf_counts, _ = np.histogram(pdf_samples_sig, bins = pdf_binning, density = True)
+    backg_pdf_counts,  _ = np.histogram(pdf_samples_backg, bins = pdf_binning, density = True)
+
+    # print(np.sum(signal_pdf_counts))
+    # scale the PDFs to the correct normalisation for signal and data
+    # signal_scale = sig_samples / np.sum(signal_pdf_counts)
+    # backg_scale  = backg_samples / np.sum(backg_pdf_counts)
+    # print(signal_scale)
+    # data_samples_sig   = []
+    # data_samples_backg = []
+    # for ibin in range(len(pdf_binning[:-1])):
+        # scaled_signal     = int(signal_pdf_counts[ibin] * signal_scale)
+        # signal_val        = pdf_binning[ibin] + np.diff(pdf_binning)[0]/
+        # data_samples_sig += vals
+
+        # scaled_backg        = int(backg_pdf_counts[ibin] * backg_scale)
+        # backg_val           = pdf_binning[ibin] + np.diff(pdf_binning)[0]/2
+        # vals                = [backg_val] * scaled_backg
+        # data_samples_backg += vals
+    # print(len(data_samples_sig), len(data_samples_backg))
+    # generate asimov dataset by sampling from the normalised PDFs themselves
     data_samples_sig   = np.random.normal(loc = separation, scale = width, size = sig_samples)
     data_samples_backg = np.random.normal(loc = 0, scale = width, size = backg_samples)
-
+    # data_samples_sig  = np.random.choice(pdf_binning[:-1], size = sig_samples, p = signal_pdf_counts * np.diff(pdf_binning)[0])
+    # data_samples_backg = np.random.choice(pdf_binning[:-1], size = backg_samples, p = backg_pdf_counts * np.diff(pdf_binning)[0]) 
+    
     # add the signal / background data together to make full dataset
     asimov_dataset = np.concatenate((data_samples_sig, data_samples_backg))
 
     # return the pdf and dataset samples
-    return pdf_samples_sig, pdf_samples_backg, asimov_dataset
+    return signal_pdf_counts, backg_pdf_counts, pdf_samples_sig, pdf_samples_backg, asimov_dataset
+
+def binned_asimov_dataset(separation, width, pdf_samples, pdf_binning, sig_samples, backg_samples):
+    """
+    Function creates an asimov dataset by using the PDFs to create the dataset and evaluate the lilelihood on a bin-by-bin basis.
+    """
+
+    # create pdfs
+    pdf_samples_sig    = np.random.normal(loc = separation, scale = width, size = pdf_samples) # offset the signal PDF from background (centred at 0)
+    pdf_samples_backg  = np.random.normal(loc = 0, scale = width, size = pdf_samples)
+
+    # bin the PDFs and normalise
+    signal_pdf_counts, _ = np.histogram(pdf_samples_sig, bins = pdf_binning, density = False)
+    backg_pdf_counts, _  = np.histogram(pdf_samples_backg, bins = pdf_binning, density = False)
+    
+    # cast as floats 
+    signal_pdf_counts = signal_pdf_counts.astype(np.float32)
+    backg_pdf_counts  = backg_pdf_counts.astype(np.float32)
+
+    # pad the zero bins in the PDFs
+    signal_pdf_counts[signal_pdf_counts == 0] = 1e-6
+    backg_pdf_counts[backg_pdf_counts == 0]   = 1e-6
+
+    # normalise so total counts in the PDF sums to 1
+    signal_pdf_counts = signal_pdf_counts / np.sum(signal_pdf_counts)
+    backg_pdf_counts = backg_pdf_counts / np.sum(backg_pdf_counts)
+    print(np.sum(signal_pdf_counts), np.sum(backg_pdf_counts))
+
+    # Now create the Asimov dataset by scaling these PDFs to the number of signal and background counts
+    signal_scale = sig_samples / np.sum(signal_pdf_counts)
+    backg_scale  = backg_samples / np.sum(backg_pdf_counts)
+    print(signal_scale, backg_scale)
+
+    asimov_signal_counts = signal_pdf_counts * signal_scale
+    asimov_backg_counts  = backg_pdf_counts * backg_scale
+
+    print(np.sum(asimov_signal_counts), np.sum(asimov_backg_counts))
+    total_asimov = asimov_signal_counts + asimov_backg_counts
+    
+    # find the mid points of the bins as the multisite values
+    asimov_multisite_vals = pdf_binning[:-1] + np.diff(pdf_binning)[0] / 2
+    plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, asimov_signal_counts, label = f"Num. Signal Asimov: {np.round(np.sum(asimov_signal_counts), 2)}")
+    plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, asimov_backg_counts, label = f"Num. Background Asimov: {np.round(np.sum(asimov_backg_counts), 2)}")
+    plt.plot(pdf_binning[:-1] + np.diff(pdf_binning)[0]/2, total_asimov, label = f"Total Sum of Bin Heights: {np.round(np.sum(total_asimov), 2)}")
+    plt.legend(frameon = False, fontsize = 8, loc = "center left")
+    plt.savefig("../plots/asimov_study/fake_dataset/daniel_asimov_dist.png")
+    plt.close()
+
+    # define the signal hypothesis to grid search over
+    signal_hypothesis = np.arange(2000, 4000, 1)
+
+    # grid search over the signal hypothesis
+    full_l      = [] # poisson + multisite
+    poisson_l   = [] # expected counts - observed counts * log(expected counts)
+    multisite_l = [] # multisite likelihood function
+    total_asimov_counts = np.sum(total_asimov)
+    print(total_asimov_counts)
+    for isig in signal_hypothesis:
+        multi = 0
+        # for ibin in range(len(pdf_binning)-1):
+        #     multi += np.log(isig*signal_pdf_counts[ibin] + (total_asimov-isig)*backg_pdf_counts[ibin])
+        multi = np.sum(total_asimov* np.log(isig * signal_pdf_counts + (total_asimov_counts - isig)*backg_pdf_counts))
+        multi = multi * -2
+        # poisson likelihood evaluated for a given signal hypothesis and known background contribution --> independent of the binned PDFs
+        poiss = isig + backg_samples - (sig_samples + backg_samples) * np.log(isig + backg_samples)
+        full  = poiss + multi
+
+        # track the -2log(L) for each part of the loglikelihood function for each signal hypothesis
+        full_l.append(full)
+        poisson_l.append(poiss)
+        multisite_l.append(multi)
+    # print(full_l)
+    # shift each logliklihood function such that minimum is at 0
+    min_poisson_idx   = np.argmin(poisson_l)
+    min_multisite_idx = np.argmin(multisite_l)
+    print(multisite_l[min_multisite_idx-5:min_multisite_idx+5])
+    min_full_l_idx    = np.argmin(full_l)
+    print("Min multisite: ", signal_hypothesis[min_multisite_idx])
+    diff_from_zero_multisite = 0 - multisite_l[min_multisite_idx]
+    diff_from_zero_poisson   = 0 - poisson_l[min_poisson_idx] 
+    diff_from_zero_full_l    = 0 - full_l[min_full_l_idx]
+
+    # shift to put minima at zero
+    multisite_l = multisite_l + diff_from_zero_multisite
+    poisson_l   = poisson_l + diff_from_zero_poisson
+    full_l      = full_l + diff_from_zero_full_l
+
+    # make a plot of the likelihood as a function of signal hypothesis
+    plt.figure(figsize = (20,10))
+    plt.plot(signal_hypothesis, full_l, color = "black", label = "Full Loglikelihood")
+    plt.plot(signal_hypothesis, poisson_l, color = "orange", label = "Poisson Loglikelihood")
+    plt.plot(signal_hypothesis, multisite_l, color = "green", label = "Multisite Loglikelihood")
+    plt.xlabel("Signal Hypothesis")
+    plt.ylabel(r"$-2log(\mathcal{L})$")
+    plt.legend()
+    plt.ylim((0, 9))
+    plt.savefig("../plots/asimov_study/fake_dataset/daniel_asimov.png")
+    plt.close()
+
+separation = 0
+width = 1
+pdf_samples = 50000
+pdf_binning     = np.arange(0-(5+separation*5), 0+(5+separation * 5), 0.2)
+sig_samples = 3000
+backg_samples = 7000
+binned_asimov_dataset(separation, width, pdf_samples, pdf_binning, sig_samples, backg_samples)
 
 def evaluate_loglikelihood(true_num_signal, true_num_backg, asimov_dataset, pdf_sig_counts, pdf_backg_counts, pdf_binning):
     """
@@ -55,8 +183,9 @@ def evaluate_loglikelihood(true_num_signal, true_num_backg, asimov_dataset, pdf_
     multisite_vals = []
     poisson_vals   = []
     chi2_vals      = []
-    for isig in range(2500, int(true_num_signal*1.5)):
-
+    signal_hypothesis = np.arange(27500, 32500, 1)
+    # for isig in range(2500, int(true_num_signal*1.5)):
+    for isig in signal_hypothesis:
         total_hypothesised_counts = isig + true_num_backg
         fraction_sig_counts       = isig / total_hypothesised_counts
         
@@ -80,7 +209,8 @@ def create_output_plot(multsite, poisson, chi2, true_signal, pdf_sig, pdf_backg,
     Create a plot of the multisite, poisson, chi2 and full multisite + poisson loglikelihood as a function of signal hypothesis.
     """
 
-    signal_hypothesis = np.arange(2500, int(true_signal * 1.5), 1)
+    # signal_hypothesis = np.arange(2500, int(true_signal * 1.5), 1)
+    signal_hypothesis = np.arange(2750, 3250, 1)
 
     # cast to array to perform elementwise shifts and additions
     chi2     = np.array(chi2)
@@ -223,19 +353,19 @@ def run_analysis():
     """
     
     # define the number of signal and background counts in the dataset
-    num_sig_events   = 3000
-    num_backg_events = 7000
+    num_sig_events   = 30000
+    num_backg_events = 70000
 
     # define the width and offset of the PDFs used to generate dataset and evaluate logL
-    separation      = 0
+    separation      = 1
     width           = 1
-    num_pdf_samples = 20000                                          # how many events to sample from analytic PDF to create the binned PDF used to eval loglikelihood
+    num_pdf_samples = 50000                                         # how many events to sample from analytic PDF to create the binned PDF used to eval loglikelihood
     pdf_binning     = np.arange(0-(5+separation*5), 0+(5+separation * 5), 0.2) # binning of PDF samples --> ensure range covers full spectrum of dataset otherwise gives out of range error
-    pdf_sig, pdf_backg, asimov_dataset = create_pdfs_and_dataset(separation, width, num_pdf_samples, num_sig_events, num_backg_events)
+    pdf_sig_counts, pdf_backg_counts, pdf_sig, pdf_backg, asimov_dataset = create_pdfs_and_dataset(separation, width, num_pdf_samples, pdf_binning, num_sig_events, num_backg_events)
 
     # bin the PDFs and return counts in each bin --> normalised so area = 1
-    pdf_sig_counts,   _ = np.histogram(pdf_sig, bins = pdf_binning, density = True)
-    pdf_backg_counts, _ = np.histogram(pdf_backg, bins = pdf_binning, density = True)
+    # pdf_sig_counts,   _ = np.histogram(pdf_sig, bins = pdf_binning, density = True)
+    # pdf_backg_counts, _ = np.histogram(pdf_backg, bins = pdf_binning, density = True)
 
     # pad the pdf counts to account for any zero bins
     pdf_sig_counts[pdf_sig_counts == 0]     = 1e-6
@@ -245,6 +375,42 @@ def run_analysis():
     multisite_l, poisson_l, chi2_l = evaluate_loglikelihood(num_sig_events, num_backg_events, asimov_dataset, pdf_sig_counts, pdf_backg_counts, pdf_binning)
 
     # create the output plots
-    create_output_plot(multisite_l, poisson_l, chi2_l, num_sig_events, pdf_sig, pdf_backg, pdf_binning, separation)
+    # create_output_plot(multisite_l, poisson_l, chi2_l, num_sig_events, pdf_sig, pdf_backg, pdf_binning, separation)
 
-run_analysis()
+    return multisite_l, poisson_l, chi2_l, num_sig_events, pdf_sig, pdf_backg, pdf_binning, separation
+# _, _, _, _, _, _, _, _ = run_analysis()
+# signal_hypothesis = np.arange(27500, 32500, 1)
+# plt.figure(figsize = (20, 10))
+# num_datasets = 1
+# dists = np.zeros((num_datasets, len(signal_hypothesis)))
+# for i in range(num_datasets):
+#     multisite_l, poisson_l, chi2_l, num_sig_events, pdf_sig, pdf_backg, pdf_binning, separation = run_analysis()
+#     poisson_l = np.array(poisson_l)
+#     multisite_l = np.array(multisite_l)
+#     full_l   = poisson_l + multisite_l
+#     min_multisite_idx = np.argmin(multisite_l)
+#     min_full_l_idx    = np.argmin(full_l)
+#     diff_from_zero_multisite = 0 - multisite_l[min_multisite_idx]
+#     diff_from_zero_full_l    = 0 - full_l[min_full_l_idx]
+#     full_l   = full_l + diff_from_zero_full_l
+#     multsite_l = multisite_l + diff_from_zero_multisite
+
+#     dists[i, :] = full_l
+#     plt.plot(signal_hypothesis, full_l, color = "grey", linestyle = "dashed", alpha = 0.2)
+#     print(i)
+
+# # average across all the datasets
+# # asimov_likelihood = np.mean(dists, axis = 0)
+# # print(asimov_likelihood)
+# # plt.plot(signal_hypothesis, asimov_likelihood, linewidth = 2, color = "black", label = f"Asimov Likelihood | Minimum: {signal_hypothesis[np.argmin(asimov_likelihood)]}")
+# plt.plot(signal_hypothesis, dists[0,:], linewidth = 2, color = "black", label = f"Asimov Likelihood | Minimum: {signal_hypothesis[np.argmin(dists)]}")
+
+# plt.title("Multisite Loglikelihood Minimisation for Asimov Dataset", fontsize = 20)
+# plt.axvline(30000, color = "red", label = "True Signal Counts: 3000")
+# plt.xlabel("Number B8 Events", fontsize = 20)
+# plt.ylabel(r"$-2log(\mathcal{L})$", fontsize = 20)
+# plt.tick_params(axis = 'both', labelsize = 15)
+# # plt.xlim((2750, 3250))
+# # plt.ylim((0, 9+1))
+# plt.legend(frameon = False, fontsize = 15, loc = "upper right")
+# plt.savefig("../plots/asimov_study/fake_dataset/asimov_average_curves.png")
