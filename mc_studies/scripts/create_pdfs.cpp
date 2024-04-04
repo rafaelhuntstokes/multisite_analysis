@@ -34,7 +34,7 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     std::string input_fname = input_fpath + "/simulation" + isotope + "_" + std::to_string(run_number) + "*.root";
 
     // create the output file
-    std::string output_path = output_fpath + "/" + isotope + "/" + std::to_string(run_number) + ".root";
+    std::string output_path = output_fpath + "/full_analysis_" + isotope + "/" + std::to_string(run_number) + ".root";
     TFile *output           = new TFile(output_path.c_str(), "RECREATE");
 
     // populate the output file with a TTree and branches to save relevant information
@@ -54,19 +54,24 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     event_level->Branch("energy", &energy);
 
     // create PDF histograms for multisite and directionality for each energy bin
-    TH2D* dir_pdf_2p5_5p0      = new TH2D("directionality_2.5_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
-    TH2D* dir_pdf_2p5_3p125    = new TH2D("directionality_2.5_3.125", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
-    TH2D* dir_pdf_3p125_3p75   = new TH2D("directionality_3.125_3.75", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
-    TH2D* dir_pdf_3p75_4p375   = new TH2D("directionality_3.75_4.375", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
-    TH2D* dir_pdf_4p375_5p0    = new TH2D("directionality_4.375_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
-    TH2D* dir_pdf_5p0_plus     = new TH2D("directionality_5p0_plus", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_2p5_5p0  = new TH2D("directionality_2.5_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_2p5_3p0  = new TH2D("directionality_2.5_3.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_3p0_3p5  = new TH2D("directionality_3.0_3.5", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_3p5_4p0  = new TH2D("directionality_3.5_4.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_4p0_4p5  = new TH2D("directionality_4.0_4.5", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_4p5_5p0  = new TH2D("directionality_4.5_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    // TH2D* dir_pdf_2p5_3p125    = new TH2D("directionality_2.5_3.125", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    // TH2D* dir_pdf_3p125_3p75   = new TH2D("directionality_3.125_3.75", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    // TH2D* dir_pdf_3p75_4p375   = new TH2D("directionality_3.75_4.375", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    // TH2D* dir_pdf_4p375_5p0    = new TH2D("directionality_4.375_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    // TH2D* dir_pdf_5p0_plus     = new TH2D("directionality_5p0_plus", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
     
-    TH1D* multi_pdf_2p5_5p0    = new TH1D("multi_2.5_5.0", "", 401, -100.5, 300.5);
-    TH1D* multi_pdf_2p5_3p125  = new TH1D("multi_2.5_3.125", "", 401, -100.5, 300.5);
-    TH1D* multi_pdf_3p125_3p75 = new TH1D("multi_3.125_3.75", "", 401, -100.5, 300.5);
-    TH1D* multi_pdf_3p75_4p375 = new TH1D("multi_3.75_4.375", "", 401, -100.5, 300.5);
-    TH1D* multi_pdf_4p375_5p0  = new TH1D("multi_4.375_5.0", "", 401, -100.5, 300.5);
-    TH1D* multi_pdf_5p0_plus   = new TH1D("multi_5.0_plus", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_2p5_5p0 = new TH1D("multi_2.5_5.0", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_2p5_3p0 = new TH1D("multi_2.5_3.0", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_3p0_3p5 = new TH1D("multi_3.0_3.5", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_3p5_4p0 = new TH1D("multi_3.5_4.0", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_4p0_4p5 = new TH1D("multi_4.0_4.5", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_4p5_5p0 = new TH1D("multi_4.5_5.0", "", 401, -100.5, 300.5);
 
     // push back these histograms into vectors --> this is important when deciding which energy histo to fill
     // efficienctly inside the time residual loop
@@ -74,18 +79,18 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     std::vector<TH2D*> dir_pdf_vec;
 
     multi_pdf_vec.push_back(multi_pdf_2p5_5p0);
-    multi_pdf_vec.push_back(multi_pdf_2p5_3p125);
-    multi_pdf_vec.push_back(multi_pdf_3p125_3p75);
-    multi_pdf_vec.push_back(multi_pdf_3p75_4p375);
-    multi_pdf_vec.push_back(multi_pdf_4p375_5p0);
-    multi_pdf_vec.push_back(multi_pdf_5p0_plus);
+    multi_pdf_vec.push_back(multi_pdf_2p5_3p0);
+    multi_pdf_vec.push_back(multi_pdf_3p0_3p5);
+    multi_pdf_vec.push_back(multi_pdf_3p5_4p0);
+    multi_pdf_vec.push_back(multi_pdf_4p0_4p5);
+    multi_pdf_vec.push_back(multi_pdf_4p5_5p0);
 
     dir_pdf_vec.push_back(dir_pdf_2p5_5p0);
-    dir_pdf_vec.push_back(dir_pdf_2p5_3p125);
-    dir_pdf_vec.push_back(dir_pdf_3p125_3p75);
-    dir_pdf_vec.push_back(dir_pdf_3p75_4p375);
-    dir_pdf_vec.push_back(dir_pdf_4p375_5p0);
-    dir_pdf_vec.push_back(dir_pdf_5p0_plus);
+    dir_pdf_vec.push_back(dir_pdf_2p5_3p0);
+    dir_pdf_vec.push_back(dir_pdf_3p0_3p5);
+    dir_pdf_vec.push_back(dir_pdf_3p5_4p0);
+    dir_pdf_vec.push_back(dir_pdf_4p0_4p5);
+    dir_pdf_vec.push_back(dir_pdf_4p5_5p0);
 
     // load the input MC file
     std::cout << "Reading file: " << input_fname << std::endl;
@@ -157,7 +162,7 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
         event_position_recon.SetCoordinateSystem(fPSUPSystemId);
 
         // check that event energy fits into the large domain
-        if (energy < 2.5){
+        if (energy < 2.5 or energy > 5.0){
             // outside energy ROI!
             continue;
         }
@@ -165,19 +170,19 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
         // find what energy bin pdf to fill
         int idx_to_fill_pdf;
         bool fill_roi_hist = false;
-        if (energy >= 2.5 and energy < 3.125){
+        if (energy >= 2.5 and energy < 3.0){
             idx_to_fill_pdf = 1;
             fill_roi_hist = true;
         }
-        else if (energy >= 3.125 and energy < 3.75){
+        else if (energy >= 3.0 and energy < 3.5){
             fill_roi_hist = true;
             idx_to_fill_pdf = 2;
         }
-        else if (energy >= 3.75 and energy < 4.375){
+        else if (energy >= 3.5 and energy < 4.0){
             fill_roi_hist = true;
             idx_to_fill_pdf = 3;
         }
-        else if (energy >= 4.375 and energy < 5.0){
+        else if (energy >= 4.0 and energy < 4.5){
             fill_roi_hist = true;
             idx_to_fill_pdf = 4;
         }
@@ -233,18 +238,18 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
 
     // now write the histograms and TTree to the file
     dir_pdf_vec.at(0)->Write();
-    dir_pdf_2p5_3p125->Write();
-    dir_pdf_3p125_3p75->Write();
-    dir_pdf_3p75_4p375->Write();
-    dir_pdf_4p375_5p0->Write();
-    dir_pdf_5p0_plus->Write();
+    dir_pdf_2p5_3p0->Write();
+    dir_pdf_3p0_3p5->Write();
+    dir_pdf_3p5_4p0->Write();
+    dir_pdf_4p0_4p5->Write();
+    dir_pdf_4p5_5p0->Write();
 
     multi_pdf_2p5_5p0->Write();
-    multi_pdf_2p5_3p125->Write();
-    multi_pdf_3p125_3p75->Write();
-    multi_pdf_3p75_4p375->Write();
-    multi_pdf_4p375_5p0->Write();
-    multi_pdf_5p0_plus->Write();
+    multi_pdf_2p5_3p0->Write();
+    multi_pdf_3p0_3p5->Write();
+    multi_pdf_3p5_4p0->Write();
+    multi_pdf_4p0_4p5->Write();
+    multi_pdf_4p5_5p0->Write();
 
     hit_level->Write();
     event_level->Write();

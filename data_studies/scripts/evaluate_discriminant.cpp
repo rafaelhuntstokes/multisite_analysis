@@ -177,15 +177,20 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     A run_by_run ntuple file is returned containing the [energy, position, discriminants] of each event and for each energy.
     */
 
-
     // define ratds input file location and output TTree file locations
-    std::string input_fname  = input_fpath + "/" + std::to_string(run_number) + "*.root";
+    std::string input_fname;
+    if (run_number < 307613){
+        std::string input_fname  = input_fpath + "/Analysis20R_r0000" + std::to_string(run_number) + "*.root";
+    } else {
+        std::string input_fname  = input_fpath + "/Analysis20_r0000" + std::to_string(run_number) + "*.root";
+    }
+    
     std::string output_fname = output_fpath + "/" + std::to_string(run_number) + ".root"; 
     
     // load the PDF files for each isotope
     std::string working_directory = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies";
-    std::string pdf_B8_fname      = working_directory + "/run_by_run_pdf/B8_solar_nue/total.root";
-    std::string pdf_Tl208_fname   = working_directory + "/run_by_run_pdf/Tl208/total.root";
+    std::string pdf_B8_fname      = working_directory + "/run_by_run_pdf/full_analysis_B8_solar_nue/total.root";
+    std::string pdf_Tl208_fname   = working_directory + "/run_by_run_pdf/full_analysis_Tl208/total.root";
     TFile *PDF_B8 = new TFile(pdf_B8_fname.c_str());
     TFile *PDF_Tl208 = new TFile(pdf_Tl208_fname.c_str());
     // get the directionality histograms from the files (use B8 PDF only!)
@@ -194,114 +199,192 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     BE CAREFUL ! if you put in the wrong name of the histograms, dynamic_cast returns a null_ptr.
     No error is reported until you try to access the histograms...
     */                                             
-    TH2D *dir_pdf_2p5_5p0    = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_5.0"));
-    TH2D *dir_pdf_2p5_3p125  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_3.125"));
-    TH2D *dir_pdf_3p125_3p75 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.125_3.75"));
-    TH2D *dir_pdf_3p75_4p375 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.75_4.375"));
-    TH2D *dir_pdf_4p375_5p0  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));
-    TH2D *dir_pdf_5p0_plus   = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));//dynamic_cast<TH2D*>(PDF_B8->Get("directionality_5p0_plus"));
-    if (dir_pdf_2p5_5p0 == false){
-        std::cout << "Broken!" << std::endl;
-    }
+    // TH2D *dir_pdf_2p5_5p0    = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_5.0"));
+    // TH2D *dir_pdf_2p5_3p125  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_3.125"));
+    // TH2D *dir_pdf_3p125_3p75 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.125_3.75"));
+    // TH2D *dir_pdf_3p75_4p375 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.75_4.375"));
+    // TH2D *dir_pdf_4p375_5p0  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));
+    // TH2D *dir_pdf_5p0_plus   = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));//dynamic_cast<TH2D*>(PDF_B8->Get("directionality_5p0_plus"));
+    // if (dir_pdf_2p5_5p0 == false){
+        // std::cout << "Broken!" << std::endl;
+    // }
 
     // get the multisite histograms from the files (for both isotopes!)
-    TH1D *multi_pdf_B8_2p5_5p0       = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
-    TH1D *multi_pdf_Tl208_2p5_5p0    = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
-    TH1D *multi_pdf_B8_2p5_3p125     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.125"));
-    TH1D *multi_pdf_Tl208_2p5_3p125  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.125"));
-    TH1D *multi_pdf_B8_3p125_3p75    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.125_3.75"));
-    TH1D *multi_pdf_Tl208_3p125_3p75 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.125_3.75"));
-    TH1D *multi_pdf_B8_3p75_4p375    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_4.375"));
-    TH1D *multi_pdf_Tl208_3p75_4p375 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.75_4.375"));
-    TH1D *multi_pdf_B8_4p375_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0"));
-    TH1D *multi_pdf_Tl208_4p375_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0"));
-    TH1D *multi_pdf_B8_5p0_plus      = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0")); //dynamic_cast<TH1D*>(PDF_B8->Get("multi_5.0_plus"));
-    TH1D *multi_pdf_Tl208_5p0_plus   = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0")); //dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_5.0_plus"));
+    // TH1D *multi_pdf_B8_2p5_5p0       = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
+    // TH1D *multi_pdf_Tl208_2p5_5p0    = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
+    // TH1D *multi_pdf_B8_2p5_3p125     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.125"));
+    // TH1D *multi_pdf_Tl208_2p5_3p125  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.125"));
+    // TH1D *multi_pdf_B8_3p125_3p75    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.125_3.75"));
+    // TH1D *multi_pdf_Tl208_3p125_3p75 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.125_3.75"));
+    // TH1D *multi_pdf_B8_3p75_4p375    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_4.375"));
+    // TH1D *multi_pdf_Tl208_3p75_4p375 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.75_4.375"));
+    // TH1D *multi_pdf_B8_4p375_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0"));
+    // TH1D *multi_pdf_Tl208_4p375_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0"));
+    // TH1D *multi_pdf_B8_5p0_plus      = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0")); //dynamic_cast<TH1D*>(PDF_B8->Get("multi_5.0_plus"));
+    // TH1D *multi_pdf_Tl208_5p0_plus   = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0")); //dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_5.0_plus"));
+
+    TH1D *multi_pdf_B8_2p5_5p0    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
+    TH1D *multi_pdf_Tl208_2p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_3p0    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.0"));
+    TH1D *multi_pdf_Tl208_2p5_3p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.0"));
+    TH1D *multi_pdf_B8_3p0_3p5    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.0_3.5"));
+    TH1D *multi_pdf_Tl208_3p0_3p5 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.0_3.5"));
+    TH1D *multi_pdf_B8_3p5_4p0    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_4.0"));
+    TH1D *multi_pdf_Tl208_3p5_4p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_4.0"));
+    TH1D *multi_pdf_B8_4p0_4p5    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.0_4.5"));
+    TH1D *multi_pdf_Tl208_4p0_4p5 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.0_4.5"));
+    TH1D *multi_pdf_B8_4p5_5p0    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.5_5.0")); //dynamic_cast<TH1D*>(PDF_B8->Get("multi_5.0_plus"));
+    TH1D *multi_pdf_Tl208_4p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.5_5.0")); //dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_5.0_plus"));
 
     // create the output ntuple with an output TTree containing discriminants for each energy PDF
     TFile *output_file    = new TFile(output_fname.c_str(), "RECREATE");
 
-    TTree *info_2p5_5p0    = new TTree("2p5_5p0", "2p5_5p0");
-    TTree *info_2p5_3p125  = new TTree("2p5_3p125", "2p5_3p125");
-    TTree *info_3p125_3p75 = new TTree("3p125_3p75", "3p125_3p75");
-    TTree *info_3p75_4p375 = new TTree("3p75_4p375", "3p75_4p375");
-    TTree *info_4p375_5p0  = new TTree("4p375_5p0", "4p375_5p0");
-    TTree *info_5p0_plus   = new TTree("5p0_plus", "5p0_plus");
-    TTree *info_1p25_3p0   = new TTree("1p25_3p0", "1p25_3p0");
-
+    // TTree *info_2p5_5p0    = new TTree("2p5_5p0", "2p5_5p0");
+    // TTree *info_2p5_3p125  = new TTree("2p5_3p125", "2p5_3p125");
+    // TTree *info_3p125_3p75 = new TTree("3p125_3p75", "3p125_3p75");
+    // TTree *info_3p75_4p375 = new TTree("3p75_4p375", "3p75_4p375");
+    // TTree *info_4p375_5p0  = new TTree("4p375_5p0", "4p375_5p0");
+    // TTree *info_5p0_plus   = new TTree("5p0_plus", "5p0_plus");
+    // TTree *info_1p25_3p0   = new TTree("1p25_3p0", "1p25_3p0");
+    TTree *info_2p5_5p0 = new TTree("2p5_5p0", "2p5_5p0");
+    TTree *info_2p5_3p0 = new TTree("2p5_3p0", "2p5_3p0");
+    TTree *info_3p0_3p5 = new TTree("3p0_3p5", "3p0_3p5");
+    TTree *info_3p5_4p0 = new TTree("3p5_4p0", "3p5_4p0");
+    TTree *info_4p0_4p5 = new TTree("4p0_4p5", "4p0_4p5");
+    TTree *info_4p5_5p0 = new TTree("4p5_5p0", "4p5_5p0");
     // define the variables to fill branches with
     double energy, x, y, z, dlogL, fisher, IQR, cos_theta_sun, itr;
     
     // add the relevant branches to each TTRee
+    // info_2p5_5p0->Branch("energy", &energy);
+    // info_2p5_5p0->Branch("x", &x);
+    // info_2p5_5p0->Branch("y", &y);
+    // info_2p5_5p0->Branch("z", &z);
+    // info_2p5_5p0->Branch("itr", &itr);
+    // info_2p5_5p0->Branch("dlogL", &dlogL);
+    // info_2p5_5p0->Branch("fisher", &fisher);
+    // info_2p5_5p0->Branch("IQR", &IQR);
+    // info_2p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+
+    // info_2p5_3p125->Branch("energy", &energy);
+    // info_2p5_3p125->Branch("x", &x);
+    // info_2p5_3p125->Branch("y", &y);
+    // info_2p5_3p125->Branch("z", &z);
+    // info_2p5_3p125->Branch("itr", &itr);
+    // info_2p5_3p125->Branch("dlogL", &dlogL);
+    // info_2p5_3p125->Branch("fisher", &fisher);
+    // info_2p5_3p125->Branch("IQR", &IQR);
+    // info_2p5_3p125->Branch("cos_theta_sun", &cos_theta_sun);
+
+    // info_3p125_3p75->Branch("energy", &energy);
+    // info_3p125_3p75->Branch("x", &x);
+    // info_3p125_3p75->Branch("y", &y);
+    // info_3p125_3p75->Branch("z", &z);
+    // info_3p125_3p75->Branch("itr", &itr);
+    // info_3p125_3p75->Branch("dlogL", &dlogL);
+    // info_3p125_3p75->Branch("fisher", &fisher);
+    // info_3p125_3p75->Branch("IQR", &IQR);
+    // info_3p125_3p75->Branch("cos_theta_sun", &cos_theta_sun);
+
+    // info_3p75_4p375->Branch("energy", &energy);
+    // info_3p75_4p375->Branch("x", &x);
+    // info_3p75_4p375->Branch("y", &y);
+    // info_3p75_4p375->Branch("z", &z);
+    // info_3p75_4p375->Branch("itr", &itr);
+    // info_3p75_4p375->Branch("dlogL", &dlogL);
+    // info_3p75_4p375->Branch("fisher", &fisher);
+    // info_3p75_4p375->Branch("IQR", &IQR);
+    // info_3p75_4p375->Branch("cos_theta_sun", &cos_theta_sun);
+
+    // info_4p375_5p0->Branch("energy", &energy);
+    // info_4p375_5p0->Branch("x", &x);
+    // info_4p375_5p0->Branch("y", &y);
+    // info_4p375_5p0->Branch("z", &z);
+    // info_4p375_5p0->Branch("itr", &itr);
+    // info_4p375_5p0->Branch("dlogL", &dlogL);
+    // info_4p375_5p0->Branch("fisher", &fisher);
+    // info_4p375_5p0->Branch("IQR", &IQR);
+    // info_4p375_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+
+    // info_5p0_plus->Branch("energy", &energy);
+    // info_5p0_plus->Branch("x", &x);
+    // info_5p0_plus->Branch("y", &y);
+    // info_5p0_plus->Branch("z", &z);
+    // info_5p0_plus->Branch("itr", &itr);
+    // info_5p0_plus->Branch("dlogL", &dlogL);
+    // info_5p0_plus->Branch("fisher", &fisher);
+    // info_5p0_plus->Branch("IQR", &IQR);
+    // info_5p0_plus->Branch("cos_theta_sun", &cos_theta_sun);
+
+    // info_1p25_3p0->Branch("energy", &energy);
+    // info_1p25_3p0->Branch("itr", &itr);
+    // info_1p25_3p0->Branch("x", &x);
+    // info_1p25_3p0->Branch("y", &y);
+    // info_1p25_3p0->Branch("z", &z);
+    // info_1p25_3p0->Branch("dlogL", &dlogL);
+    // info_1p25_3p0->Branch("fisher", &fisher);
+    // info_1p25_3p0->Branch("IQR", &IQR);
+    // info_1p25_3p0->Branch("cos_theta_sun", &cos_theta_sun);
+
     info_2p5_5p0->Branch("energy", &energy);
+    info_2p5_5p0->Branch("itr", &itr);
     info_2p5_5p0->Branch("x", &x);
     info_2p5_5p0->Branch("y", &y);
     info_2p5_5p0->Branch("z", &z);
-    info_2p5_5p0->Branch("itr", &itr);
     info_2p5_5p0->Branch("dlogL", &dlogL);
     info_2p5_5p0->Branch("fisher", &fisher);
     info_2p5_5p0->Branch("IQR", &IQR);
     info_2p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
 
-    info_2p5_3p125->Branch("energy", &energy);
-    info_2p5_3p125->Branch("x", &x);
-    info_2p5_3p125->Branch("y", &y);
-    info_2p5_3p125->Branch("z", &z);
-    info_2p5_3p125->Branch("itr", &itr);
-    info_2p5_3p125->Branch("dlogL", &dlogL);
-    info_2p5_3p125->Branch("fisher", &fisher);
-    info_2p5_3p125->Branch("IQR", &IQR);
-    info_2p5_3p125->Branch("cos_theta_sun", &cos_theta_sun);
+    info_2p5_3p0->Branch("energy", &energy);
+    info_2p5_3p0->Branch("itr", &itr);
+    info_2p5_3p0->Branch("x", &x);
+    info_2p5_3p0->Branch("y", &y);
+    info_2p5_3p0->Branch("z", &z);
+    info_2p5_3p0->Branch("dlogL", &dlogL);
+    info_2p5_3p0->Branch("fisher", &fisher);
+    info_2p5_3p0->Branch("IQR", &IQR);
+    info_2p5_3p0->Branch("cos_theta_sun", &cos_theta_sun);
 
-    info_3p125_3p75->Branch("energy", &energy);
-    info_3p125_3p75->Branch("x", &x);
-    info_3p125_3p75->Branch("y", &y);
-    info_3p125_3p75->Branch("z", &z);
-    info_3p125_3p75->Branch("itr", &itr);
-    info_3p125_3p75->Branch("dlogL", &dlogL);
-    info_3p125_3p75->Branch("fisher", &fisher);
-    info_3p125_3p75->Branch("IQR", &IQR);
-    info_3p125_3p75->Branch("cos_theta_sun", &cos_theta_sun);
+    info_3p0_3p5->Branch("energy", &energy);
+    info_3p0_3p5->Branch("itr", &itr);
+    info_3p0_3p5->Branch("x", &x);
+    info_3p0_3p5->Branch("y", &y);
+    info_3p0_3p5->Branch("z", &z);
+    info_3p0_3p5->Branch("dlogL", &dlogL);
+    info_3p0_3p5->Branch("fisher", &fisher);
+    info_3p0_3p5->Branch("IQR", &IQR);
+    info_3p0_3p5->Branch("cos_theta_sun", &cos_theta_sun);
 
-    info_3p75_4p375->Branch("energy", &energy);
-    info_3p75_4p375->Branch("x", &x);
-    info_3p75_4p375->Branch("y", &y);
-    info_3p75_4p375->Branch("z", &z);
-    info_3p75_4p375->Branch("itr", &itr);
-    info_3p75_4p375->Branch("dlogL", &dlogL);
-    info_3p75_4p375->Branch("fisher", &fisher);
-    info_3p75_4p375->Branch("IQR", &IQR);
-    info_3p75_4p375->Branch("cos_theta_sun", &cos_theta_sun);
+    info_3p5_4p0->Branch("energy", &energy);
+    info_3p5_4p0->Branch("itr", &itr);
+    info_3p5_4p0->Branch("x", &x);
+    info_3p5_4p0->Branch("y", &y);
+    info_3p5_4p0->Branch("z", &z);
+    info_3p5_4p0->Branch("dlogL", &dlogL);
+    info_3p5_4p0->Branch("fisher", &fisher);
+    info_3p5_4p0->Branch("IQR", &IQR);
+    info_3p5_4p0->Branch("cos_theta_sun", &cos_theta_sun);
 
-    info_4p375_5p0->Branch("energy", &energy);
-    info_4p375_5p0->Branch("x", &x);
-    info_4p375_5p0->Branch("y", &y);
-    info_4p375_5p0->Branch("z", &z);
-    info_4p375_5p0->Branch("itr", &itr);
-    info_4p375_5p0->Branch("dlogL", &dlogL);
-    info_4p375_5p0->Branch("fisher", &fisher);
-    info_4p375_5p0->Branch("IQR", &IQR);
-    info_4p375_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_4p0_4p5->Branch("energy", &energy);
+    info_4p0_4p5->Branch("itr", &itr);
+    info_4p0_4p5->Branch("x", &x);
+    info_4p0_4p5->Branch("y", &y);
+    info_4p0_4p5->Branch("z", &z);
+    info_4p0_4p5->Branch("dlogL", &dlogL);
+    info_4p0_4p5->Branch("fisher", &fisher);
+    info_4p0_4p5->Branch("IQR", &IQR);
+    info_4p0_4p5->Branch("cos_theta_sun", &cos_theta_sun);
 
-    info_5p0_plus->Branch("energy", &energy);
-    info_5p0_plus->Branch("x", &x);
-    info_5p0_plus->Branch("y", &y);
-    info_5p0_plus->Branch("z", &z);
-    info_5p0_plus->Branch("itr", &itr);
-    info_5p0_plus->Branch("dlogL", &dlogL);
-    info_5p0_plus->Branch("fisher", &fisher);
-    info_5p0_plus->Branch("IQR", &IQR);
-    info_5p0_plus->Branch("cos_theta_sun", &cos_theta_sun);
-
-    info_1p25_3p0->Branch("energy", &energy);
-    info_1p25_3p0->Branch("itr", &itr);
-    info_1p25_3p0->Branch("x", &x);
-    info_1p25_3p0->Branch("y", &y);
-    info_1p25_3p0->Branch("z", &z);
-    info_1p25_3p0->Branch("dlogL", &dlogL);
-    info_1p25_3p0->Branch("fisher", &fisher);
-    info_1p25_3p0->Branch("IQR", &IQR);
-    info_1p25_3p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_4p5_5p0->Branch("energy", &energy);
+    info_4p5_5p0->Branch("itr", &itr);
+    info_4p5_5p0->Branch("x", &x);
+    info_4p5_5p0->Branch("y", &y);
+    info_4p5_5p0->Branch("z", &z);
+    info_4p5_5p0->Branch("dlogL", &dlogL);
+    info_4p5_5p0->Branch("fisher", &fisher);
+    info_4p5_5p0->Branch("IQR", &IQR);
+    info_4p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
 
     // setup deadtime veto code
     bool veto_flag          = false;
@@ -440,9 +523,9 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
             // std::cout << "Passed deadtime, DC and reconstruction checks." << std::endl;
             // check if we pass the ITR cut
             itr = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
-            if (itr < 0.18 or itr > 0.3){
-                continue;
-            }
+            // if (itr < 0.18 or itr > 0.3){
+            //     continue;
+            // }
             // std:: cout << "Passed ITR cut." << std::endl;
             // get the reconstructed variables
             RAT::DU::Point3D event_position_recon(fPSUPSystemId);
@@ -471,7 +554,7 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
             event_position_recon.SetCoordinateSystem(fPSUPSystemId);
 
             // check that event energy fits into the large domain
-            if (energy < 1.25){
+            if (energy < 2.5 or energy > 5.0){
                 // outside energy ROI!
                 continue;
             }
@@ -516,27 +599,33 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
             // }
 
             // changed here for the Bi214 study !! need to change back once this study is done ...
-            if (energy >= 1.25 and energy < 3.125){
+            if (energy >= 2.5 and energy < 3.0){
                 // includes the Bi214 tagged ROI and the normal binning
-                pdf_dir         = dir_pdf_2p5_3p125;
-                pdf_B8_multi    = multi_pdf_B8_2p5_3p125;
-                pdf_Tl208_multi = multi_pdf_Tl208_2p5_3p125;  
+                // pdf_dir         = dir_pdf_2p5_3p125;
+                pdf_B8_multi    = multi_pdf_B8_2p5_3p0;
+                pdf_Tl208_multi = multi_pdf_Tl208_2p5_3p0;  
             }
-            if (energy >= 3.125 and energy < 3.75){
-                pdf_dir         = dir_pdf_3p125_3p75;
-                pdf_B8_multi    = multi_pdf_B8_3p125_3p75;
-                pdf_Tl208_multi = multi_pdf_Tl208_3p125_3p75;  
+            if (energy >= 3.0 and energy < 3.5){
+                // pdf_dir         = dir_pdf_3p125_3p75;
+                pdf_B8_multi    = multi_pdf_B8_3p0_3p5;
+                pdf_Tl208_multi = multi_pdf_Tl208_3p0_3p5;  
             }
-            if (energy >= 3.75 and energy < 4.375){
-                pdf_dir         = dir_pdf_3p75_4p375;
-                pdf_B8_multi    = multi_pdf_B8_3p75_4p375;
-                pdf_Tl208_multi = multi_pdf_Tl208_3p75_4p375;  
+            if (energy >= 3.5 and energy < 4.0){
+                // pdf_dir         = dir_pdf_3p75_4p375;
+                pdf_B8_multi    = multi_pdf_B8_3p5_4p0;
+                pdf_Tl208_multi = multi_pdf_Tl208_3p5_4p0;  
             }
-            if (energy >= 4.375){
+            if (energy >= 4.0 and energy < 4.5){
                 // includes case for E > 5 MeV solar candidate study ...
-                pdf_dir         = dir_pdf_4p375_5p0;
-                pdf_B8_multi    = multi_pdf_B8_4p375_5p0;
-                pdf_Tl208_multi = multi_pdf_Tl208_4p375_5p0;  
+                // pdf_dir         = dir_pdf_4p375_5p0;
+                pdf_B8_multi    = multi_pdf_B8_4p0_4p5;
+                pdf_Tl208_multi = multi_pdf_Tl208_4p0_4p5;  
+            }
+            if (energy >= 4.5 and energy < 5.0){
+                // includes case for E > 5 MeV solar candidate study ...
+                // pdf_dir         = dir_pdf_4p375_5p0;
+                pdf_B8_multi    = multi_pdf_B8_4p5_5p0;
+                pdf_Tl208_multi = multi_pdf_Tl208_4p5_5p0;  
             }
 
             // each discriminant involves the time residuals, so evaluate and store (temporarily) the time residuals and PMT positions
@@ -595,23 +684,38 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
                 // }
 
                 // fill the ntuples
-                if (energy >= 1.25 and energy < 3.0){
-                    info_1p25_3p0->Fill();
+                // if (energy >= 1.25 and energy < 3.0){
+                //     info_1p25_3p0->Fill();
+                // }
+                // if (energy >= 2.5 and energy < 3.125){
+                //     info_2p5_3p125->Fill();
+                // }
+                // if (energy >= 3.125 and energy < 3.75){
+                //     info_3p125_3p75->Fill();
+                // }
+                // if (energy >= 3.75 and energy < 4.375){
+                //     info_3p75_4p375->Fill();
+                // }
+                // if (energy >= 4.375 and energy < 5.0){
+                //     info_4p375_5p0->Fill();
+                // }
+                // if (energy >= 5.0){
+                //     info_5p0_plus->Fill();
+                // }
+                if (energy >= 2.5 and energy < 3.0){
+                info_2p5_3p0->Fill();
                 }
-                if (energy >= 2.5 and energy < 3.125){
-                    info_2p5_3p125->Fill();
+                if (energy >= 3.0 and energy < 3.5){
+                    info_3p0_3p5->Fill();
                 }
-                if (energy >= 3.125 and energy < 3.75){
-                    info_3p125_3p75->Fill();
+                if (energy >= 3.5 and energy < 4.0){
+                    info_3p5_4p0->Fill();
                 }
-                if (energy >= 3.75 and energy < 4.375){
-                    info_3p75_4p375->Fill();
+                if (energy >= 4.0 and energy < 4.5){
+                    info_4p0_4p5->Fill();
                 }
-                if (energy >= 4.375 and energy < 5.0){
-                    info_4p375_5p0->Fill();
-                }
-                if (energy >= 5.0){
-                    info_5p0_plus->Fill();
+                if (energy >= 4.5 and energy < 5.0){
+                    info_4p5_5p0->Fill();
                 }
             }
 
@@ -632,13 +736,21 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
 
     std::cout << "Writing results to file." << std::endl;
     // finished loop over all events and TTrees are filled --> write them to the output file
+    // info_2p5_5p0->Write();
+    // info_2p5_3p125->Write();
+    // info_3p125_3p75->Write();
+    // info_3p75_4p375->Write();
+    // info_4p375_5p0->Write();
+    // info_5p0_plus->Write();
+    // info_1p25_3p0->Write();
+    // output_file->Close();
+    output_file->cd();
     info_2p5_5p0->Write();
-    info_2p5_3p125->Write();
-    info_3p125_3p75->Write();
-    info_3p75_4p375->Write();
-    info_4p375_5p0->Write();
-    info_5p0_plus->Write();
-    info_1p25_3p0->Write();
+    info_2p5_3p0->Write();
+    info_3p0_3p5->Write();
+    info_3p5_4p0->Write();
+    info_4p0_4p5->Write();
+    info_4p5_5p0->Write();
     output_file->Close();
 
     // calculate the deadtime

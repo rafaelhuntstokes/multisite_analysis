@@ -24,22 +24,25 @@ def plot_pdf_analytics(pdf_energy_string):
     if pdf_energy_string == "2.5_5.0":
         energy_low  = 2.5
         energy_high = 5.0
-    if pdf_energy_string == "2.5_3.125":
+    if pdf_energy_string == "2.5_3.0":
         energy_low  = 2.5
-        energy_high = 3.125
-    if pdf_energy_string == "3.125_3.75":
-        energy_low  = 3.125
-        energy_high = 3.75
-    if pdf_energy_string == "3.75_4.375":
-        energy_low  = 3.75
-        energy_high = 4.375
-    if pdf_energy_string == "4.375_5.0":
-        energy_low  = 4.375
+        energy_high = 3.0
+    if pdf_energy_string == "3.0_3.5":
+        energy_low  = 3.0
+        energy_high = 3.5
+    if pdf_energy_string == "3.5_4.0":
+        energy_low  = 3.5
+        energy_high = 4.0
+    if pdf_energy_string == "4.0_4.5":
+        energy_low  = 4.0
+        energy_high = 4.5
+    if pdf_energy_string == "4.5_5.0":
+        energy_low = 4.5
         energy_high = 5.0
     
     # load the information
-    pdf_B8_file    = ROOT.TFile.Open("../run_by_run_pdf/B8_solar_nue/total.root")
-    pdf_Tl208_file = ROOT.TFile.Open("../run_by_run_pdf/Tl208/total.root")
+    pdf_B8_file    = ROOT.TFile.Open("../run_by_run_pdf/full_analysis_B8_solar_nue/total.root")
+    pdf_Tl208_file = ROOT.TFile.Open("../run_by_run_pdf/full_analysis_Tl208/total.root")
 
     # extract the desired PDF histograms for re-plotting with matplotlib
     multisite_pdf_B8    = pdf_B8_file.Get(f"multi_{pdf_energy_string}")
@@ -252,9 +255,14 @@ def plot_pdf_energy_bins():
     
         
     
-plot_pdf_energy_bins()
+# plot_pdf_energy_bins()
     
-# plot_pdf_analytics("2.5_5.0")
+plot_pdf_analytics("2.5_5.0")
+plot_pdf_analytics("2.5_3.0")
+plot_pdf_analytics("3.0_3.5")
+plot_pdf_analytics("3.5_4.0")
+plot_pdf_analytics("4.0_4.5")
+plot_pdf_analytics("4.5_5.0")
 # plot_pdf_analytics("2.5_3.125")
 # plot_pdf_analytics("3.125_3.75")
 # plot_pdf_analytics("3.75_4.375")

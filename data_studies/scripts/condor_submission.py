@@ -11,8 +11,10 @@ Submission scripts handle submitting analysis and pdf making scripts to condor.
 def submit_analysis(fv_cut, z_cut):
     # define the inputs and the outputs
     # input_fpath  = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/bismuth214_extracted_ratds"
-    input_fpath  = "/data/snoplus3/inacio/dataTaggedBiPo214_20May2022"
-    output_fpath = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/bismuth214_data_discriminants"
+    # input_fpath  = "/data/snoplus3/inacio/dataTaggedBiPo214_20May2022"
+    input_fpath = "/data/snoplus3/SNOplusData/processing/fullFill/rat-7.0.8/ratds"
+    output_fpath = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis"
+    # output_fpath = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/bismuth214_data_discriminants"
 
     # path to save the individual sh and submit files to
     condor_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor"
@@ -112,7 +114,7 @@ def submit_ratds_extraction(candidate_runlist, gtid_path, output_path, batch_nam
     # open the templates
     with open("../condor/extract_candidates_template.mac", "r") as infile:
         rawTextMacro  = string.Template(infile.read())
-    with open("../condor/extract_candidates_template.sh", "r") as infile:
+    with open("../condor/extract_candidates_combined_template.sh", "r") as infile:
         rawTextSh     = string.Template(infile.read())
     with open("../condor/extract_candidates_template.submit", "r") as infile:
         rawTextSubmit = string.Template(infile.read())
@@ -121,8 +123,11 @@ def submit_ratds_extraction(candidate_runlist, gtid_path, output_path, batch_nam
     data_dir = "/data/snoplus3/SNOplusData/processing/fullFill/rat-7.0.8/ratds"
     # loop over the runs with candidates identified in them
     num_submitted = 0
+    bad_runs = [300000, 300001, 300002, 301140, 301148, 305479]
     for irun in candidate_runlist:
         print(irun)
+        if irun in bad_runs:
+            continue
         # define the path to the GTID list
         gtids = f"{gtid_path}/{irun}.txt"
 
@@ -138,27 +143,34 @@ def submit_ratds_extraction(candidate_runlist, gtid_path, output_path, batch_nam
         print(f"Found {len(flist)} subruns for run {irun}.")
 
         # loop over each subrun and create the macro, sh and submit file for the job
+        macro_string = ""
         for isub in range(len(flist)):
             name = f"{irun}_{isub}"
-
-            outTextMacro  = rawTextMacro.substitute(IN = flist[isub], LIST = gtids, OUT = f"{output_path}/{name}.root")
-            outTextSh     = rawTextSh.substitute(MACRO = f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/macros/extract_{name}.mac")
-            outTextSubmit = rawTextSubmit.substitute(SH_NAME = f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/sh/extract_{name}.sh", LOG_NAME = f"extract_{name}")
             
+            # macro for each subrun
+            outTextMacro  = rawTextMacro.substitute(IN = flist[isub], LIST = gtids, OUT = f"{output_path}/{name}.root")
             with open(f"../condor/macros/extract_{name}.mac", "w") as outfile:
                 outfile.write(outTextMacro)
-            with open(f"../condor/sh/extract_{name}.sh", "w") as outfile:
-                outfile.write(outTextSh)
-                os.chmod(f"../condor/sh/extract_{name}.sh", 0o0777)
-            with open(f"../condor/submit/extract_{name}.submit", "w") as outfile:
-                outfile.write(outTextSubmit)
+            
+            # create a text string containing each macro name to be run and the rat call separated by new lines
+            macro_string += f"rat /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/macros/extract_{name}.mac\n"
+        
+        # one sh file and one submit file per run
+        outTextSh     = rawTextSh.substitute(MACROS = macro_string)
+        outTextSubmit = rawTextSubmit.substitute(SH_NAME = f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/sh/extract_{irun}.sh", LOG_NAME = f"extract_{irun}")
+        
+        with open(f"../condor/sh/extract_{irun}.sh", "w") as outfile:
+            outfile.write(outTextSh)
+            os.chmod(f"../condor/sh/extract_{irun}.sh", 0o0777)
+        with open(f"../condor/submit/extract_{irun}.submit", "w") as outfile:
+            outfile.write(outTextSubmit)
 
-            command = f"condor_submit -b extract_{batch_name} ../condor/submit/extract_{name}.submit"
-            os.system(command)
+        command = f"condor_submit -b extract_{batch_name} ../condor/submit/extract_{irun}.submit"
+        os.system(command)
         num_submitted += 1
-
-        if num_submitted > 61:
+        time.sleep(2)
+        if num_submitted == 500:
             print("submitted up to and including: ", irun)
             break
-submit_analysis(5250.0, -6000.0)
-# submit_ratds_extraction("../runlists/contains_solar_candidates.txt", "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/gtid_lists", f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/bismuth214_extracted_ratds", "BI214_EXTRACT_2")
+# submit_analysis(5250.0, -6000.0)
+submit_ratds_extraction("../runlists/subset_dir.txt", "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/gtids", f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds", "full_dataset_ratds_extraction")

@@ -6,6 +6,21 @@ import numpy as np
 Submission scripts handle submitting analysis and pdf making scripts to condor.
 """
 
+def create_montecarlo():
+    """
+    Script is used to create ideal detector condition MC. I made this simple function
+    because I needed more statistics in my likelihood discriminant PDFs.
+    """
+
+    # where to save the MC
+    output_directory = "/data/snoplus3/SNOplusData/production/miniProd_RAT-7.0.15/ratds"
+    num_events_per_macro = 500
+    num_macros           = 1000
+    isotope              = "Tl208"
+    print(f"Creating submission for {isotope}. {num_macros} jobs with {num_events_per_macro} = {num_macros * num_events_per_macro} events.")
+
+    
+
 def submit_analysis(isotope, fv_cut, z_cut):
     # define the inputs and the outputs
     input_fpath  = "/data/snoplus3/SNOplusData/production/miniProd_RAT-7-0-14_ASCI_RATHS_newRecoordination/ratds"
@@ -56,7 +71,7 @@ def submit_pdf_maker(isotope, fv_cut, z_cut):
     condor_path = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor"
     
     # load up the pdf run list
-    run_list = np.loadtxt("../runlists/additional_pdf_runlist.txt", dtype = int)
+    run_list = np.loadtxt("../runlists/pdf_runlist.txt", dtype = int)
 
     # load up the templates
     with open("../condor/pdf_maker_template.sh", "r") as infile:
@@ -83,8 +98,8 @@ def submit_pdf_maker(isotope, fv_cut, z_cut):
         command = f"condor_submit -b pdf_maker_{isotope} {condor_path}/submit/{name}.submit"
         os.system(command)
 
-# submit_pdf_maker("Tl208", 5250.0, -6000.0)
-# submit_pdf_maker("B8_solar_nue", 5250.0, -6000.0)
-# submit_analysis("B8_solar_nue", 5250.0, -6000.0)
-# submit_analysis("Tl208", 5250.0, -6000.0)
-submit_analysis("Bi214", 5250.0, -6000.0)
+# submit_pdf_maker("Tl208", 4500.0, -6000.0)
+# submit_pdf_maker("B8_solar_nue", 4500.0, -6000.0)
+submit_analysis("B8_solar_nue", 4500.0, -6000.0)
+submit_analysis("Tl208", 4500.0, -6000.0)
+# submit_analysis("Bi214", 5250.0, -6000.0)
