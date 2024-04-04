@@ -54,7 +54,7 @@ class Ahab():
 
         # norm sum is a constant but for some reason it's included ...
         # should always equal the total number of expected events ...
-        norm_sum = np.sum(normalisations) 
+        norm_sum = np.sum(normalisations)
 
         """
         For the full derivation of this FULLY OPTIMIZED method, see fancy journal dated 3rd April 2024.
@@ -66,12 +66,14 @@ class Ahab():
 
         # sum each column to get the inside of each log term contributing to outer sum over bins
         inner_log      = np.sum(pdf_norm, axis = 0) # remove the rows so axis = 0
+        
         log            = np.log(inner_log)          # 1D array of where each element is log(Nj Pj) for every bin in PDF
 
         # multiply each element by the number of data events in each PDF bin and sum all the terms
         scaled_log    = np.sum(events_per_bin * log)
 
         return norm_sum - scaled_log
+        # return -scaled_log
     
     def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list):
         """
@@ -143,32 +145,107 @@ class Ahab():
 
     def rescale_ll(self, ll):
         
-        ll        = np.array(ll)
         min_idx   = np.argmin(ll)
-        diff_zero = 0 - ll[min_idx]
+        diff_zero = 0 - np.ravel(ll)[min_idx]
         ll        = ll + diff_zero
 
         return ll 
 
+    def grid_search(self, hypothesis_sig, hypothesis_backg, multisite_pdf_array, energy_pdf_array, asimov_multisite, asimov_energy):
+        """
+        Function performs a 2D grid search over the -2log(L) space for a given
+        set of 2 event processes. All other event classes are kept fixed at 
+        their background model expectated number.
+        """
+
+        # 2D arrays to keep hold of LL calculated at each point
+        ll_multisite = np.zeros((len(hypothesis_sig), len(hypothesis_backg)))
+        ll_energy    = np.zeros((len(hypothesis_sig), len(hypothesis_backg)))
+        ll_full      = np.zeros((len(hypothesis_sig), len(hypothesis_backg)))
+
+        # 2D grid search over LL space
+        for isig in range(len(hypothesis_sig)):
+            for ibackg in range(len(hypothesis_backg)):
+                
+                # evaluate 2 x log-likelihood from energy and multisite PDF shapes
+                normalisations = np.array([hypothesis_sig[isig], hypothesis_backg[ibackg]])
+                multi  = 2 * self.evaluate_loglikelihood(multisite_pdf_array, normalisations, 0, 0, asimov_multisite)
+                energy = 2 * self.evaluate_loglikelihood(energy_pdf_array, normalisations, 0, 0, asimov_energy) 
+                full   = multi + energy
+
+                # save result for this signal hypothesis
+                ll_multisite[isig, ibackg] = multi
+                ll_energy[isig, ibackg]    = energy
+                ll_full[isig, ibackg]      = full
+
+        return ll_multisite, ll_energy, ll_full
+
     def minimisation(self):
         pass
 
-    def create_plots(self, signal_hypothesis, ll_full, ll_multi, ll_energy):
+    def create_plots(self, sig_hypothesis, backg_hypothesis, ll_full, ll_multi, ll_energy):
         """
         Function creates all the output plots. 
         ---> to be completed once minimisation code is working.
         """
+        
+        # for making the colourbar the right size
+        im_ratio = ll_full.shape[1] / ll_full.shape[0]        
+        
+        # reverse order of columns so number of B8 increases from bottom left of array upwards
+        sig_hypothesis = sig_hypothesis[::-1]
+        ll_full        = np.flipud(ll_full)
+        ll_multi       = np.flipud(ll_multi)
+        ll_energy      = np.flipud(ll_energy)
 
-        plt.figure()
-        plt.plot(signal_hypothesis, ll_full, color = "black", label = f"Full | Min: {signal_hypothesis[np.argmin(ll_full)]}")
-        plt.plot(signal_hypothesis, ll_multi, color = "green", label = f"Multisite | Min: {signal_hypothesis[np.argmin(ll_multi)]}")
-        plt.plot(signal_hypothesis, ll_energy, color = "orange", label = f"Energy | Min: {signal_hypothesis[np.argmin(ll_energy)]}")
-        plt.legend()
-        plt.xlabel("Signal Hypothesis")
-        plt.ylabel(r"$-2log(\mathcal{L})$")
-        plt.xlim((80, 130))
-        plt.ylim((0, 3))
-        plt.savefig("../plots/asimov_study/real_mc/advanced/test.png")
+        # find the minimum value of each likelihood array
+        flat_min_idx_full       = np.argmin(ll_full)
+        reshaped_min_idx_full   = np.unravel_index(flat_min_idx_full, ll_full.shape)
+        flat_min_idx_multi      = np.argmin(ll_multi)
+        reshaped_min_idx_multi  = np.unravel_index(flat_min_idx_multi, ll_multi.shape)
+        flat_min_idx_energy     = np.argmin(ll_full)
+        reshaped_min_idx_energy = np.unravel_index(flat_min_idx_energy, ll_energy.shape)
+
+        # work out the 1 sigma frequentist contour region
+        delta_logl = 1 # the variance from minimum for 2log(l) is 1
+        
+        # find all the points which differ from the minimum by less than or equal to 1
+        contour_points = np.where(ll_full <= delta_logl)
+        full_vals      = ll_full <= delta_logl
+        multi_vals     = ll_multi <= delta_logl 
+        energy_vals    = ll_energy <= delta_logl
+        # create the plot
+        fig, axes = plt.subplots(nrows = 3, ncols = 1, figsize = (10, 10))
+        
+        img = axes[0].imshow(ll_full, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
+        # plt.colorbar(img, ax = axes[0], fraction=0.072*im_ratio)
+        axes[0].scatter(backg_hypothesis[reshaped_min_idx_full[1]], sig_hypothesis[reshaped_min_idx_full[0]],  color = "blue", label = f"Min: {sig_hypothesis[reshaped_min_idx_full[0]]} ")
+        axes[0].contour(backg_hypothesis, sig_hypothesis, ll_full, levels = [1], colors = "red")
+        axes[0].set_title("Full Log-Likelihood")
+        axes[0].set_ylabel(r"$N_{^8B}$")
+        axes[0].set_xlabel(r"$N_{^{208}Tl}$")
+        axes[0].legend()
+        
+        img = axes[1].imshow(ll_multi, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
+        # plt.colorbar(img, ax = axes[1], fraction=0.072*im_ratio)
+        axes[1].scatter(backg_hypothesis[reshaped_min_idx_multi[1]], sig_hypothesis[reshaped_min_idx_multi[0]], color = "blue", label = f"Min: {sig_hypothesis[reshaped_min_idx_multi[0]]} ")
+        axes[1].contour(backg_hypothesis, sig_hypothesis, ll_multi, levels = [1], colors = "red")
+        axes[1].set_title("Multisite Log-Likelihood")
+        axes[1].set_ylabel(r"$N_{^8B}$")
+        axes[1].set_xlabel(r"$N_{^{208}Tl}$")
+        axes[1].legend()
+        
+        img = axes[2].imshow(ll_energy, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
+        # plt.colorbar(img, ax = axes[2], fraction=0.072*im_ratio)
+        axes[2].scatter(backg_hypothesis[reshaped_min_idx_energy[1]], sig_hypothesis[reshaped_min_idx_energy[0]], color = "blue", label = f"Min: {sig_hypothesis[reshaped_min_idx_energy[0]]} ")
+        axes[2].contour(backg_hypothesis, sig_hypothesis, ll_energy, levels = [1], colors = "red")
+        axes[2].set_title("Energy Log-Likelihood")
+        axes[2].set_ylabel(r"$N_{^8B}$")
+        axes[2].set_xlabel(r"$N_{^{208}Tl}$")
+        axes[2].legend()
+
+        fig.tight_layout()
+        plt.savefig("../plots/asimov_study/real_mc/advanced/test_2d.png")
         plt.close()
 
     def run_analysis(self):
@@ -209,35 +286,18 @@ class Ahab():
         asimov_energy    = expected_B8 * sig_energy_pdf + expected_Tl208 * backg_energy_pdf
         asimov_multisite = expected_B8 * sig_multi_pdf  + expected_Tl208 * backg_multi_pdf
 
-        # perform gridsearch over Nsig, constrained such that Nsig + Nbackg = Ntotal
-        total_events = expected_B8 + expected_Tl208      # we observe exactly the expected number in the Asimov dataset
-        hypothesis   = np.arange(0, total_events, 1) # grid search in steps of 1
+        # perform 2D grid searches over each background and the signal
+        total_events     = expected_B8 + expected_Tl208  # we observe exactly the expected number in the Asimov dataset
+        sig_hypothesis   = np.arange(80, 120, 1) # grid search in steps of 1
+        backg_hypothesis = np.arange(400, 600, 2) 
+        ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, multisite_pdf_array, energy_pdf_array, asimov_multisite, asimov_energy)
         
-        ll_multisite = [] # track the ll for each BELL function for each norm_sig hypothesis
-        ll_energy    = []
-        ll_full      = []
-        for norm_sig in hypothesis:
-            
-            # norm of backgrounds is constrained
-            norm_backg     = total_events - norm_sig
-            normalisations = np.array([norm_sig, norm_backg])
-
-            # evaluate 2 x log-likelihood from energy and multisite PDF shapes
-            multi  = 2 * self.evaluate_loglikelihood(multisite_pdf_array, normalisations, 0, 0, asimov_multisite)
-            energy = 2 * self.evaluate_loglikelihood(energy_pdf_array, normalisations, 0, 0, asimov_energy) 
-            full   = multi + energy
-
-            # save result for this signal hypothesis
-            ll_multisite.append(multi)
-            ll_energy.append(energy)
-            ll_full.append(full)
-
         # rescale all the log-likelihood functions so minimum value is at zero --> for plotting & comparisons
         ll_full = self.rescale_ll(ll_full)
         ll_multisite = self.rescale_ll(ll_multisite)
         ll_energy = self.rescale_ll(ll_energy)
         
         # create plots
-        self.create_plots(hypothesis, ll_full, ll_multisite, ll_energy)
+        self.create_plots(sig_hypothesis, backg_hypothesis, ll_full, ll_multisite, ll_energy)
 
 Ahab().run_analysis()
