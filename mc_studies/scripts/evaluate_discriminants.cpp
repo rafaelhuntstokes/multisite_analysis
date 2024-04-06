@@ -404,15 +404,15 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
         // check that event energy fits into the large domain
         // CHANGED FOR THE Bi214 STUDY !! Remember to change back !!
-        if (energy < 1.25){
+        if (energy < 2.5 or energy > 5.0){
             // outside energy ROI!
             continue;
         }
 
-        itr = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
-        if (itr < 0.18 or itr > 0.3){
-            continue;
-        }
+        // itr = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
+        // if (itr < 0.18 or itr > 0.3){
+        //     continue;
+        // }
         // passed all event selection cuts! Now we evaluate the discriminants
 
         // get the solar direction for this run
@@ -450,7 +450,7 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
             pdf_B8_multi    = multi_pdf_B8_4p0_4p5;
             pdf_Tl208_multi = multi_pdf_Tl208_4p0_4p5;  
         }
-        if (energy >= 4.5 and energy < 5.0){
+        if (energy >= 4.5 and energy <= 5.0){
             // includes case for E > 5 MeV solar candidate study ...
             // pdf_dir         = dir_pdf_4p375_5p0;
             pdf_B8_multi    = multi_pdf_B8_4p5_5p0;
