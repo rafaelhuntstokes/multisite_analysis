@@ -70,12 +70,12 @@ class Ahab():
         log            = np.log(inner_log)          # 1D array of where each element is log(Nj Pj) for every bin in PDF
 
         # multiply each element by the number of data events in each PDF bin and sum all the terms
-        scaled_log    = np.sum(events_per_bin * log)
+        scaled_log     = np.sum(events_per_bin * log)
 
         return norm_sum - scaled_log
         # return -scaled_log
     
-    def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list):
+    def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list, energy_range):
         """
         Extract the energy and multisite PDFs for a given isotope.
         Only use events that fall within event selection cuts (e.g. FV cut).
@@ -90,7 +90,10 @@ class Ahab():
 
             energy_bins, array, float bin edges of energy PDF
 
-            run_list, array, run number of each MC simulation to extract 
+            run_list, array, run number of each MC simulation to extract
+
+            energy_range, str, string giving branch name of MC files to load, based
+            on the energy used to generate the multisite / tres PDFs.
         
         Output: multisite_counts, array float, normalised bin counts of multisite pdf
                 energy_counts, array float, normalised bin counts of energy pdf
@@ -104,7 +107,7 @@ class Ahab():
             try:
                 # open the MC ntuple file
                 file   = ROOT.TFile.Open(f"{location}/{irun}.root")
-                ntuple = file.Get("2p5_5p0")
+                ntuple = file.Get(energy_range)
                 ntuple.GetEntries()
             except:
                 missing_runs.append(irun)
@@ -248,16 +251,60 @@ class Ahab():
         plt.savefig("../plots/asimov_study/real_mc/advanced/test_2d.png")
         plt.close()
 
-    def run_analysis(self):
+    def run_analysis(self, expected_signal, expected_backg, analyse_real_data, data_path = "", fv_cut = 4500.0, energy_range = "2p5_5p0"):
         """
         Function that actually calls all the other functions and gets
         the analysis done.
+
+        INPUTS: analyse_real_data, bool, if TRUE - do not create Asimov dataset
+                
+                data_path, str, path to dataset directory - only used if 
+                analyse_real_data set to TRUE
+
+                expected_signal, float, expected number of B8 solar events
+
+                expected_backg, float list, expected number of each background 
+                considered. list MUST be 1D (4,):
+
+                    [Tl208, Tl210, Bi212, Bi214]
+
+                Pass None to not include normalisation in the fit.
+
+                fv_cut, float, fiducial volume cut to apply when generating PDFs
+                and running analyses in mm.
+
+                energy_range: str, must match the name of TTree branch names in 
+                dataset ntuples. Determines multisite PDFs used for analysis.
         """
         
-        # analysis settings
-        expected_B8    = 101.2 # both these figures come from 4.5 m FV background model calculations in 2.5 --> 5.0 MeV ROI
-        expected_Tl208 = 495.3 
-        fv_cut         = 4500
+        # run checks on the input arguments
+        if type(expected_signal) != float or expected_signal < 0:
+            print("Expected signal must be a positive float.")
+            return 0
+        elif len(expected_backg) != 4:
+            print("Expected background must be a length 4 array (one entry per background):\n\
+                  [Tl208, Tl210, Bi212, Bi214].\n Pass 'None' to exclude normalisation from fit.")
+            return 0
+        elif expected_backg[0] == None:
+            print("Cannot not-include the Tl208 normalisation --> This is the dominant background.")
+            return 0
+        elif type(analyse_real_data) != bool:
+            print("Must enter boolean flag (True/False) whether analysis is run on real data or Asimov MC.")
+            return 0
+        elif analyse_real_data == True and data_path == "":
+            print("Specified to analyse real data! Must enter a path to the dataset-containing folder.")
+            return 0
+        elif energy_range != "2p5_3p0" or energy_range != "3p0_3p5" or energy_range != "3p5_4p0"\
+        or energy_range != "4p0_4p5" or energy_range != "4p5_5p0" or energy_range != "2p5_5p0":
+            print("Energy range not recognised. Has previous steps been run for this range?\
+                  If So, need to update Ahab to allow this value.")
+            return 0
+        
+        # count the number of backgrounds included in this fit
+        num_norms         = sum(1 for item in expected_backg if item != None)
+        print("Found ", num_norms, " backgrounds to include in the fit.")
+
+        # binning for the energy and multisite discriminant PDFs
         energy_bins    = np.arange(2.5, 5.1, 0.1)
         multisite_bins = np.arange(-1.4, -1.2, 0.0005)
 
@@ -265,32 +312,112 @@ class Ahab():
         Extract information and create the binned PDFS for energy shape and multisite,
         for each isotope of interest.
         """
+        # we will create an Asimov dataset using the multisite and energy PDFs of every included normalisation
         pdf_runlist    = np.loadtxt("../runlists/test_runlist.txt", dtype = int)
         mc_path        = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
-        sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue"
-        backg_mc_path  = f"{mc_path}/full_analysis_Tl208"
+        sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue" # signal path is always the same
         
-        # signal and background pdfs extracted here
-        sig_energy_pdf, sig_multi_pdf = self.obtain_pdf(sig_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist)
-        backg_energy_pdf, backg_multi_pdf = self.obtain_pdf(backg_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist)
+        # loop over the included normalisations
+        print("Creating PDFs from signal and backgrounds in energy domain: ", energy_range)
+        backg_names       = ["Tl208", "Tl208", "Bi212", "Bi214"]
         
-        # put PDFs into 2D array (N_pdfs, N_bins) --> make this nicer and less hard-cody for arbitrary normalisations
-        energy_pdf_array    = np.zeros((2, len(energy_bins) - 1))
-        multisite_pdf_array = np.zeros((2, len(multisite_bins) - 1))
-        energy_pdf_array[0, :]    = sig_energy_pdf
-        energy_pdf_array[1, :]    = backg_energy_pdf
-        multisite_pdf_array[0, :] = sig_multi_pdf
-        multisite_pdf_array[1, :] = backg_multi_pdf
+        # create array containing the signal and background pdfs for multisite and energy
+        multisite_pdf_array = np.zeros((num_norms + 1, multisite_bins.size - 1))  # (number backgrounds + 1, number of bins)
+        energy_pdf_array    = np.zeros((num_norms + 1 , energy_bins.size - 1))    # (number backgrounds + 1, number of bins)
 
-        # create the Asimov dataset from the PDFs themselves (add together the signal and background PDFs + apply normalisation)
-        asimov_energy    = expected_B8 * sig_energy_pdf + expected_Tl208 * backg_energy_pdf
-        asimov_multisite = expected_B8 * sig_multi_pdf  + expected_Tl208 * backg_multi_pdf
+        # obtain the signal PDF
+        sig_energy_pdf, sig_multi_pdf = self.obtain_pdf(sig_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range)
+
+        # add the signal pdfs as the first row in the pdfs arrays
+        multisite_pdf_array[0, :] = sig_multi_pdf
+        energy_pdf_array[0, :]    = sig_energy_pdf
+
+        # obtain background pdfs and add to subsequent rows
+        idx_counter = 1
+        for iname in range(len(backg_names)):
+            if expected_backg[iname] != None:
+                
+                # we have an expected rate and want to include this normalisation in the Asimov dataset
+                backg_mc_path  = f"{mc_path}/full_analysis_{backg_names[iname]}"
+
+                # obtain the normalised PDFs for this background and add to the respective arrays
+                backg_energy_pdf, backg_multi_pdf   = self.obtain_pdf(backg_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range)
+                multisite_pdf_array[idx_counter, :] = backg_multi_pdf
+                energy_pdf_array[idx_counter, :]    = backg_energy_pdf
+
+                # incremement idx counter ... not the same idx as the number of backg names!
+                idx_counter += 1 
+         
+        # decide whether to create an Asimov dataset out of the signal + background PDFs, or load in real data
+        if analyse_real_data == False:
+            print("Creating Asimov dataset from normalisation-scaled PDFs.")
+
+            # add the signal normalisation and to the front of the backg norm list
+            expected_backg = np.array(expected_backg)
+            expected_backg = expected_backg[expected_backg != None].tolist()
+            normalisations = [expected_signal] + expected_backg
+
+            # create the asimov dataset - scale each PDF by the expected rate and sum
+            normalisations = normalisations[:, None]
+            
+            dataset_energy    = normalisations * energy_pdf_array    # multiply every bin by corresponding normalisation
+            dataset_multisite = normalisations * multisite_pdf_array
+            dataset_energy    = np.sum(dataset_energy, axis = 0)     # remove the rows so axis = 0
+            dataset_multisite = np.sum(dataset_multisite, axis = 0)
+
+        else:
+
+            # open the dataset --> saved as a single hadded TTree containing ITR,
+            # multisite, position and energy of each extracted event
+            datafile = ROOT.TFile.Open(data_path)
+
+            # extract the correct energy range dataset --> load the correct tree
+            datatree = datafile.Get(energy_range)
+
+            # get number of entries in tree to setup numpy dataset arrays
+            num_entries       = datatree.GetEntries()
+            dataset_energy    = np.zeros(num_entries)
+            dataset_multisite = np.zeros(num_entries)
+            
+            # fill the dataset arrays
+            entry_count = 0
+            for ientry in datatree:
+                
+                # apply the fv cut
+                x = ientry.x
+                y = ientry.y
+                z = ientry.z
+
+                r = np.sqrt(x**2 + y**2 + z**2)
+                if r > fv_cut:
+                    continue
+
+                dataset_energy[entry_count]    = ientry.energy
+                dataset_multisite[entry_count] = ientry.dlogL
+
+            # now we need to create the binned dataset
+            dataset_energy, _    = np.histogram(dataset_energy, bins = energy_bins)
+            dataset_multisite, _ = np.histogram(dataset_multisite, bins = multisite_bins)
+
+        """
+        Binned enegy / multisite discriminant datasets obtained. Now we run the fits.
+        """
 
         # perform 2D grid searches over each background and the signal
-        total_events     = expected_B8 + expected_Tl208  # we observe exactly the expected number in the Asimov dataset
-        sig_hypothesis   = np.arange(80, 120, 1) # grid search in steps of 1
-        backg_hypothesis = np.arange(400, 600, 2) 
-        ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, multisite_pdf_array, energy_pdf_array, asimov_multisite, asimov_energy)
+        # grid search around the expected values given for each isotope and signal
+        for iname in range(len(backg_names)):
+            if expected_backg[iname] != None:
+
+                # include this normalisation and perform 2 D scan
+                # signal and backg hypothesis are expected val +- 50 %
+                signal_range = expected_signal       * 0.5
+                backg_range  = expected_backg[iname] * 0.5 
+
+                sig_hypothesis   = np.arange(expected_signal - signal_range, expected_signal + signal_range + 1, 1)
+                backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] _ backg_range + 1, 1)
+
+                # perform 2D scan over given signal and background normalisation
+                ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, multisite_pdf_array, energy_pdf_array, dataset_multisite, dataset_energy)
         
         # rescale all the log-likelihood functions so minimum value is at zero --> for plotting & comparisons
         ll_full = self.rescale_ll(ll_full)
