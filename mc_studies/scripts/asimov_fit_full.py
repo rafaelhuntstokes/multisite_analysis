@@ -189,15 +189,26 @@ class Ahab():
     def minimisation(self):
         pass
 
-    def create_plots(self, sig_hypothesis, backg_hypothesis, ll_full, ll_multi, ll_energy):
+    def create_gridsearch_plots(self, sig_hypothesis, backg_hypothesis, name_idx, names, ll_full, ll_multi, ll_energy):
         """
-        Function creates all the output plots. 
-        ---> to be completed once minimisation code is working.
+        Create plot showing result of pair-wise grid search of signal and background (whilst keeping other
+        normalisations fixed to their expected values... suppose this is similar to a contour likelihood...).
         """
         
         # for making the colourbar the right size
         im_ratio = ll_full.shape[1] / ll_full.shape[0]        
         
+        # work out what background isotope is being used
+        name = names[name_idx]
+        if name == "Tl208":
+            label_name = r"$N_{^{208}Tl}$"
+        if name == "Tl210":
+            label_name = r"$N_{^{210}Tl}$"
+        if name == "Bi212":
+            label_name = r"$N_{^{212}Bi}$"
+        if name == "Bi214":
+            label_name = r"$N_{^{214}Bi}$"
+
         # reverse order of columns so number of B8 increases from bottom left of array upwards
         sig_hypothesis = sig_hypothesis[::-1]
         ll_full        = np.flipud(ll_full)
@@ -211,15 +222,7 @@ class Ahab():
         reshaped_min_idx_multi  = np.unravel_index(flat_min_idx_multi, ll_multi.shape)
         flat_min_idx_energy     = np.argmin(ll_full)
         reshaped_min_idx_energy = np.unravel_index(flat_min_idx_energy, ll_energy.shape)
-
-        # work out the 1 sigma frequentist contour region
-        delta_logl = 1 # the variance from minimum for 2log(l) is 1
         
-        # find all the points which differ from the minimum by less than or equal to 1
-        contour_points = np.where(ll_full <= delta_logl)
-        full_vals      = ll_full <= delta_logl
-        multi_vals     = ll_multi <= delta_logl 
-        energy_vals    = ll_energy <= delta_logl
         # create the plot
         fig, axes = plt.subplots(nrows = 3, ncols = 1, figsize = (10, 10))
         
@@ -229,7 +232,7 @@ class Ahab():
         axes[0].contour(backg_hypothesis, sig_hypothesis, ll_full, levels = [1], colors = "red")
         axes[0].set_title("Full Log-Likelihood")
         axes[0].set_ylabel(r"$N_{^8B}$")
-        axes[0].set_xlabel(r"$N_{^{208}Tl}$")
+        axes[0].set_xlabel(label_name)
         axes[0].legend()
         
         img = axes[1].imshow(ll_multi, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
@@ -238,7 +241,7 @@ class Ahab():
         axes[1].contour(backg_hypothesis, sig_hypothesis, ll_multi, levels = [1], colors = "red")
         axes[1].set_title("Multisite Log-Likelihood")
         axes[1].set_ylabel(r"$N_{^8B}$")
-        axes[1].set_xlabel(r"$N_{^{208}Tl}$")
+        axes[1].set_xlabel(label_name)
         axes[1].legend()
         
         img = axes[2].imshow(ll_energy, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
@@ -247,11 +250,11 @@ class Ahab():
         axes[2].contour(backg_hypothesis, sig_hypothesis, ll_energy, levels = [1], colors = "red")
         axes[2].set_title("Energy Log-Likelihood")
         axes[2].set_ylabel(r"$N_{^8B}$")
-        axes[2].set_xlabel(r"$N_{^{208}Tl}$")
+        axes[2].set_xlabel(label_name)
         axes[2].legend()
 
         fig.tight_layout()
-        plt.savefig("../plots/asimov_study/real_mc/advanced/test_2d.png")
+        plt.savefig(f"../plots/asimov_study/real_mc/advanced/test_2d_{name}.png")
         plt.close()
 
     def run_analysis(self, expected_signal, expected_backg, analyse_real_data, data_path = "", fv_cut = 4500.0, energy_range = "2p5_5p0"):
@@ -321,7 +324,7 @@ class Ahab():
         
         # loop over the included normalisations
         print("Creating PDFs from signal and backgrounds in energy domain: ", energy_range)
-        backg_names       = ["Tl208", "Tl208", "Bi212", "Bi214"]
+        backg_names       = ["Tl208", "Tl210", "Bi212", "Bi214"]
         
         # create array containing the signal and background pdfs for multisite and energy
         multisite_pdf_array = np.zeros((num_norms + 1, multisite_bins.size - 1))  # (number backgrounds + 1, number of bins)
@@ -427,7 +430,7 @@ class Ahab():
 
                 sig_hypothesis   = np.arange(expected_signal - signal_range, expected_signal + signal_range + 1, 1)
                 backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] + backg_range + 1, 1)
-                print(backg_hypothesis)
+
                 # perform 2D scan over given signal and background normalisation
                 ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, normalisations, norm_idx, multisite_pdf_array, energy_pdf_array, dataset_multisite, dataset_energy)
 
@@ -437,7 +440,7 @@ class Ahab():
                 ll_energy    = self.rescale_ll(ll_energy)
         
                 # create plots
-                self.create_plots(sig_hypothesis, backg_hypothesis, ll_full, ll_multisite, ll_energy)
+                self.create_gridsearch_plots(sig_hypothesis, backg_hypothesis, iname, backg_names, ll_full, ll_multisite, ll_energy)
 
                 # next pair so apply hypothesis to next pair in normalisations array
                 norm_idx += 1 
