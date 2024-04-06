@@ -52,8 +52,7 @@ class Ahab():
         events_per_bin    : int array, [N_bins], the data counts binned according to the same schema as the PDFs used  
         """
 
-        # norm sum is a constant but for some reason it's included ...
-        # should always equal the total number of expected events ...
+        # we allow the total normalisation to float so see what it is
         norm_sum = np.sum(normalisations)
 
         """
@@ -61,7 +60,6 @@ class Ahab():
         """
 
         # multiply the counts of each PDF by the appropriate normalisation factor
-        normalisations = normalisations[:, None] # stretch / copy the normalisation factors so it matches number of cols in PDFs
         pdf_norm       = normalisations * pdfs   # elementwise multiplication results in (N_pdfs, N_bins)
 
         # sum each column to get the inside of each log term contributing to outer sum over bins
@@ -154,12 +152,15 @@ class Ahab():
 
         return ll 
 
-    def grid_search(self, hypothesis_sig, hypothesis_backg, multisite_pdf_array, energy_pdf_array, asimov_multisite, asimov_energy):
+    def grid_search(self, hypothesis_sig, hypothesis_backg, normalisations, backg_idx, multisite_pdf_array, energy_pdf_array, dataset_multisite, dataset_energy):
         """
         Function performs a 2D grid search over the -2log(L) space for a given
         set of 2 event processes. All other event classes are kept fixed at 
         their background model expectated number.
         """
+
+        # copy the normalisation array to avoid updating the main array
+        normalisations = normalisations.copy()
 
         # 2D arrays to keep hold of LL calculated at each point
         ll_multisite = np.zeros((len(hypothesis_sig), len(hypothesis_backg)))
@@ -170,10 +171,12 @@ class Ahab():
         for isig in range(len(hypothesis_sig)):
             for ibackg in range(len(hypothesis_backg)):
                 
-                # evaluate 2 x log-likelihood from energy and multisite PDF shapes
-                normalisations = np.array([hypothesis_sig[isig], hypothesis_backg[ibackg]])
-                multi  = 2 * self.evaluate_loglikelihood(multisite_pdf_array, normalisations, 0, 0, asimov_multisite)
-                energy = 2 * self.evaluate_loglikelihood(energy_pdf_array, normalisations, 0, 0, asimov_energy) 
+                # update the normalisations at the backg_idx and signal_idx (rest kept constant)
+                normalisations[0]         = hypothesis_sig[isig]
+                normalisations[backg_idx] = hypothesis_backg[ibackg]
+
+                multi  = 2 * self.evaluate_loglikelihood(multisite_pdf_array, normalisations, 0, 0, dataset_multisite)
+                energy = 2 * self.evaluate_loglikelihood(energy_pdf_array, normalisations, 0, 0, dataset_energy) 
                 full   = multi + energy
 
                 # save result for this signal hypothesis
@@ -276,7 +279,7 @@ class Ahab():
                 energy_range: str, must match the name of TTree branch names in 
                 dataset ntuples. Determines multisite PDFs used for analysis.
         """
-        
+        print(energy_range)
         # run checks on the input arguments
         if type(expected_signal) != float or expected_signal < 0:
             print("Expected signal must be a positive float.")
@@ -294,10 +297,9 @@ class Ahab():
         elif analyse_real_data == True and data_path == "":
             print("Specified to analyse real data! Must enter a path to the dataset-containing folder.")
             return 0
-        elif energy_range != "2p5_3p0" or energy_range != "3p0_3p5" or energy_range != "3p5_4p0"\
-        or energy_range != "4p0_4p5" or energy_range != "4p5_5p0" or energy_range != "2p5_5p0":
-            print("Energy range not recognised. Has previous steps been run for this range?\
-                  If So, need to update Ahab to allow this value.")
+        elif (energy_range != "2p5_3p0" and energy_range != "3p0_3p5" and energy_range != "3p5_4p0"\
+        and energy_range != "4p0_4p5" and energy_range != "4p5_5p0" and energy_range != "2p5_5p0"):
+            print("Energy range not recognised. Has previous steps been run for this range?\nIf So, need to update Ahab to allow this value.")
             return 0
         
         # count the number of backgrounds included in this fit
@@ -326,6 +328,7 @@ class Ahab():
         energy_pdf_array    = np.zeros((num_norms + 1 , energy_bins.size - 1))    # (number backgrounds + 1, number of bins)
 
         # obtain the signal PDF
+        print("Obtaining signal PDF.")
         sig_energy_pdf, sig_multi_pdf = self.obtain_pdf(sig_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range)
 
         # add the signal pdfs as the first row in the pdfs arrays
@@ -336,7 +339,7 @@ class Ahab():
         idx_counter = 1
         for iname in range(len(backg_names)):
             if expected_backg[iname] != None:
-                
+                print("Obtaining background pdf: ", backg_names[iname])
                 # we have an expected rate and want to include this normalisation in the Asimov dataset
                 backg_mc_path  = f"{mc_path}/full_analysis_{backg_names[iname]}"
 
@@ -347,19 +350,22 @@ class Ahab():
 
                 # incremement idx counter ... not the same idx as the number of backg names!
                 idx_counter += 1 
-         
+        
+        # add the signal normalisation and to the front of the backg norm list
+        backg_norms    = [element for element in expected_backg if element is not None]
+        normalisations = [expected_signal] + backg_norms
+
+        # create the asimov dataset - scale each PDF by the expected rate and sum
+        normalisations = np.array(normalisations)
+        print("Normalisations Applied: ", normalisations, normalisations.shape)
+        
+        # stretch / copy the normalisation factors so it matches number of cols in PDFs
+        normalisations = normalisations[:, None]
+
         # decide whether to create an Asimov dataset out of the signal + background PDFs, or load in real data
         if analyse_real_data == False:
-            print("Creating Asimov dataset from normalisation-scaled PDFs.")
-
-            # add the signal normalisation and to the front of the backg norm list
-            expected_backg = np.array(expected_backg)
-            expected_backg = expected_backg[expected_backg != None].tolist()
-            normalisations = [expected_signal] + expected_backg
-
-            # create the asimov dataset - scale each PDF by the expected rate and sum
-            normalisations = normalisations[:, None]
             
+            print("Creating Asimov dataset from normalisation-scaled PDFs.")
             dataset_energy    = normalisations * energy_pdf_array    # multiply every bin by corresponding normalisation
             dataset_multisite = normalisations * multisite_pdf_array
             dataset_energy    = np.sum(dataset_energy, axis = 0)     # remove the rows so axis = 0
@@ -400,31 +406,43 @@ class Ahab():
             dataset_multisite, _ = np.histogram(dataset_multisite, bins = multisite_bins)
 
         """
-        Binned enegy / multisite discriminant datasets obtained. Now we run the fits.
+        Binned energy / multisite discriminant datasets obtained. Now we run the fits.
         """
 
         # perform 2D grid searches over each background and the signal
         # grid search around the expected values given for each isotope and signal
+        print("Performing grid search over signal and backg pairs.")
+
+        # not necessarily the same location in normalisation array if masked out some backgrounds
+        # starts at 1 because idx 0 of normalisations is the signal
+        norm_idx = 1 
+
         for iname in range(len(backg_names)):
             if expected_backg[iname] != None:
-
+                print("Grid search for backg ", norm_idx)
                 # include this normalisation and perform 2 D scan
                 # signal and backg hypothesis are expected val +- 50 %
                 signal_range = expected_signal       * 0.5
                 backg_range  = expected_backg[iname] * 0.5 
 
                 sig_hypothesis   = np.arange(expected_signal - signal_range, expected_signal + signal_range + 1, 1)
-                backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] _ backg_range + 1, 1)
-
+                backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] + backg_range + 1, 1)
+                print(backg_hypothesis)
                 # perform 2D scan over given signal and background normalisation
-                ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, multisite_pdf_array, energy_pdf_array, dataset_multisite, dataset_energy)
-        
-        # rescale all the log-likelihood functions so minimum value is at zero --> for plotting & comparisons
-        ll_full = self.rescale_ll(ll_full)
-        ll_multisite = self.rescale_ll(ll_multisite)
-        ll_energy = self.rescale_ll(ll_energy)
-        
-        # create plots
-        self.create_plots(sig_hypothesis, backg_hypothesis, ll_full, ll_multisite, ll_energy)
+                ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, normalisations, norm_idx, multisite_pdf_array, energy_pdf_array, dataset_multisite, dataset_energy)
 
-Ahab().run_analysis()
+                # rescale all the log-likelihood functions so minimum value is at zero --> for plotting & comparisons
+                ll_full      = self.rescale_ll(ll_full)
+                ll_multisite = self.rescale_ll(ll_multisite)
+                ll_energy    = self.rescale_ll(ll_energy)
+        
+                # create plots
+                self.create_plots(sig_hypothesis, backg_hypothesis, ll_full, ll_multisite, ll_energy)
+
+                # next pair so apply hypothesis to next pair in normalisations array
+                norm_idx += 1 
+
+expected_signal = 101.2
+expected_backg  = [495.3, None, None, None]
+
+Ahab().run_analysis(expected_signal, expected_backg, False)
