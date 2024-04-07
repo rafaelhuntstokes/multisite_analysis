@@ -256,6 +256,49 @@ class Ahab():
 
         return energy_result, multisite_result, combined_result
     
+    def profile_likelihood_scan(self, sig_hypothesis, normalisations, energy_pdfs, multisite_pdfs, dataset_multisite, dataset_energy):
+        """
+        Function performs a profile likelihood scan: grid search over B8 signal
+        and fit of the other normalisations performed at every point.
+
+        Overall minimum log-likelihood returned at each fixed B8 signal norm.
+        """
+
+        def wrapped(other_norms, sig_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite):
+            """
+            Function handles the fact now we fix norms[0] and vary the others.
+            """
+
+            # insert the fixed signal norm into the norms array
+            norms = [sig_norm] + other_norms.tolist()
+            norms = np.array(norms)
+
+            return self.combined_loglikelihood(norms, energy_pdfs, multisite_pdfs, 0, 0, dataset_energy, dataset_multisite)
+
+        norms = normalisations.copy() # don't update / mess with the input normalisations
+        
+        # loop over each signal hypothesis
+        profile_ll      = []
+        optimised_norms = []
+        for isig in range(len(sig_hypothesis)):
+
+            # set the norm of the signal
+            signal_norm = sig_hypothesis[isig]
+
+            # define the optimisation to be run
+            combined_result = scipy.optimize.minimize(wrapped, x0 = norms[1:], method = "BFGS", tol = 1e-4, args = (signal_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite,))
+
+            # save the minimum ll for this minimisation
+            profile_ll.append(combined_result.fun)
+            optimised_norms.append(combined_result.x)
+        
+        # create a test plot of this
+        plt.figure()
+        plt.plot(sig_hypothesis, profile_ll)
+        plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll_test.png")
+
+        return profile_ll, optimsied_norms
+
     def create_gridsearch_plots(self, sig_hypothesis, backg_hypothesis, name_idx, names, ll_full, ll_multi, ll_energy):
         """
         Create plot showing result of pair-wise grid search of signal and background (whilst keeping other
@@ -526,6 +569,11 @@ class Ahab():
         print(f"Multisite: {res_multisite.x} | Error: {err_multisite}\nTerminate status {res_multisite.success} | Terminate reason: {res_multisite.message}\n")
         print(f"Combined: {res_combined.x} | Error: {err_combined}\nTerminate status {res_combined.success} | Terminate reason: {res_combined.message}\n")
 
+        # profile log-likelihood scans
+        profile_ll, optimised_norms = self.profile_likelihood_scan(sig_hypothesis, normalisations, energy_pdf_array, multisite_pdf_array, dataset_multisite, dataset_energy)
+        profile_ll = self.rescale_ll(profile_ll) # rescale to stick minimum at zero
+        
+        
 expected_signal = 101.2
 expected_backg  = [495.3, None, None, None]
 
