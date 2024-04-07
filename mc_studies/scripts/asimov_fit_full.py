@@ -37,7 +37,7 @@ class Ahab():
     “...to the last I grapple with thee; from hell's heart I stab at thee; for hate's sake I spit my last breath at thee.” 
     """
 
-    def evaluate_loglikelihood(self, pdfs, normalisations, model_expectations, model_uncertainty, events_per_bin):
+    def evaluate_loglikelihood(self, normalisations, pdfs, model_expectations, model_uncertainty, events_per_bin):
         """
         Evaluate the binned extended log-likelihood (BELL) for a given set of PDFs, normalisations, background model
         predictions and model uncertainties (gaussian constraints).
@@ -51,9 +51,13 @@ class Ahab():
         model_uncertainty : float array, (N_PDFS), poisson statistics (from bipo tagging) constraint on each normalisation [penalty term]
         events_per_bin    : int array, [N_bins], the data counts binned according to the same schema as the PDFs used  
         """
-
+        
         # we allow the total normalisation to float so see what it is
         norm_sum = np.sum(normalisations)
+
+        # have to do this inside the function for scipy.optimize.minimize doesn't
+        # respect the reshaping being done outside its own calls ... 
+        normalisations = normalisations[:, None]
 
         """
         For the full derivation of this FULLY OPTIMIZED method, see fancy journal dated 3rd April 2024.
@@ -70,8 +74,46 @@ class Ahab():
         # multiply each element by the number of data events in each PDF bin and sum all the terms
         scaled_log     = np.sum(events_per_bin * log)
 
-        return norm_sum - scaled_log
+        return 2 * (norm_sum - scaled_log) # convert to -2 x log(L)
         # return -scaled_log
+    
+    def combined_loglikelihood(self, normalisations, energy_pdfs, multisite_pdfs, model_expectations, model_uncertainty, counts_energy, counts_multisite):
+        """
+        Combined log-likelihood evaluation of energy and multisite discriminant.
+        """
+
+        # we allow the total normalisation to float so see what it is
+        norm_sum = np.sum(normalisations)
+
+        """
+        For the full derivation of this FULLY OPTIMIZED method, see fancy journal dated 3rd April 2024.
+        """
+
+        # have to do this inside the function for scipy.optimize.minimize doesn't
+        # respect the reshaping being done outside its own calls ... 
+        normalisations = normalisations[:, None]
+
+        # multiply the counts of each PDF by the appropriate normalisation factor
+        energy_pdf_norm       = normalisations * energy_pdfs         # elementwise multiplication results in (N_pdfs, N_bins)
+        multisite_pdf_norm    = normalisations * multisite_pdfs
+        
+        # sum each column to get the inside of each log term contributing to outer sum over bins
+        energy_inner_log      = np.sum(energy_pdf_norm, axis = 0)    # remove the rows so axis = 0
+        multisite_inner_log   = np.sum(multisite_pdf_norm, axis = 0)
+        
+        energy_log            = np.log(energy_inner_log)             # 1D array of where each element is log(Nj Pj) for every bin in PDF
+        multisite_log         = np.log(multisite_inner_log)
+        
+        # multiply each element by the number of data events in each PDF bin and sum all the terms
+        energy_scaled_log     = np.sum(counts_energy * energy_log)
+        multisite_scaled_log  = np.sum(counts_multisite * multisite_log)
+
+        energy_component      = 2 * (norm_sum - energy_scaled_log)
+        multisite_component   = 2 * (norm_sum - multisite_scaled_log)
+
+        # combine the information
+        full_loglikelihood    = energy_component + multisite_component
+        return full_loglikelihood
     
     def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list, energy_range):
         """
@@ -132,8 +174,8 @@ class Ahab():
         multisite_counts, _ = np.histogram(multisites, bins = multisite_bins)
 
         # pad the zero bins in the PDFs
-        energy_counts    = energy_counts.astype(np.float32)    # np arrays contain 1 type of data and counts is int
-        multisite_counts = multisite_counts.astype(np.float32) # need to set to float if want to pad with tiny values
+        energy_counts    = energy_counts.astype(np.float64)    # np arrays contain 1 type of data and counts is int
+        multisite_counts = multisite_counts.astype(np.float64) # need to set to float if want to pad with tiny values
         energy_counts[energy_counts == 0]       = 1e-6
         multisite_counts[multisite_counts == 0] = 1e-6
 
@@ -175,8 +217,8 @@ class Ahab():
                 normalisations[0]         = hypothesis_sig[isig]
                 normalisations[backg_idx] = hypothesis_backg[ibackg]
 
-                multi  = 2 * self.evaluate_loglikelihood(multisite_pdf_array, normalisations, 0, 0, dataset_multisite)
-                energy = 2 * self.evaluate_loglikelihood(energy_pdf_array, normalisations, 0, 0, dataset_energy) 
+                multi  = self.evaluate_loglikelihood(normalisations, multisite_pdf_array, 0, 0, dataset_multisite)
+                energy = self.evaluate_loglikelihood(normalisations, energy_pdf_array, 0, 0, dataset_energy) 
                 full   = multi + energy
 
                 # save result for this signal hypothesis
@@ -186,9 +228,34 @@ class Ahab():
 
         return ll_multisite, ll_energy, ll_full
 
-    def minimisation(self):
-        pass
+    def minimisation(self, normalisations, energy_pdfs, multisite_pdfs, dataset_multisite, dataset_energy):
+        """
+        Function performs a minimisation optimisation by varying the normalisation
+        of the signal and a set of backgrounds, constrained to lie within
+        some confidence bound.
 
+        INPUTS: 
+            normalisations, float array, array of normalisations to optimise set at their
+                            expected values
+
+        RETURNS:
+            energy_result, multisite_result, comined_result : objects containing best fit norms (.x) and termination flag .success (bool)
+        """
+        normalisations = normalisations.copy()
+
+        # first run optimisation using energy PDFs - returns OptimizeResult object containing best fit norms
+        print("Performing minimisation using energy PDF information ...")
+        energy_result    = scipy.optimize.minimize(self.evaluate_loglikelihood, x0 = normalisations, method = "BFGS", tol = 1e-4, args = (energy_pdfs, 0, 0, dataset_energy,))
+        
+        print("Performing minimisation using multisite PDF information ...")
+        multisite_result = scipy.optimize.minimize(self.evaluate_loglikelihood, x0 = normalisations, method = "BFGS", tol = 1e-4, args = (multisite_pdfs, 0, 0, dataset_multisite,))
+        
+        # run minimisation using combination of energy and multisite PDFs
+        print("Performing minimisation using multisite + energy PDF information ...")
+        combined_result  = scipy.optimize.minimize(self.combined_loglikelihood, x0 = normalisations, method = "BFGS", tol = 1e-4, args = (energy_pdfs, multisite_pdfs, 0, 0, dataset_energy, dataset_multisite,))
+
+        return energy_result, multisite_result, combined_result
+    
     def create_gridsearch_plots(self, sig_hypothesis, backg_hypothesis, name_idx, names, ll_full, ll_multi, ll_energy):
         """
         Create plot showing result of pair-wise grid search of signal and background (whilst keeping other
@@ -282,7 +349,7 @@ class Ahab():
                 energy_range: str, must match the name of TTree branch names in 
                 dataset ntuples. Determines multisite PDFs used for analysis.
         """
-        print(energy_range)
+
         # run checks on the input arguments
         if type(expected_signal) != float or expected_signal < 0:
             print("Expected signal must be a positive float.")
@@ -359,18 +426,18 @@ class Ahab():
         normalisations = [expected_signal] + backg_norms
 
         # create the asimov dataset - scale each PDF by the expected rate and sum
-        normalisations = np.array(normalisations)
+        normalisations = np.array(normalisations, dtype = np.float64)
         print("Normalisations Applied: ", normalisations, normalisations.shape)
         
         # stretch / copy the normalisation factors so it matches number of cols in PDFs
-        normalisations = normalisations[:, None]
+        normalisations_stretched = normalisations[:, None]
 
         # decide whether to create an Asimov dataset out of the signal + background PDFs, or load in real data
         if analyse_real_data == False:
             
             print("Creating Asimov dataset from normalisation-scaled PDFs.")
-            dataset_energy    = normalisations * energy_pdf_array    # multiply every bin by corresponding normalisation
-            dataset_multisite = normalisations * multisite_pdf_array
+            dataset_energy    = normalisations_stretched * energy_pdf_array    # multiply every bin by corresponding normalisation
+            dataset_multisite = normalisations_stretched * multisite_pdf_array
             dataset_energy    = np.sum(dataset_energy, axis = 0)     # remove the rows so axis = 0
             dataset_multisite = np.sum(dataset_multisite, axis = 0)
 
@@ -404,7 +471,7 @@ class Ahab():
                 dataset_energy[entry_count]    = ientry.energy
                 dataset_multisite[entry_count] = ientry.dlogL
 
-            # now we need to create the binned dataset
+            # now we need to create the binned dataset --> just counts in each bin
             dataset_energy, _    = np.histogram(dataset_energy, bins = energy_bins)
             dataset_multisite, _ = np.histogram(dataset_multisite, bins = multisite_bins)
 
@@ -444,6 +511,20 @@ class Ahab():
 
                 # next pair so apply hypothesis to next pair in normalisations array
                 norm_idx += 1 
+
+        # now we run the full minimisation scripts for an arbitrary number of backgrounds
+        res_energy, res_multisite, res_combined = self.minimisation(normalisations, energy_pdf_array, multisite_pdf_array, dataset_multisite, dataset_energy)
+
+        # calculate the uncertainty by taking inverse of hessian --> covariance matrix and finding sqrt
+        # of the diagonal elements
+        err_energy    = np.sqrt(np.diag((res_energy.hess_inv)))
+        err_multisite = np.sqrt(np.diag((res_multisite.hess_inv)))
+        err_combined  = np.sqrt(np.diag((res_combined.hess_inv)))
+
+        print("Best Fit Results:")
+        print(f"Energy: {res_energy.x} | Error: {err_energy}\nTerminate status {res_energy.success} | Terminate reason: {res_energy.message}\n")
+        print(f"Multisite: {res_multisite.x} | Error: {err_multisite}\nTerminate status {res_multisite.success} | Terminate reason: {res_multisite.message}\n")
+        print(f"Combined: {res_combined.x} | Error: {err_combined}\nTerminate status {res_combined.success} | Terminate reason: {res_combined.message}\n")
 
 expected_signal = 101.2
 expected_backg  = [495.3, None, None, None]
