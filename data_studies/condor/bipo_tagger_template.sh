@@ -1,7 +1,6 @@
 #!/bin/bash
 
 source /home/hunt-stokes/rat_fresh.sh
-cd /home/hunt-stokes/multisite_analysis
+cd /data/snoplus3/hunt-stokes/multisite_clean/data_studies/scripts/background_model
 
-# ./bipo_tagger ${RUN_NUMBER} ${ISOTOPE}
 ./bipo_tagger_data ${RUN_NUMBER} ${ISOTOPE}

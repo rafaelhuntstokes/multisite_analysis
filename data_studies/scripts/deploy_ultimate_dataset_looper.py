@@ -4,48 +4,42 @@ import string
 import time
 import ROOT
 def deploy_looper():
-    batch_name = f"mega_looper"
-    # tag_list = np.loadtxt("corrupted_energy.txt", dtype=int)
-    # tag_list = np.loadtxt("directionality_list.txt", dtype = int)
-    tag_list = np.loadtxt("missed_runs.txt", dtype=int)
+    """
+    This function runs ultimate_dataset_looper.cpp, which:
+    
+    1. for a given run, creates a TChain from ntuple subruns
+    2. performs a general coincidence tag on the data, flagging coincident pairs
+    3. extracts all the events in each 0.5 m FV inside energy ROI to TTree
+    
+    These TTrees are stored in /data/snoplus3/hunt-stokes/clean_multisite/data_general_coincidences
+    """
+    
+    batch_name = f"extract_roi_ntuples"
+    tag_list = np.loadtxt("../runlists/now_missing.txt", dtype=int)
 
     for irun in tag_list:
-        # if count == 6:
-        #     break
-        # read in the templates and create the files to submit run-by-run analysis
         
-        
-        # command = f"condor_submit -b bipo{isotope}_{num} /data/snoplus3/hunt-stokes/clean_multisite/condor/submit/{irun}_{isotope}.submit"
-        
-        # if counter >= start_count and counter <= end_count:
-        with open("mega_tagger_template.submit", "r") as infile:
+        with open("../condor/extract_roi_ntuples.submit", "r") as infile:
             rawTextSubmit = string.Template(infile.read())
-        with open("mega_tagger_template.sh", "r") as infile:
+        with open("../condor/extract_roi_ntuples.sh", "r") as infile:
             rawTextSh = string.Template(infile.read())
 
         # fill in the run number
         outTextSubmit = rawTextSubmit.substitute(RUN_NUMBER = irun)
         outTextSh = rawTextSh.substitute(RUN_NUMBER = irun)
 
-        with open(f"/data/snoplus3/hunt-stokes/clean_multisite/condor/submit/{irun}.submit", "w") as outfile:
+        with open(f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/submit/{irun}.submit", "w") as outfile:
             outfile.write(outTextSubmit)
-        with open(f"/data/snoplus3/hunt-stokes/clean_multisite/condor/sh/{irun}.sh", "w") as outfile:
+        with open(f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/sh/{irun}.sh", "w") as outfile:
             outfile.write(outTextSh)
         
         # make executable
-        os.chmod(f"/data/snoplus3/hunt-stokes/clean_multisite/condor/sh/{irun}.sh", 0o0777)
+        os.chmod(f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/sh/{irun}.sh", 0o0777)
 
-        command = f"condor_submit -b {batch_name} /data/snoplus3/hunt-stokes/clean_multisite/condor/submit/{irun}.submit"
+        command = f"condor_submit -b {batch_name} /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/submit/{irun}.submit"
         os.system(command)
 
-        time.sleep(1)
-
-        # print(counter, irun)
-
-        # if counter > end_count:
-            # print("Completed up to and including run ", irun)
-            # break
-        # count += 1
+        time.sleep(2)
 
 def verify_result():
     tag_list     = np.loadtxt("directionality_list.txt", dtype=int)
@@ -165,7 +159,7 @@ def quiet_data_spectrum():
     print("\nMissing BiPo212 Information: \n")
     print(missing_bipo212)
 
-verify_result()
-# deploy_looper()
-calc_total_livetime()
+# verify_result()
+deploy_looper()
+# calc_total_livetime()
 # quiet_data_spectrum()
