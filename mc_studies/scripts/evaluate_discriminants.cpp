@@ -404,12 +404,12 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
         // check that event energy fits into the large domain
         // CHANGED FOR THE Bi214 STUDY !! Remember to change back !!
-        if (energy < 2.5 or energy > 5.0){
+        if (energy <= 2.5 or energy >= 5.0){
             // outside energy ROI!
             continue;
         }
 
-        // itr = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
+        itr = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
         // if (itr < 0.18 or itr > 0.3){
         //     continue;
         // }
@@ -506,7 +506,7 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
             if (energy >= 4.0 and energy < 4.5){
                 info_4p0_4p5->Fill();
             }
-            if (energy >= 4.5 and energy < 5.0){
+            if (energy >= 4.5 and energy <= 5.0){
                 info_4p5_5p0->Fill();
             }
             // if (energy >= 5.0){
@@ -514,7 +514,7 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
             // }
         }
 
-        if (energy >= 2.5 and energy < 5.0){
+        if (energy >= 2.5 and energy <= 5.0){
             std::cout << "Repeating for 2.5 --> 5.0 MeV PDF." << std::endl;
             // now repeat it using the full 2.5 --> 5.0 PDF
             cos_theta_sun = 100;//directionality_fitter(solar_dir, event_position_recon, pmt_x, pmt_y, pmt_z, time_residuals, dir_pdf_2p5_5p0);
