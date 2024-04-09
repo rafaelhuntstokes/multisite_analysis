@@ -115,7 +115,7 @@ class Ahab():
         full_loglikelihood    = energy_component + multisite_component
         return full_loglikelihood
     
-    def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list, energy_range):
+    def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
         """
         Extract the energy and multisite PDFs for a given isotope.
         Only use events that fall within event selection cuts (e.g. FV cut).
@@ -183,6 +183,21 @@ class Ahab():
         # normalise histogram counts so sum of counts = 1
         energy_counts    = energy_counts    / np.sum(energy_counts)
         multisite_counts = multisite_counts / np.sum(multisite_counts)
+
+        ## plot the pdfs ##
+        fig, axes = plt.subplots(nrows = 1, ncols = 2)
+        axes[0].hist(energies, bins = energy_bins, histtype= "step", color = "black", linewidth = 2)
+        axes[0].set_xlabel("Reconstructed Energy (MeV)")
+        axes[0].set_ylabel(f"Counts per {round(np.diff(energy_bins)[0], 2)} MeV Bin")
+        axes[0].set_title(f"Energy PDF for {plot_name}")
+
+        axes[1].hist(multisites, bins = multisite_bins, histtype= "step", color = "black", linewidth = 2)
+        axes[1].set_xlabel("Multisite Discriminant")
+        axes[1].set_ylabel(f"Counts per {round(np.diff(multisite_bins)[0], 2)} MeV Bin")
+        axes[1].set_title(f"Multisite PDF for {plot_name}")
+        fig.tight_layout()
+        plt.savefig(f"../plots/asimov_study/real_mc/advanced/pdf_{plot_name}.png")
+        plt.close()
 
         return energy_counts, multisite_counts 
 
@@ -264,7 +279,7 @@ class Ahab():
         Overall minimum log-likelihood returned at each fixed B8 signal norm.
         """
 
-        def wrapped(other_norms, sig_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite):
+        def wrapped_combined(other_norms, sig_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite):
             """
             Function handles the fact now we fix norms[0] and vary the others.
             """
@@ -274,30 +289,56 @@ class Ahab():
             norms = np.array(norms)
 
             return self.combined_loglikelihood(norms, energy_pdfs, multisite_pdfs, 0, 0, dataset_energy, dataset_multisite)
+        
+        def wrapped_multisite(other_norms, sig_norm, multisite_pdfs, dataset_multisite):
+            """
+            Function handles the fact now we fix norms[0] and vary the others.
+            """
 
+            # insert the fixed signal norm into the norms array
+            norms = [sig_norm] + other_norms.tolist()
+            norms = np.array(norms)
+
+            return self.evaluate_loglikelihood(norms, multisite_pdfs, 0, 0, dataset_multisite)
+
+        def wrapped_energy(other_norms, sig_norm, energy_pdfs, dataset_energy):
+            """
+            Function handles the fact now we fix norms[0] and vary the others.
+            """
+
+            # insert the fixed signal norm into the norms array
+            norms = [sig_norm] + other_norms.tolist()
+            norms = np.array(norms)
+
+            return self.evaluate_loglikelihood(norms, energy_pdfs, 0, 0, dataset_energy)
+        
         norms = normalisations.copy() # don't update / mess with the input normalisations
         
         # loop over each signal hypothesis
-        profile_ll      = []
-        optimised_norms = []
+        profile_ll      = np.zeros((3, len(sig_hypothesis)))             # (num. optimisations, num. signal vals)
+        optimised_norms = np.zeros((3, len(sig_hypothesis), len(norms))) # (num. optimisations, num. sig vals, num. norms)
+
         for isig in range(len(sig_hypothesis)):
 
             # set the norm of the signal
             signal_norm = sig_hypothesis[isig]
 
             # define the optimisation to be run
-            combined_result = scipy.optimize.minimize(wrapped, x0 = norms[1:], method = "BFGS", tol = 1e-4, args = (signal_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite,))
-
+            combined_result  = scipy.optimize.minimize(wrapped_combined, x0 = norms[1:], bounds = [(0, np.inf)] * len(norms[1:]), method = "L-BFGS-B", tol = 1e-4, args = (signal_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite,))
+            multisite_result = scipy.optimize.minimize(wrapped_multisite, x0 = norms[1:], bounds = [(0, np.inf)] * len(norms[1:]), method = "L-BFGS-B", tol = 1e-4, args = (signal_norm, multisite_pdfs, dataset_multisite,))
+            energy_result    = scipy.optimize.minimize(wrapped_energy, x0 = norms[1:], bounds = [(0, np.inf)] * len(norms[1:]), method = "L-BFGS-B", tol = 1e-4, args = (signal_norm, energy_pdfs, dataset_energy,))
+            print(combined_result.x)
             # save the minimum ll for this minimisation
-            profile_ll.append(combined_result.fun)
-            optimised_norms.append(combined_result.x)
-        
-        # create a test plot of this
-        plt.figure()
-        plt.plot(sig_hypothesis, profile_ll)
-        plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll_test.png")
+            profile_ll[0, isig]   = combined_result.fun
+            profile_ll[1, isig]   = multisite_result.fun
+            profile_ll[2, isig]   = energy_result.fun
 
-        return profile_ll, optimsied_norms
+            # save the set of normalsations for this minimisation
+            # optimised_norms[0, isig, :] = combined_result.x
+            # optimised_norms[1, isig, :] = multisite_result.x
+            # optimised_norms[2, isig, :] = energy_result.x
+        
+        return profile_ll, optimised_norms
 
     def create_gridsearch_plots(self, sig_hypothesis, backg_hypothesis, name_idx, names, ll_full, ll_multi, ll_energy):
         """
@@ -314,9 +355,9 @@ class Ahab():
             label_name = r"$N_{^{208}Tl}$"
         if name == "Tl210":
             label_name = r"$N_{^{210}Tl}$"
-        if name == "Bi212":
+        if name == "BiPo212":
             label_name = r"$N_{^{212}Bi}$"
-        if name == "Bi214":
+        if name == "BiPo214":
             label_name = r"$N_{^{214}Bi}$"
 
         # reverse order of columns so number of B8 increases from bottom left of array upwards
@@ -338,7 +379,7 @@ class Ahab():
         
         img = axes[0].imshow(ll_full, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
         # plt.colorbar(img, ax = axes[0], fraction=0.072*im_ratio)
-        axes[0].scatter(backg_hypothesis[reshaped_min_idx_full[1]], sig_hypothesis[reshaped_min_idx_full[0]],  color = "blue", label = f"Min: {sig_hypothesis[reshaped_min_idx_full[0]]} ")
+        axes[0].scatter(backg_hypothesis[reshaped_min_idx_full[1]], sig_hypothesis[reshaped_min_idx_full[0]],  color = "blue", label = f"Min: {round(sig_hypothesis[reshaped_min_idx_full[0]], 2)} ")
         axes[0].contour(backg_hypothesis, sig_hypothesis, ll_full, levels = [1.15], colors = "red")
         axes[0].set_title("Full Log-Likelihood")
         axes[0].set_ylabel(r"$N_{^8B}$")
@@ -347,7 +388,7 @@ class Ahab():
         
         img = axes[1].imshow(ll_multi, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
         # plt.colorbar(img, ax = axes[1], fraction=0.072*im_ratio)
-        axes[1].scatter(backg_hypothesis[reshaped_min_idx_multi[1]], sig_hypothesis[reshaped_min_idx_multi[0]], color = "blue", label = f"Min: {sig_hypothesis[reshaped_min_idx_multi[0]]} ")
+        axes[1].scatter(backg_hypothesis[reshaped_min_idx_multi[1]], sig_hypothesis[reshaped_min_idx_multi[0]], color = "blue", label = f"Min: {round(sig_hypothesis[reshaped_min_idx_multi[0]], 2)} ")
         axes[1].contour(backg_hypothesis, sig_hypothesis, ll_multi, levels = [1.15], colors = "red")
         axes[1].set_title("Multisite Log-Likelihood")
         axes[1].set_ylabel(r"$N_{^8B}$")
@@ -356,7 +397,7 @@ class Ahab():
         
         img = axes[2].imshow(ll_energy, origin = "lower", aspect = "auto", cmap = "magma", extent = [backg_hypothesis[0], backg_hypothesis[-1], sig_hypothesis[0], sig_hypothesis[-1]])
         # plt.colorbar(img, ax = axes[2], fraction=0.072*im_ratio)
-        axes[2].scatter(backg_hypothesis[reshaped_min_idx_energy[1]], sig_hypothesis[reshaped_min_idx_energy[0]], color = "blue", label = f"Min: {sig_hypothesis[reshaped_min_idx_energy[0]]} ")
+        axes[2].scatter(backg_hypothesis[reshaped_min_idx_energy[1]], sig_hypothesis[reshaped_min_idx_energy[0]], color = "blue", label = f"Min: {round(sig_hypothesis[reshaped_min_idx_energy[0]], 2)} ")
         axes[2].contour(backg_hypothesis, sig_hypothesis, ll_energy, levels = [1.15], colors = "red")
         axes[2].set_title("Energy Log-Likelihood")
         axes[2].set_ylabel(r"$N_{^8B}$")
@@ -421,20 +462,20 @@ class Ahab():
 
         # binning for the energy and multisite discriminant PDFs
         energy_bins    = np.arange(2.5, 5.1, 0.1)
-        multisite_bins = np.arange(-1.4, -1.2, 0.0005)
+        multisite_bins = np.arange(-1.4, -1.3, 0.0005)
 
         """
         Extract information and create the binned PDFS for energy shape and multisite,
         for each isotope of interest.
         """
         # we will create an Asimov dataset using the multisite and energy PDFs of every included normalisation
-        pdf_runlist    = np.loadtxt("../runlists/test_runlist.txt", dtype = int)
+        pdf_runlist    = np.loadtxt("../runlists/full_test.txt", dtype = int)
         mc_path        = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
         sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue" # signal path is always the same
         
         # loop over the included normalisations
         print("Creating PDFs from signal and backgrounds in energy domain: ", energy_range)
-        backg_names       = ["Tl208", "Tl210", "Bi212", "Bi214"]
+        backg_names       = ["Tl208", "Tl210", "BiPo212", "BiPo214"]
         
         # create array containing the signal and background pdfs for multisite and energy
         multisite_pdf_array = np.zeros((num_norms + 1, multisite_bins.size - 1))  # (number backgrounds + 1, number of bins)
@@ -442,7 +483,7 @@ class Ahab():
 
         # obtain the signal PDF
         print("Obtaining signal PDF.")
-        sig_energy_pdf, sig_multi_pdf = self.obtain_pdf(sig_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range)
+        sig_energy_pdf, sig_multi_pdf = self.obtain_pdf(sig_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range, "B8_nue")
 
         # add the signal pdfs as the first row in the pdfs arrays
         multisite_pdf_array[0, :] = sig_multi_pdf
@@ -457,7 +498,7 @@ class Ahab():
                 backg_mc_path  = f"{mc_path}/full_analysis_{backg_names[iname]}"
 
                 # obtain the normalised PDFs for this background and add to the respective arrays
-                backg_energy_pdf, backg_multi_pdf   = self.obtain_pdf(backg_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range)
+                backg_energy_pdf, backg_multi_pdf   = self.obtain_pdf(backg_mc_path, fv_cut, multisite_bins, energy_bins, pdf_runlist, energy_range, backg_names[iname])
                 multisite_pdf_array[idx_counter, :] = backg_multi_pdf
                 energy_pdf_array[idx_counter, :]    = backg_energy_pdf
 
@@ -532,15 +573,18 @@ class Ahab():
 
         for iname in range(len(backg_names)):
             if expected_backg[iname] != None:
-                print("Grid search for backg ", norm_idx)
+                print("Grid search for backg ", norm_idx, expected_backg[iname])
                 # include this normalisation and perform 2 D scan
                 # signal and backg hypothesis are expected val +- 50 %
                 signal_range = expected_signal       * 0.5
                 backg_range  = expected_backg[iname] * 0.5 
 
-                sig_hypothesis   = np.arange(expected_signal - signal_range, expected_signal + signal_range + 1, 1)
-                backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] + backg_range + 1, 1)
-
+                # sig_hypothesis   = np.arange(expected_signal - signal_range, expected_signal + signal_range + 1, 1)
+                # backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] + backg_range + 1, 1)
+                sig_hypothesis   = np.linspace(expected_signal - signal_range, expected_signal + signal_range + 1, 100)
+                backg_hypothesis = np.linspace(expected_backg[iname] - backg_range, expected_backg[iname] + backg_range + 1, 100)
+                
+                print(backg_hypothesis)
                 # perform 2D scan over given signal and background normalisation
                 ll_multisite, ll_energy, ll_full = self.grid_search(sig_hypothesis, backg_hypothesis, normalisations, norm_idx, multisite_pdf_array, energy_pdf_array, dataset_multisite, dataset_energy)
 
@@ -570,11 +614,31 @@ class Ahab():
         print(f"Combined: {res_combined.x} | Error: {err_combined}\nTerminate status {res_combined.success} | Terminate reason: {res_combined.message}\n")
 
         # profile log-likelihood scans
+        print("Performing profile likelihood scan ... ")
+
+        # row 0 - combined; row 1 multisite; row 2 energy
         profile_ll, optimised_norms = self.profile_likelihood_scan(sig_hypothesis, normalisations, energy_pdf_array, multisite_pdf_array, dataset_multisite, dataset_energy)
-        profile_ll = self.rescale_ll(profile_ll) # rescale to stick minimum at zero
         
+        # rescale to stick minimum at zero
+        profile_ll[0, :] = self.rescale_ll(profile_ll[0, :])
+        profile_ll[1, :] = self.rescale_ll(profile_ll[1, :])
+        profile_ll[2, :] = self.rescale_ll(profile_ll[2, :])
+        
+        # create a plot of profile likelihood scan
+        plt.figure()
+        plt.plot(sig_hypothesis, profile_ll[0,:], color = "black", label = f"Combined: Fitted Min: {round(sig_hypothesis[np.argmin(profile_ll[0,:])], 1)}")
+        plt.plot(sig_hypothesis, profile_ll[1,:], color = "green", label = f"Multisite: Fitted Min: {round(sig_hypothesis[np.argmin(profile_ll[1,:])], 1)}")
+        plt.plot(sig_hypothesis, profile_ll[2,:], color = "orange", label = f"Energy: Fitted Min: {round(sig_hypothesis[np.argmin(profile_ll[2,:])], 1)}")
+        plt.xlabel(r"$N_{^8B}$ Events")
+        plt.ylabel(r"$-2log(\mathcal{L})$")
+        plt.title("Profile Log-Likelihood Scan")
+        plt.ylim((0, 3))
+        plt.axvline(x = expected_signal, color = "red", label = f"True Signal Number: {expected_signal}")
+        plt.legend(loc = "upper right")
+        plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll.png")
+        print("All complete!")
         
 expected_signal = 101.2
-expected_backg  = [495.3, None, None, None]
-
+expected_backg  = [495.3, 0.93, 65.3, 38.5]
+# expected_backg  = [495.3, 0.93, None, None]
 Ahab().run_analysis(expected_signal, expected_backg, False)
