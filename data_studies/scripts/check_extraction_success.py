@@ -2,7 +2,8 @@ import numpy as np
 import os
 import ROOT
 import glob
-
+import rat
+from ROOT import RAT
 """
 Utility scripts to check solar candidate extraction worked.
 
@@ -211,16 +212,129 @@ def check_analysed_candidate_output():
             except:
                 missing.append(irun)
             if num == 0:
-                missing.append
+                missing.append(irun)
     
     print("Missing Runs: \n", missing)
     np.savetxt("../runlists/failed_analysis.txt", missing, fmt = '%d')
 
+def check_extraction_success():
+    """
+    This function is to check the ratds extraction of events has succeeded for every
+    run in the run list. 
+    
+    The number of events in the extracted ratds files should equal the number of
+    events in the corresponding ntuple files. If this is not the case, something
+    has gone wrong - most likely the extraction job has failed on condor and 
+    needs to be resubmitted.
+    """
+
+    runlist = np.loadtxt("../runlists/subset_dir.txt", dtype = int)
+
+    missing_ntuple   = [] # if the ntuple doesn't exist for a given run
+    bad_ratds        = [] # files missing / corrupted / wrong number of events
+    bad_runs         = [300000, 301140, 301148, 305479, 300121]
+    # run in airplane mode
+    RAT.DB.Get().SetAirplaneModeStatus(True)
+    total_num_ntuple = 0
+    total_num_ratds  = 0
+    for irun in runlist:
+        if irun in bad_runs:
+            continue
+        # open the ntuple for this run
+        try:
+            file_ntuple  = ROOT.TFile.Open(f"/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence/output_{irun}.root")
+            file_tree    = file_ntuple.Get("clean_6m")
+        except:
+            missing_ntuple.append(irun)
+            file_ntuple.Close()
+            continue
+
+        # find number of events inside ROI to compare to RATDS
+        num_evs_ntpl = file_tree.GetEntries("energy>=2.5&energy <= 5.0")
+        total_num_ntuple += num_evs_ntpl
+        # now glob together all the extracted ratds subrun files for this run
+        ratds_flist = glob.glob(f"../extracted_data/full_analysis/extracted_ratds/{irun}*.root")
+        if len(ratds_flist) == 0:
+            # no extraction happened for this run
+            print(f"No subruns found for {irun}!")
+            bad_ratds.append(irun)
+            continue
+        
+        # find the total extracted number of events in the ratds subrun files
+        num_evs_ratds = 0
+        for iratds in ratds_flist:
+            # print(iratds)
+            # ds = RAT.DU.DSReader("../extracted_data/full_analysis/extracted_ratds/301125_2.root")
+            try:
+                file = ROOT.TFile.Open(iratds)
+                tree = file.Get("T")
+                num_evs_ratds += tree.GetEntries()
+            except:
+                print("Problem loading file: ", iratds)
+                file.Close()
+                continue
+
+        file.Close()
+        file_ntuple.Close()
+            # print(num_evs_ratds)
+        total_num_ratds += num_evs_ratds
+        if num_evs_ntpl != num_evs_ratds:
+            print(f"Mismatch in run: {irun}!")
+            print(num_evs_ntpl, num_evs_ratds)
+            bad_ratds.append(irun)
+            continue
+
+    print("Mismatch numbers: ")
+    for irun in bad_ratds:
+        print(irun)
+
+    print(f"Problem with {len(bad_ratds)} runs.")
+    print(f"Total events in ntuple: {total_num_ntuple}\nTotal events ratds: {total_num_ratds}")
+        
+def delete_full_ratds():
+    """
+    Dangerous function! Assuming you have verified the extraction of ratds files
+    succeeded (see function above), you can delete the full ratds files to 
+    free up space. This function loads a run list, loops through it and 
+    deletes the corresponding ratds files.
+    """
+
+    runlist  = np.loadtxt("../runlists/subset_dir.txt", dtype = int)
+    bad_runs = [300000, 301140, 301148, 305479, 300121]
+    
+    for irun in runlist:
+        print(irun)
+        # keep rat ds with lone orphans as maybe I need them later if I fix these runs?
+        if irun in bad_runs:
+            continue
+
+        # glob all ratds files for this run
+        data_path = "/data/snoplus3/SNOplusData/processing/fullFill/rat-7.0.8/ratds";
+
+        # be mindful of the reprocessing of earlier data
+        if irun < 307613:
+            inFile1 = data_path + "/" + "Analysis20R_r0000"
+        if irun >= 307613:
+            inFile1 = data_path + "/" + "Analysis20_r0000"
+        inFileName = f"{inFile1}{irun}*.root"
+        ratds_flist = glob.glob(inFileName)
+        print(ratds_flist)
+        for isubrun in ratds_flist:
+            command = f"rm {isubrun}"
+            os.system(command)
+            # break
+        # break
+
+
+
+
 
 # data_dir   = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/above_5MeV/solar_run_by_run_ntuples/livetimes"
-data_dir = "/data/snoplus3/hunt-stokes/clean_multisite/bipo_212_cleanSelec3/completed"
+# data_dir = "/data/snoplus3/hunt-stokes/clean_multisite/bipo_212_cleanSelec3/completed"
 # run_list = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/runlists/contains_solar_candidates.txt"
 # runs_containing_solar_candidate_ratds(run_list)
 # check_analysed_candidate_output()
-run_list = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/runlists/directionality_list.txt"
-check_runs(run_list, data_dir)
+# run_list = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/runlists/directionality_list.txt"
+# check_runs(run_list, data_dir)
+# check_extraction_success()
+delete_full_ratds()
