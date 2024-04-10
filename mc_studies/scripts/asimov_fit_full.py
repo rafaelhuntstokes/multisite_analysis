@@ -462,7 +462,7 @@ class Ahab():
 
         # binning for the energy and multisite discriminant PDFs
         energy_bins    = np.arange(2.5, 5.1, 0.1)
-        multisite_bins = np.arange(-1.4, -1.3, 0.0005)
+        multisite_bins = np.arange(-1.375, -1.325, 0.0005)
 
         """
         Extract information and create the binned PDFS for energy shape and multisite,
@@ -521,10 +521,42 @@ class Ahab():
             
             print("Creating Asimov dataset from normalisation-scaled PDFs.")
             dataset_energy    = normalisations_stretched * energy_pdf_array    # multiply every bin by corresponding normalisation
-            dataset_multisite = normalisations_stretched * multisite_pdf_array
+            
+            # plot Asimov dataset as a stacked histogram
+            labels = ["B8"] + backg_names
+            mids_energy = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
+            mids_multi = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
+            fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 8))
+            color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            for i in range(dataset_energy.shape[0]):
+                col = next(color_cycle)
+                axes[0].bar(mids_energy, dataset_energy[i,:], width = np.diff(energy_bins)[0], fill = False, edgecolor=col, label = f"{labels[i]}| Num: {round(np.sum(dataset_energy[i,:]), 2)}")
+            
+            # sum 
             dataset_energy    = np.sum(dataset_energy, axis = 0)     # remove the rows so axis = 0
+            axes[0].errorbar(mids_energy, dataset_energy, xerr = np.diff(energy_bins)[0]/2, color="black", label = f"Sum: {round(np.sum(dataset_energy), 2)}", linestyle = "")
+            axes[0].legend(frameon=False)
+            axes[0].set_xlabel("Reconstructed Energy (MeV)")
+            axes[0].set_ylabel(f"Counts per {round(np.diff(energy_bins)[0],2)} MeV")
+            axes[0].set_title("Asimov Dataset: Energy")
+            
+            # repeat for the multisite discriminant
+            color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            dataset_multisite = normalisations_stretched * multisite_pdf_array
+            for i in range(dataset_multisite.shape[0]):
+                col = next(color_cycle)
+                axes[1].bar(mids_multi, dataset_multisite[i,:], width = np.diff(multisite_bins)[0], fill = False, edgecolor=col, label = f"{labels[i]}| Num: {round(np.sum(dataset_multisite[i,:]), 2)}")
             dataset_multisite = np.sum(dataset_multisite, axis = 0)
-
+            axes[1].errorbar(mids_multi, dataset_multisite, xerr = np.diff(multisite_bins)[0]/2, color="black", label = f"Sum: {round(np.sum(dataset_multisite), 2)}", linestyle = "")
+            axes[1].legend(frameon=False)
+            axes[1].set_xlabel("Multisite Discriminant")
+            axes[1].set_ylabel(f"Counts per {round(np.diff(multisite_bins)[0],2)}")
+            axes[1].set_title("Asimov Dataset: Multisite")
+            axes[1].set_xlim((-1.355, -1.335))
+            fig.tight_layout()
+            plt.savefig("../plots/asimov_study/real_mc/advanced/asimov_dataset_energy.png")
+            plt.close()
+            
         else:
 
             # open the dataset --> saved as a single hadded TTree containing ITR,
