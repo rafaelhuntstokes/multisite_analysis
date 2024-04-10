@@ -656,17 +656,54 @@ class Ahab():
         profile_ll[1, :] = self.rescale_ll(profile_ll[1, :])
         profile_ll[2, :] = self.rescale_ll(profile_ll[2, :])
         
+        # find 1 sigma frequentist confidence interval #
+        
+        # find idx of point on every log-likelihood curve closes in value to 1
+        distance_to_interval = np.abs(profile_ll - 1) # absolute value of the difference
+        closest_to_interval  = np.argmin(distance_to_interval, axis = 1) # find first intercept with 1 sigma level
+
+        # create a masked array and remove the first intercept
+        masked_1sig_full = np.ma.masked_array(distance_to_interval, mask = False)
+
+        # mask out the closest interval in each row
+        masked_1sig_full.mask[0, closest_to_interval[0]] = True
+        masked_1sig_full.mask[1, closest_to_interval[1]] = True
+        masked_1sig_full.mask[2, closest_to_interval[2]] = True
+
+        # find second intercept
+        second_closest = np.argmin(masked_1sig_full, axis = 1)
+        
+        # find minimum LL values as variables to save typing
+        combined_min   = sig_hypothesis[np.argmin(profile_ll[0,:])]
+        combined_upper = abs(combined_min - sig_hypothesis[second_closest[0]]) 
+        combined_lower = abs(combined_min - sig_hypothesis[closest_to_interval[0]])
+        multi_min      = sig_hypothesis[np.argmin(profile_ll[1,:])]
+        multi_upper    = abs(multi_min - sig_hypothesis[second_closest[1]]) 
+        multi_lower    = abs(multi_min - sig_hypothesis[closest_to_interval[1]])
+        energy_min     = sig_hypothesis[np.argmin(profile_ll[2,:])]
+        energy_upper   = abs(energy_min - sig_hypothesis[second_closest[2]]) 
+        energy_lower   = abs(energy_min - sig_hypothesis[closest_to_interval[2]])
+        
         # create a plot of profile likelihood scan
         plt.figure()
-        plt.plot(sig_hypothesis, profile_ll[0,:], color = "black", label = f"Combined: Fitted Min: {round(sig_hypothesis[np.argmin(profile_ll[0,:])], 1)}")
-        plt.plot(sig_hypothesis, profile_ll[1,:], color = "green", label = f"Multisite: Fitted Min: {round(sig_hypothesis[np.argmin(profile_ll[1,:])], 1)}")
-        plt.plot(sig_hypothesis, profile_ll[2,:], color = "orange", label = f"Energy: Fitted Min: {round(sig_hypothesis[np.argmin(profile_ll[2,:])], 1)}")
+        plt.plot(sig_hypothesis, profile_ll[0,:], color = "black", label = rf"${round(combined_min, 1)}^{{+{round(combined_upper, 1)}}}_{{-{round(combined_lower, 1)}}}$")
+        plt.plot(sig_hypothesis, profile_ll[1,:], color = "green", label = rf"${round(multi_min, 1)}^{{+{round(multi_upper, 1)}}}_{{-{round(multi_lower, 1)}}}$")
+        plt.plot(sig_hypothesis, profile_ll[2,:], color = "orange", label = rf"${round(energy_min, 1)}^{{+{round(energy_upper, 1)}}}_{{-{round(energy_lower, 1)}}}$")
+        
+        # confidence intervals
+        plt.axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
+        # plt.vlines(x = sig_hypothesis[closest_to_interval[0]], ymin= 0, ymax = 1)
+        # plt.vlines(x = sig_hypothesis[second_closest[0]], ymin = 0, ymax = 1)
+        # plt.vlines(x = sig_hypothesis[closest_to_interval[1]], ymin = 0, ymax = 1)
+        # plt.vlines(x = sig_hypothesis[second_closest[1]], ymin = 0, ymax = 1)
+        # plt.vlines(x = sig_hypothesis[closest_to_interval[2]], ymin = 0, ymax = 1)
+        # plt.vlines(x = sig_hypothesis[second_closest[2]], ymin = 0, ymax = 1)
         plt.xlabel(r"$N_{^8B}$ Events")
         plt.ylabel(r"$-2log(\mathcal{L})$")
         plt.title("Profile Log-Likelihood Scan")
         plt.ylim((0, 3))
         plt.axvline(x = expected_signal, color = "red", label = f"True Signal Number: {expected_signal}")
-        plt.legend(loc = "upper right")
+        plt.legend(loc = "upper right", fontsize = 11)
         plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll.png")
         print("All complete!")
         
