@@ -327,16 +327,16 @@ class Ahab():
             combined_result  = scipy.optimize.minimize(wrapped_combined, x0 = norms[1:], bounds = [(0, np.inf)] * len(norms[1:]), method = "L-BFGS-B", tol = 1e-4, args = (signal_norm, energy_pdfs, multisite_pdfs, dataset_energy, dataset_multisite,))
             multisite_result = scipy.optimize.minimize(wrapped_multisite, x0 = norms[1:], bounds = [(0, np.inf)] * len(norms[1:]), method = "L-BFGS-B", tol = 1e-4, args = (signal_norm, multisite_pdfs, dataset_multisite,))
             energy_result    = scipy.optimize.minimize(wrapped_energy, x0 = norms[1:], bounds = [(0, np.inf)] * len(norms[1:]), method = "L-BFGS-B", tol = 1e-4, args = (signal_norm, energy_pdfs, dataset_energy,))
-            print(combined_result.x)
+
             # save the minimum ll for this minimisation
             profile_ll[0, isig]   = combined_result.fun
             profile_ll[1, isig]   = multisite_result.fun
             profile_ll[2, isig]   = energy_result.fun
 
             # save the set of normalsations for this minimisation
-            # optimised_norms[0, isig, :] = combined_result.x
-            # optimised_norms[1, isig, :] = multisite_result.x
-            # optimised_norms[2, isig, :] = energy_result.x
+            optimised_norms[0, isig, :] = [signal_norm] + combined_result.x.tolist()
+            optimised_norms[1, isig, :] = [signal_norm] + multisite_result.x.tolist()
+            optimised_norms[2, isig, :] = [signal_norm] + energy_result.x.tolist()
         
         return profile_ll, optimised_norms
 
@@ -530,29 +530,32 @@ class Ahab():
             color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
             for i in range(dataset_energy.shape[0]):
                 col = next(color_cycle)
-                axes[0].bar(mids_energy, dataset_energy[i,:], width = np.diff(energy_bins)[0], fill = False, edgecolor=col, label = f"{labels[i]}| Num: {round(np.sum(dataset_energy[i,:]), 2)}")
+                axes[0].step(energy_bins, dataset_energy[i,:].tolist() + [0], where = 'post', color = col, label = f"{labels[i]}| Num: {round(np.sum(dataset_energy[i,:]), 2)}")
             
             # sum 
             dataset_energy    = np.sum(dataset_energy, axis = 0)     # remove the rows so axis = 0
-            axes[0].errorbar(mids_energy, dataset_energy, xerr = np.diff(energy_bins)[0]/2, color="black", label = f"Sum: {round(np.sum(dataset_energy), 2)}", linestyle = "")
+            axes[0].step(energy_bins, dataset_energy.tolist() + [0], where = 'post', color="black", label = f"Sum: {round(np.sum(dataset_energy), 2)}")
             axes[0].legend(frameon=False)
             axes[0].set_xlabel("Reconstructed Energy (MeV)")
             axes[0].set_ylabel(f"Counts per {round(np.diff(energy_bins)[0],2)} MeV")
             axes[0].set_title("Asimov Dataset: Energy")
+            axes[0].set_ylim((0, 65))
+            axes[0].set_xlim((2.5, 5.0))
             
             # repeat for the multisite discriminant
             color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
             dataset_multisite = normalisations_stretched * multisite_pdf_array
             for i in range(dataset_multisite.shape[0]):
                 col = next(color_cycle)
-                axes[1].bar(mids_multi, dataset_multisite[i,:], width = np.diff(multisite_bins)[0], fill = False, edgecolor=col, label = f"{labels[i]}| Num: {round(np.sum(dataset_multisite[i,:]), 2)}")
+                axes[1].step(multisite_bins, dataset_multisite[i,:].tolist() + [0], where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(dataset_multisite[i,:]), 2)}")
             dataset_multisite = np.sum(dataset_multisite, axis = 0)
-            axes[1].errorbar(mids_multi, dataset_multisite, xerr = np.diff(multisite_bins)[0]/2, color="black", label = f"Sum: {round(np.sum(dataset_multisite), 2)}", linestyle = "")
+            axes[1].step(multisite_bins, dataset_multisite.tolist() + [0], where = 'post', color="black", label = f"Sum: {round(np.sum(dataset_multisite), 2)}")
             axes[1].legend(frameon=False)
             axes[1].set_xlabel("Multisite Discriminant")
             axes[1].set_ylabel(f"Counts per {round(np.diff(multisite_bins)[0],2)}")
             axes[1].set_title("Asimov Dataset: Multisite")
             axes[1].set_xlim((-1.355, -1.335))
+            axes[1].set_ylim((0, 65))
             fig.tight_layout()
             plt.savefig("../plots/asimov_study/real_mc/advanced/asimov_dataset_energy.png")
             plt.close()
@@ -706,8 +709,127 @@ class Ahab():
         plt.legend(loc = "upper right", fontsize = 11)
         plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll.png")
         print("All complete!")
+
+        # create output 'fitted model' plot in terms of energy and multisite with profile likelihood result
+        # find idx of log-likelihood with minimum value
+        minimum_idx = np.argmin(profile_ll, axis = 1)
+
+        # find the normalisations fom energy, multisite and combined LL giving that minimum
+        norms_combined = optimised_norms[0, minimum_idx[0], :]
+        norms_multi    = optimised_norms[1, minimum_idx[1], :]
+        norms_energy   = optimised_norms[2, minimum_idx[2], :]
+
+        print(norms_combined)
+        print(norms_multi)
+        print(norms_energy)
+
+        # create 3 subplots showing the fitted spectrum using minimum of each method
+        fig, axes = plt.subplots(nrows = 2, ncols = 2, figsize = (15, 15))
+        font_s    = 14
+        # need to scale the PDFs of each by the normalisations
+        combined_energy_result    = norms_combined[:, None] * energy_pdf_array
+        combined_multisite_result = norms_combined[:, None] * multisite_pdf_array
+        energy_result             = norms_energy[:, None]   * energy_pdf_array
+        multisite_result          = norms_multi[:, None]    * multisite_pdf_array
+
+        # create the 4 subplots showing relative contributions of each normalisation, the sum and the data
+        color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        for i in range(len(normalisations)):
+
+            # plot each normalisation individually as a bar graph
+            col = next(color_cycle)
+
+            if col == '#d62728':
+                col = next(color_cycle)
+            axes[0,0].step(energy_bins, combined_energy_result[i, :].tolist() + [0], where = 'post', linewidth = 2, color=col, label = f"{labels[i]}| Num: {round(np.sum(combined_energy_result[i,:]), 2)}")
         
+        # plot the sum of the model
+        sum_combined_energy_model = np.sum(combined_energy_result, axis = 0)
+        axes[0,0].step(energy_bins, sum_combined_energy_model.tolist() + [0], where = 'post', color = "red", linewidth = 2, label = f"Total Model: {round(np.sum(sum_combined_energy_model), 2)}")
+        axes[0,0].set_title(r"Energy Fit: Combined $\Delta log(\mathcal{L})$", fontsize = font_s)
+        axes[0,0].set_xlabel("Reconstructed Energy (MeV)", fontsize = font_s)
+        axes[0,0].set_ylabel("Counts", fontsize = font_s)
+        axes[0,0].set_ylim((0, 65))
+        axes[0,0].set_xlim((2.5, 5.0))
+        
+        # plot the dataset and error bars
+        axes[0,0].errorbar(mids_energy, dataset_energy, yerr = np.sqrt(dataset_energy), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
+        axes[0,0].legend(frameon = False, fontsize = 11)
+
+        color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        for i in range(len(normalisations)):
+
+            # plot each normalisation individually as a bar graph
+            col = next(color_cycle)
+            if col == '#d62728':
+                col = next(color_cycle)
+            axes[0,1].step(multisite_bins, combined_multisite_result[i, :].tolist() + [0], linewidth = 2, where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(combined_multisite_result[i,:]), 2)}")
+        
+        # plot the sum of the model
+        sum_combined_multisite_model = np.sum(combined_multisite_result, axis = 0)
+        axes[0,1].step(multisite_bins, sum_combined_multisite_model.tolist() + [0], where = 'post', linewidth = 2, color = "red", label = f"Total Model: {round(np.sum(sum_combined_multisite_model), 2)}")
+        axes[0,1].set_title(r"Multisite Fit: Combined $\Delta log(\mathcal{L})$", fontsize = font_s)
+        axes[0,1].set_xlabel("Multisite Discriminant", fontsize = font_s)
+        axes[0,1].set_ylabel("Counts", fontsize = font_s)
+        axes[0,1].set_xlim((-1.355, -1.335))
+        axes[0,1].set_ylim((0, 65))
+
+        # plot the dataset and error bars
+        axes[0,1].errorbar(mids_multi, dataset_multisite, yerr = np.sqrt(dataset_multisite), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
+        axes[0,1].legend(frameon = False, fontsize = 11)
+
+        color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        for i in range(len(normalisations)):
+
+            # plot each normalisation individually as a bar graph
+            col = next(color_cycle)
+            if col == '#d62728':
+                col = next(color_cycle)
+            axes[1,0].step(energy_bins, energy_result[i, :].tolist() + [0], linewidth = 2, where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(energy_result[i,:]), 2)}")
+        
+        # plot the sum of the model
+        sum_energy_model = np.sum(energy_result, axis = 0)
+        axes[1,0].step(energy_bins, sum_energy_model.tolist() + [0], where = 'post',  linewidth = 2, color = "red", label = f"Total Model: {round(np.sum(sum_energy_model), 2)}")
+        axes[1,0].set_title(r"Energy Fit: $\Delta log(\mathcal{L})$", fontsize = font_s)
+        axes[1,0].set_xlabel("Reconstructed Energy (MeV)", fontsize = font_s)
+        axes[1,0].set_ylabel("Counts", fontsize = font_s)
+        axes[1,0].set_ylim((0, 65))
+        axes[1,0].set_xlim((2.5, 5.0))
+        
+        # plot the dataset and error bars
+        axes[1,0].errorbar(mids_energy, dataset_energy, yerr = np.sqrt(dataset_energy), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
+        axes[1,0].legend(frameon = False, fontsize = 11)
+        
+        color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+        for i in range(len(normalisations)):
+
+            # plot each normalisation individually as a bar graph
+            col = next(color_cycle)
+            if col == '#d62728':
+                col = next(color_cycle)
+            axes[1,1].step(multisite_bins, multisite_result[i, :].tolist() + [0], linewidth = 2, where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(multisite_result[i,:]), 2)}")
+        
+        # plot the sum of the model
+        sum_multisite_model = np.sum(multisite_result, axis = 0)
+        axes[1,1].step(multisite_bins, sum_multisite_model.tolist() + [0], where = 'post', linewidth = 2, color = "red",  label = f"Total Model: {round(np.sum(sum_multisite_model), 2)}")
+        axes[1,1].set_title(r"Multisite Fit: $\Delta log(\mathcal{L})$", fontsize = font_s)
+        axes[1,1].set_xlabel("Multisite Discriminant", fontsize = font_s)
+        axes[1,1].set_ylabel("Counts", fontsize = font_s)
+        axes[1,1].set_xlim((-1.355, -1.335))
+        axes[1,1].set_ylim((0, 65))
+        
+        # plot the dataset and error bars
+        axes[1,1].errorbar(mids_multi, dataset_multisite, yerr = np.sqrt(dataset_multisite), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
+        axes[1,1].legend(frameon = False, fontsize = 11)
+
+        fig.tight_layout()
+        plt.savefig("../plots/asimov_study/real_mc/advanced/fitted_background_model.png")
+        plt.close()
+
+
+
+
 expected_signal = 101.2
 expected_backg  = [495.3, 0.93, 65.3, 38.5]
-# expected_backg  = [495.3, 0.93, None, None]
+# expected_backg  = [495.3, None, None, None]
 Ahab().run_analysis(expected_signal, expected_backg, False)
