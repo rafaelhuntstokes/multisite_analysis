@@ -232,6 +232,7 @@ def check_extraction_success():
 
     missing_ntuple   = [] # if the ntuple doesn't exist for a given run
     bad_ratds        = [] # files missing / corrupted / wrong number of events
+    missing_ratds    = []
     bad_runs         = [300000, 301140, 301148, 305479, 300121]
     # run in airplane mode
     RAT.DB.Get().SetAirplaneModeStatus(True)
@@ -240,6 +241,7 @@ def check_extraction_success():
     for irun in runlist:
         if irun in bad_runs:
             continue
+        print(irun)
         # open the ntuple for this run
         try:
             file_ntuple  = ROOT.TFile.Open(f"/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence/output_{irun}.root")
@@ -258,6 +260,7 @@ def check_extraction_success():
             # no extraction happened for this run
             print(f"No subruns found for {irun}!")
             bad_ratds.append(irun)
+            missing_ratds.append(irun)
             continue
         
         # find the total extracted number of events in the ratds subrun files
@@ -289,8 +292,87 @@ def check_extraction_success():
         print(irun)
 
     print(f"Problem with {len(bad_ratds)} runs.")
+
+    print("Runs with no ratds files present at all: ")
+    for irun in missing_ratds:
+        print(irun)
+    print("\n")
     print(f"Total events in ntuple: {total_num_ntuple}\nTotal events ratds: {total_num_ratds}")
+
+def check_analysis_success():
+    """
+    Function checks that the number of events per run in the multisite 
+    discriminant analysis files matches the number of events in the .ntuple
+    energy spectrum file.
+    
+    Returns a list of runs missing events / missing output files for 
+    re-running and bug checking.
+    """
+
+    runlist = np.loadtxt("../runlists/data_analysis.txt", dtype = int)
+
+    missing_ntuple   = [] # if the ntuple doesn't exist for a given run
+    bad_ratds        = [] # files missing / corrupted / wrong number of events
+    missing_ratds    = []
+    bad_runs         = [300000, 301140, 301148, 305479, 300121]
+    # run in airplane mode
+    RAT.DB.Get().SetAirplaneModeStatus(True)
+    total_num_ntuple = 0
+    total_num_ratds  = 0
+    for irun in runlist:
+        if irun in bad_runs:
+            continue
+        print(irun)
+        # open the ntuple for this run
+        try:
+            file_ntuple  = ROOT.TFile.Open(f"/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence/output_{irun}.root")
+            file_tree    = file_ntuple.Get("clean_4p5m")
+        except:
+            missing_ntuple.append(irun)
+            file_ntuple.Close()
+            continue
+
+        # find number of events inside ROI to compare to RATDS
+        num_evs_ntpl = file_tree.GetEntries("energy>=2.5&energy <= 5.0")
+        total_num_ntuple += num_evs_ntpl
         
+        # find the total extracted number of events in the ratds subrun files
+        num_evs_ratds = 0
+        try:
+            file = ROOT.TFile.Open(f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/processed_dataset/{irun}.root")
+            tree = file.Get("2p5_5p0")
+            num_evs_ratds += tree.GetEntries()
+        except:
+            print("Problem loading file: ", file)
+            bad_ratds.append(irun)
+            file.Close()
+            continue
+
+        file.Close()
+        file_ntuple.Close()
+
+        total_num_ratds += num_evs_ratds
+
+        print(f"Num in ntuple: {num_evs_ntpl}\nNum in dataset: {num_evs_ratds}")
+
+        if num_evs_ntpl != num_evs_ratds:
+            print(f"Mismatch in run: {irun}!")
+            print(num_evs_ntpl, num_evs_ratds)
+            bad_ratds.append(irun)
+            continue
+
+    print("Mismatch numbers: ")
+    for irun in bad_ratds:
+        print(irun)
+
+    print(f"Problem with {len(bad_ratds)} runs.")
+
+    print("Runs with no ratds files present at all: ")
+    for irun in missing_ratds:
+        print(irun)
+    print("\n")
+    print(f"Total events in ntuple: {total_num_ntuple}\nTotal events dataset: {total_num_ratds}")
+
 def delete_full_ratds():
     """
     Dangerous function! Assuming you have verified the extraction of ratds files
@@ -299,7 +381,7 @@ def delete_full_ratds():
     deletes the corresponding ratds files.
     """
 
-    runlist  = np.loadtxt("../runlists/subset_dir.txt", dtype = int)
+    runlist  = np.loadtxt("../runlists/batch4_2_missing.txt", dtype = int)
     bad_runs = [300000, 301140, 301148, 305479, 300121]
     
     for irun in runlist:
@@ -316,7 +398,7 @@ def delete_full_ratds():
             inFile1 = data_path + "/" + "Analysis20R_r0000"
         if irun >= 307613:
             inFile1 = data_path + "/" + "Analysis20_r0000"
-        inFileName = f"{inFile1}{irun}*.root"
+        inFileName = f"{inFile1}{irun}*.ntuple.root"
         ratds_flist = glob.glob(inFileName)
         print(ratds_flist)
         for isubrun in ratds_flist:
@@ -337,4 +419,5 @@ def delete_full_ratds():
 # run_list = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/runlists/directionality_list.txt"
 # check_runs(run_list, data_dir)
 # check_extraction_success()
-delete_full_ratds()
+check_analysis_success()
+# delete_full_ratds()
