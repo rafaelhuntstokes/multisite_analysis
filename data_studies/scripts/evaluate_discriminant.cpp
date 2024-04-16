@@ -165,7 +165,7 @@ double directionality_fitter(TVector3 solar_dir, RAT::DU::Point3D event_position
     return cos_theta;
 }
 
-void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::string input_fpath, std::string output_fpath){
+void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     /*
     Function loads in a run_by_run test .root ratds file and loops over all the events. 
     
@@ -177,15 +177,9 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     A run_by_run ntuple file is returned containing the [energy, position, discriminants] of each event and for each energy.
     */
 
-    // define ratds input file location and output TTree file locations
-    std::string input_fname;
-    if (run_number < 307613){
-        std::string input_fname  = input_fpath + "/Analysis20R_r0000" + std::to_string(run_number) + "*.root";
-    } else {
-        std::string input_fname  = input_fpath + "/Analysis20_r0000" + std::to_string(run_number) + "*.root";
-    }
-    
-    std::string output_fname = output_fpath + "/" + std::to_string(run_number) + ".root"; 
+    // define input and output paths
+    std::string input_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds/" + std::to_string(run_number) + "*.root";    
+    std::string output_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/processed_dataset/" + std::to_string(run_number) + ".root";
     
     // load the PDF files for each isotope
     std::string working_directory = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies";
@@ -193,35 +187,6 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     std::string pdf_Tl208_fname   = working_directory + "/run_by_run_pdf/full_analysis_Tl208/total.root";
     TFile *PDF_B8 = new TFile(pdf_B8_fname.c_str());
     TFile *PDF_Tl208 = new TFile(pdf_Tl208_fname.c_str());
-    // get the directionality histograms from the files (use B8 PDF only!)
-
-    /*
-    BE CAREFUL ! if you put in the wrong name of the histograms, dynamic_cast returns a null_ptr.
-    No error is reported until you try to access the histograms...
-    */                                             
-    // TH2D *dir_pdf_2p5_5p0    = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_5.0"));
-    // TH2D *dir_pdf_2p5_3p125  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_3.125"));
-    // TH2D *dir_pdf_3p125_3p75 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.125_3.75"));
-    // TH2D *dir_pdf_3p75_4p375 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.75_4.375"));
-    // TH2D *dir_pdf_4p375_5p0  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));
-    // TH2D *dir_pdf_5p0_plus   = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));//dynamic_cast<TH2D*>(PDF_B8->Get("directionality_5p0_plus"));
-    // if (dir_pdf_2p5_5p0 == false){
-        // std::cout << "Broken!" << std::endl;
-    // }
-
-    // get the multisite histograms from the files (for both isotopes!)
-    // TH1D *multi_pdf_B8_2p5_5p0       = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
-    // TH1D *multi_pdf_Tl208_2p5_5p0    = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
-    // TH1D *multi_pdf_B8_2p5_3p125     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.125"));
-    // TH1D *multi_pdf_Tl208_2p5_3p125  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.125"));
-    // TH1D *multi_pdf_B8_3p125_3p75    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.125_3.75"));
-    // TH1D *multi_pdf_Tl208_3p125_3p75 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.125_3.75"));
-    // TH1D *multi_pdf_B8_3p75_4p375    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_4.375"));
-    // TH1D *multi_pdf_Tl208_3p75_4p375 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.75_4.375"));
-    // TH1D *multi_pdf_B8_4p375_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0"));
-    // TH1D *multi_pdf_Tl208_4p375_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0"));
-    // TH1D *multi_pdf_B8_5p0_plus      = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0")); //dynamic_cast<TH1D*>(PDF_B8->Get("multi_5.0_plus"));
-    // TH1D *multi_pdf_Tl208_5p0_plus   = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0")); //dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_5.0_plus"));
 
     TH1D *multi_pdf_B8_2p5_5p0    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
     TH1D *multi_pdf_Tl208_2p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
@@ -239,92 +204,15 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     // create the output ntuple with an output TTree containing discriminants for each energy PDF
     TFile *output_file    = new TFile(output_fname.c_str(), "RECREATE");
 
-    // TTree *info_2p5_5p0    = new TTree("2p5_5p0", "2p5_5p0");
-    // TTree *info_2p5_3p125  = new TTree("2p5_3p125", "2p5_3p125");
-    // TTree *info_3p125_3p75 = new TTree("3p125_3p75", "3p125_3p75");
-    // TTree *info_3p75_4p375 = new TTree("3p75_4p375", "3p75_4p375");
-    // TTree *info_4p375_5p0  = new TTree("4p375_5p0", "4p375_5p0");
-    // TTree *info_5p0_plus   = new TTree("5p0_plus", "5p0_plus");
-    // TTree *info_1p25_3p0   = new TTree("1p25_3p0", "1p25_3p0");
     TTree *info_2p5_5p0 = new TTree("2p5_5p0", "2p5_5p0");
     TTree *info_2p5_3p0 = new TTree("2p5_3p0", "2p5_3p0");
     TTree *info_3p0_3p5 = new TTree("3p0_3p5", "3p0_3p5");
     TTree *info_3p5_4p0 = new TTree("3p5_4p0", "3p5_4p0");
     TTree *info_4p0_4p5 = new TTree("4p0_4p5", "4p0_4p5");
     TTree *info_4p5_5p0 = new TTree("4p5_5p0", "4p5_5p0");
+    
     // define the variables to fill branches with
     double energy, x, y, z, dlogL, fisher, IQR, cos_theta_sun, itr;
-    
-    // add the relevant branches to each TTRee
-    // info_2p5_5p0->Branch("energy", &energy);
-    // info_2p5_5p0->Branch("x", &x);
-    // info_2p5_5p0->Branch("y", &y);
-    // info_2p5_5p0->Branch("z", &z);
-    // info_2p5_5p0->Branch("itr", &itr);
-    // info_2p5_5p0->Branch("dlogL", &dlogL);
-    // info_2p5_5p0->Branch("fisher", &fisher);
-    // info_2p5_5p0->Branch("IQR", &IQR);
-    // info_2p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
-
-    // info_2p5_3p125->Branch("energy", &energy);
-    // info_2p5_3p125->Branch("x", &x);
-    // info_2p5_3p125->Branch("y", &y);
-    // info_2p5_3p125->Branch("z", &z);
-    // info_2p5_3p125->Branch("itr", &itr);
-    // info_2p5_3p125->Branch("dlogL", &dlogL);
-    // info_2p5_3p125->Branch("fisher", &fisher);
-    // info_2p5_3p125->Branch("IQR", &IQR);
-    // info_2p5_3p125->Branch("cos_theta_sun", &cos_theta_sun);
-
-    // info_3p125_3p75->Branch("energy", &energy);
-    // info_3p125_3p75->Branch("x", &x);
-    // info_3p125_3p75->Branch("y", &y);
-    // info_3p125_3p75->Branch("z", &z);
-    // info_3p125_3p75->Branch("itr", &itr);
-    // info_3p125_3p75->Branch("dlogL", &dlogL);
-    // info_3p125_3p75->Branch("fisher", &fisher);
-    // info_3p125_3p75->Branch("IQR", &IQR);
-    // info_3p125_3p75->Branch("cos_theta_sun", &cos_theta_sun);
-
-    // info_3p75_4p375->Branch("energy", &energy);
-    // info_3p75_4p375->Branch("x", &x);
-    // info_3p75_4p375->Branch("y", &y);
-    // info_3p75_4p375->Branch("z", &z);
-    // info_3p75_4p375->Branch("itr", &itr);
-    // info_3p75_4p375->Branch("dlogL", &dlogL);
-    // info_3p75_4p375->Branch("fisher", &fisher);
-    // info_3p75_4p375->Branch("IQR", &IQR);
-    // info_3p75_4p375->Branch("cos_theta_sun", &cos_theta_sun);
-
-    // info_4p375_5p0->Branch("energy", &energy);
-    // info_4p375_5p0->Branch("x", &x);
-    // info_4p375_5p0->Branch("y", &y);
-    // info_4p375_5p0->Branch("z", &z);
-    // info_4p375_5p0->Branch("itr", &itr);
-    // info_4p375_5p0->Branch("dlogL", &dlogL);
-    // info_4p375_5p0->Branch("fisher", &fisher);
-    // info_4p375_5p0->Branch("IQR", &IQR);
-    // info_4p375_5p0->Branch("cos_theta_sun", &cos_theta_sun);
-
-    // info_5p0_plus->Branch("energy", &energy);
-    // info_5p0_plus->Branch("x", &x);
-    // info_5p0_plus->Branch("y", &y);
-    // info_5p0_plus->Branch("z", &z);
-    // info_5p0_plus->Branch("itr", &itr);
-    // info_5p0_plus->Branch("dlogL", &dlogL);
-    // info_5p0_plus->Branch("fisher", &fisher);
-    // info_5p0_plus->Branch("IQR", &IQR);
-    // info_5p0_plus->Branch("cos_theta_sun", &cos_theta_sun);
-
-    // info_1p25_3p0->Branch("energy", &energy);
-    // info_1p25_3p0->Branch("itr", &itr);
-    // info_1p25_3p0->Branch("x", &x);
-    // info_1p25_3p0->Branch("y", &y);
-    // info_1p25_3p0->Branch("z", &z);
-    // info_1p25_3p0->Branch("dlogL", &dlogL);
-    // info_1p25_3p0->Branch("fisher", &fisher);
-    // info_1p25_3p0->Branch("IQR", &IQR);
-    // info_1p25_3p0->Branch("cos_theta_sun", &cos_theta_sun);
 
     info_2p5_5p0->Branch("energy", &energy);
     info_2p5_5p0->Branch("itr", &itr);
@@ -572,33 +460,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
             TH2D *pdf_dir;
             TH1D *pdf_B8_multi;
             TH1D *pdf_Tl208_multi;
-            // if (energy >= 2.5 and energy < 3.125){
-            //     pdf_dir         = dir_pdf_2p5_3p125;
-            //     pdf_B8_multi    = multi_pdf_B8_2p5_3p125;
-            //     pdf_Tl208_multi = multi_pdf_Tl208_2p5_3p125;  
-            // }
-            // if (energy >= 3.125 and energy < 3.75){
-            //     pdf_dir         = dir_pdf_3p125_3p75;
-            //     pdf_B8_multi    = multi_pdf_B8_3p125_3p75;
-            //     pdf_Tl208_multi = multi_pdf_Tl208_3p125_3p75;  
-            // }
-            // if (energy >= 3.75 and energy < 4.375){
-            //     pdf_dir         = dir_pdf_3p75_4p375;
-            //     pdf_B8_multi    = multi_pdf_B8_3p75_4p375;
-            //     pdf_Tl208_multi = multi_pdf_Tl208_3p75_4p375;  
-            // }
-            // if (energy >= 4.375 and energy < 5.0){
-            //     pdf_dir         = dir_pdf_4p375_5p0;
-            //     pdf_B8_multi    = multi_pdf_B8_4p375_5p0;
-            //     pdf_Tl208_multi = multi_pdf_Tl208_4p375_5p0;  
-            // }
-            // if (energy >= 5.0){
-            //     pdf_dir         = dir_pdf_5p0_plus;
-            //     pdf_B8_multi    = multi_pdf_B8_5p0_plus;
-            //     pdf_Tl208_multi = multi_pdf_Tl208_5p0_plus;  
-            // }
 
-            // changed here for the Bi214 study !! need to change back once this study is done ...
+            // changed here for the Bi214 study !! and changed back for full study ...
             if (energy >= 2.5 and energy < 3.0){
                 // includes the Bi214 tagged ROI and the normal binning
                 // pdf_dir         = dir_pdf_2p5_3p125;
@@ -621,7 +484,7 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
                 pdf_B8_multi    = multi_pdf_B8_4p0_4p5;
                 pdf_Tl208_multi = multi_pdf_Tl208_4p0_4p5;  
             }
-            if (energy >= 4.5 and energy < 5.0){
+            if (energy >= 4.5 and energy <= 5.0){
                 // includes case for E > 5 MeV solar candidate study ...
                 // pdf_dir         = dir_pdf_4p375_5p0;
                 pdf_B8_multi    = multi_pdf_B8_4p5_5p0;
@@ -666,42 +529,6 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
                 fisher        = 0; // not implemented yet
 
                 // fill the ntuples
-
-                // if (energy >= 2.5 and energy < 3.125){
-                //     info_2p5_3p125->Fill();
-                // }
-                // if (energy >= 3.125 and energy < 3.75){
-                //     info_3p125_3p75->Fill();
-                // }
-                // if (energy >= 3.75 and energy < 4.375){
-                //     info_3p75_4p375->Fill();
-                // }
-                // if (energy >= 4.375 and energy < 5.0){
-                //     info_4p375_5p0->Fill();
-                // }
-                // if (energy >= 5.0){
-                //     info_5p0_plus->Fill();
-                // }
-
-                // fill the ntuples
-                // if (energy >= 1.25 and energy < 3.0){
-                //     info_1p25_3p0->Fill();
-                // }
-                // if (energy >= 2.5 and energy < 3.125){
-                //     info_2p5_3p125->Fill();
-                // }
-                // if (energy >= 3.125 and energy < 3.75){
-                //     info_3p125_3p75->Fill();
-                // }
-                // if (energy >= 3.75 and energy < 4.375){
-                //     info_3p75_4p375->Fill();
-                // }
-                // if (energy >= 4.375 and energy < 5.0){
-                //     info_4p375_5p0->Fill();
-                // }
-                // if (energy >= 5.0){
-                //     info_5p0_plus->Fill();
-                // }
                 if (energy >= 2.5 and energy < 3.0){
                 info_2p5_3p0->Fill();
                 }
@@ -714,12 +541,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
                 if (energy >= 4.0 and energy < 4.5){
                     info_4p0_4p5->Fill();
                 }
-                if (energy >= 4.5 and energy < 5.0){
+                if (energy >= 4.5 and energy <= 5.0){
                     info_4p5_5p0->Fill();
                 }
             }
 
-            if (energy >= 2.5 and energy < 5.0){
+            if (energy >= 2.5 and energy <= 5.0){
                 // now repeat it using the full 2.5 --> 5.0 PDF
                 cos_theta_sun = 100;//directionality_fitter(solar_dir, event_position_recon, pmt_x, pmt_y, pmt_z, time_residuals, dir_pdf_2p5_5p0);
                 // only calculate multisite discriminants if cos_theta_sun fit succeeded
@@ -735,15 +562,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     }
 
     std::cout << "Writing results to file." << std::endl;
+    
     // finished loop over all events and TTrees are filled --> write them to the output file
-    // info_2p5_5p0->Write();
-    // info_2p5_3p125->Write();
-    // info_3p125_3p75->Write();
-    // info_3p75_4p375->Write();
-    // info_4p375_5p0->Write();
-    // info_5p0_plus->Write();
-    // info_1p25_3p0->Write();
-    // output_file->Close();
     output_file->cd();
     info_2p5_5p0->Write();
     info_2p5_3p0->Write();
@@ -752,12 +572,6 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::stri
     info_4p0_4p5->Write();
     info_4p5_5p0->Write();
     output_file->Close();
-
-    // calculate the deadtime
-    // std::cout << "num vetos: " << num_vetos << std::endl;
-    // std::cout << "Pileup Time: " << pileupTime * pow(10, -9) << " s." << std::endl;
-    // std::cout << "Lone Follower Time: " << loneFollowerTime * pow(10, -9) << " s." << std::endl;
-    // deadtime = (20 * num_vetos) + (pileupTime + loneFollowerTime) * pow(10, -9); // in seconds
 }
 
 int main(int argc, char* argv[]){
@@ -765,8 +579,6 @@ int main(int argc, char* argv[]){
     int run_number           = std::stoi(argv[1]);
     double fv_cut            = std::stod(argv[2]);
     double z_cut             = std::stod(argv[3]);
-    std::string input_fpath  = argv[4];
-    std::string output_fpath = argv[5];
 
     // find raw runtime of this run in seconds
     RAT::DB *db = RAT::DB::Get();
@@ -775,27 +587,7 @@ int main(int argc, char* argv[]){
     run.SetRunID(run_number);
     db->BeginOfRun(run);
     std::cout << "Run ID = " << run_number << std::endl;
-    // double start_day, start_sec, end_day, end_sec, deadtime;
-    // long long start_time, end_time, livetime;
-    // RAT::DBLinkPtr dblink = db->GetLink("RUN");
-    // start_day = dblink->GetD("start_day");
-    // start_sec = dblink->GetD("start_sec");
-    // end_day = dblink->GetD("stop_day");
-    // end_sec = dblink->GetD("stop_sec");
-    // start_time = start_day * 24 * 3600 + start_sec;
-    // end_time = end_day * 24 * 3600 + end_sec;
     
     // run the analysis!
-    evaluate_discriminants(run_number, fv_cut, z_cut, input_fpath, output_fpath);
-    
-    // calculate deadtime adjusted livetime
-    // livetime = end_time - start_time - deadtime;
-    // std::cout << "Deadtime adjusted livetime is: " << livetime << " s." << std::endl;
-
-    // // read out this livetime into a file
-    // std::ofstream flivetime;
-    // std::string fpath = output_fpath + "/livetimes/" + std::to_string(run_number) + ".txt";
-    // flivetime.open(fpath);
-    // flivetime << std::to_string(livetime);
-    // flivetime.close();
+    evaluate_discriminants(run_number, fv_cut, z_cut);
 }
