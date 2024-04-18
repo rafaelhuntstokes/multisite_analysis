@@ -101,7 +101,8 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     # arrays store the loglikelihood value for each assumed B8 number
     loglikelihood_array = np.zeros((3, len(signal_hypothesis)))
     normalisations      = np.zeros((3, len(signal_hypothesis), len(fixed_backgrounds) + 2))
-    
+    errors              = np.zeros((3, len(signal_hypothesis))) # single error for the Tl208 norm
+
     # loop over each assumed signal number and perform minimisation
     counter = 0
     for isig in signal_hypothesis:
@@ -120,12 +121,16 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
         normalisations[1, counter, :] = [isig] + multisite_result.x.tolist() + fixed_backgrounds
         normalisations[2, counter, :] = [isig] + energy_result.x.tolist() + fixed_backgrounds
 
+        errors[0, counter] = np.sqrt(np.diag((combined_result.hess_inv.todense())))
+        errors[1, counter] = np.sqrt(np.diag((multisite_result.hess_inv.todense())))
+        errors[2, counter] = np.sqrt(np.diag((energy_result.hess_inv.todense())))
+
         counter += 1
 
     # return the best normalisations
-    return loglikelihood_array, normalisations
+    return loglikelihood_array, normalisations, errors
 
-def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
+def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range):
         """
         Extract the energy and multisite PDFs for a given isotope.
         Only use events that fall within event selection cuts (e.g. FV cut).
@@ -226,7 +231,130 @@ def obtain_dataset():
 
     return energy_vals, multi_vals
 
-# first obtain the PDFs for each background
+def create_pdfs_and_datasets(analyse_real_data):
+    """
+    Extract information and create the binned PDFS for energy shape and multisite,
+    for each isotope of interest.
+    """
+    # we will create an Asimov dataset using the multisite and energy PDFs of every included normalisation
+    pdf_runlist    = np.loadtxt("../runlists/full_test.txt", dtype = int)
+    mc_path        = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
+    sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue" # signal path is always the same
+
+    # loop over the included normalisations
+
+    # create array containing the signal and background pdfs for multisite and energy
+    multisite_pdf_array = np.zeros((5, multisite_bins.size - 1))  # (number backgrounds + 1, number of bins)
+    energy_pdf_array    = np.zeros((5, energy_bins.size - 1))    # (number backgrounds + 1, number of bins)
+
+    # obtain the signal PDF
+    print("Obtaining signal PDF.")
+    sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", "B8_nue")
+
+    # add the signal pdfs as the first row in the pdfs arrays
+    multisite_pdf_array[0, :] = sig_multi_pdf
+    energy_pdf_array[0, :]    = sig_energy_pdf
+
+    # obtain background pdfs and add to subsequent rows
+    idx_counter = 1
+    for iname in range(len(backg_names)):
+        
+        print("Obtaining background pdf: ", backg_names[iname])
+
+        # we have an expected rate and want to include this normalisation in the Asimov dataset
+        backg_mc_path  = f"{mc_path}/full_analysis_{backg_names[iname]}"
+
+        # obtain the normalised PDFs for this background and add to the respective arrays
+        backg_energy_pdf, backg_multi_pdf   = obtain_pdf(backg_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", backg_names[iname])
+        multisite_pdf_array[idx_counter, :] = backg_multi_pdf
+        energy_pdf_array[idx_counter, :]    = backg_energy_pdf
+
+        # incremement idx counter ... not the same idx as the number of backg names!
+        idx_counter += 1
+
+    np.save("./energy_pdf_array.npy", energy_pdf_array)
+    np.save("./multisite_pdf_array.npy", multisite_pdf_array)
+
+    # create the dataset --> either by building an Asimov dataset, or using real data
+    if analyse_real_data == False:
+        normalisations_stretched = normalisations.copy() 
+        normalisations_stretched = normalisations_stretched[:, None]
+
+        print("Creating Asimov dataset from normalisation-scaled PDFs.")
+        dataset_energy    = normalisations_stretched * energy_pdf_array       # multiply every bin by corresponding normalisation
+        dataset_energy    = np.sum(dataset_energy, axis = 0)                  # remove the rows so axis = 0
+
+        dataset_multisite = normalisations_stretched * multisite_pdf_array    # multiply every bin by corresponding normalisation
+        dataset_multisite = np.sum(dataset_multisite, axis = 0)               # remove the rows so axis = 0
+        np.save("./energy_dataset_asimov.npy", dataset_energy)
+        np.save("./multisite_dataset_asimov.npy", dataset_multisite)
+    else:
+        # use real data
+        energy_vals, multisite_vals = obtain_dataset()
+        dataset_energy, _    = np.histogram(energy_vals, bins = energy_bins)
+        dataset_multisite, _ = np.histogram(multisite_vals, bins = multisite_bins)
+        np.save("./energy_dataset_real.npy", dataset_energy)
+        np.save("./multisite_dataset_real.npy", dataset_multisite)
+
+    return dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array
+
+def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, xlims, words, fit_error):
+    """
+    Create a subplot of the fitted model vs data. Only non-obvious input is words: 
+    
+    words = ["title", "xlabel"]
+    """
+
+    # create the 4 subplots showing relative contributions of each normalisation, the sum and the data
+    color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+
+    for i in range(len(normalisations)):
+
+        # plot each normalisation individually as a bar graph
+        col = next(color_cycle)
+
+        if col == '#d62728':
+            col = next(color_cycle)
+        ax.step(fit_bins, fit_result[i, :].tolist() + [0], where = 'post', linewidth = 2, color=col, label = f"{labels[i]}| Num: {round(np.sum(fit_result[i,:]), 2)}")
+
+    # plot the sum of the model
+    sum_fit_model = np.sum(fit_result, axis = 0)
+    ax.step(fit_bins, sum_fit_model.tolist() + [0], where = 'post', color = "red", linewidth = 2, label = f"Total Model: {round(np.sum(sum_fit_model), 2)}")
+    
+    # find the chi2 / NDF
+    # chi2 = (data - sum_fit_model)**2 / 2*np.sqrt(sum_fit_model)**2
+
+    # remove zero bins
+    # idx_include = np.where(sum_fit_model >= 1)
+    # NDF  = len(data) - 1 # number of bins - number of pdfs (1)
+    # print(NDF)
+    ax.plot([], [], linestyle = "", label = r"$\delta _{^{208}Tl} \pm$" + f" {fit_error}")
+
+    ax.set_title(words[0], fontsize = font_s)
+    ax.set_xlabel(words[1], fontsize = font_s)
+    ax.set_ylabel("Counts", fontsize = font_s)
+    ax.set_ylim((0, 65))
+    ax.set_xlim(xlims)
+
+    # plot the dataset and error bars
+    ax.errorbar(data_mids, data, yerr = np.sqrt(data), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
+    ax.legend(frameon = False, fontsize = 11)
+    ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)  # Hide x-axis ticks and labels
+    
+    # Plot residuals
+    residuals   = data - sum_fit_model
+    residual_ax = ax.inset_axes([0, -0.2, 1, 0.2])
+    residual_ax.axhline(y = 0, color = "black", linewidth = 1, linestyle = "dotted")
+    residual_ax.scatter(data_mids, residuals, marker='o', color='black')
+    residual_ax.set_xlabel(words[1], fontsize = font_s)
+    residual_ax.set_ylabel(r"Data - Model", fontsize = font_s)
+    residual_ax.set_xlim(xlims)
+    residual_ax.set_ylim((-15, 15))
+    yticks = residual_ax.get_yticks()
+    yticks = np.arange(-15, 20, 5)
+    yticks[-1] = 0  # Replace the last tick label with 0
+    residual_ax.set_yticks(yticks)
+
 # binning for the energy and multisite discriminant PDFs
 energy_bins       = np.arange(2.5, 5.1, 0.05)
 multisite_bins    = np.arange(-1.375, -1.325, 0.0005)
@@ -236,87 +364,29 @@ mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
 signal_hypothesis = np.arange(0, 201, 1)
 analyse_real_data = True
+generate_datasets = False
 expected_signal   = 101.2
 expected_backg    = [495.3, 0.93, 65.3, 38.5]
 normalisations    = np.array([expected_signal] + expected_backg)
 
-"""
-Extract information and create the binned PDFS for energy shape and multisite,
-for each isotope of interest.
-"""
-# we will create an Asimov dataset using the multisite and energy PDFs of every included normalisation
-# pdf_runlist    = np.loadtxt("../runlists/full_test.txt", dtype = int)
-# mc_path        = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
-# sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue" # signal path is always the same
-
-# loop over the included normalisations
-
-# create array containing the signal and background pdfs for multisite and energy
-# multisite_pdf_array = np.zeros((5, multisite_bins.size - 1))  # (number backgrounds + 1, number of bins)
-# energy_pdf_array    = np.zeros((5, energy_bins.size - 1))    # (number backgrounds + 1, number of bins)
-
-# obtain the signal PDF
-# print("Obtaining signal PDF.")
-# sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", "B8_nue")
-
-# add the signal pdfs as the first row in the pdfs arrays
-# multisite_pdf_array[0, :] = sig_multi_pdf
-# energy_pdf_array[0, :]    = sig_energy_pdf
-
-# obtain background pdfs and add to subsequent rows
-# idx_counter = 1
-# for iname in range(len(backg_names)):
-    
-    # print("Obtaining background pdf: ", backg_names[iname])
-    # we have an expected rate and want to include this normalisation in the Asimov dataset
-    # backg_mc_path  = f"{mc_path}/full_analysis_{backg_names[iname]}"
-
-    # obtain the normalised PDFs for this background and add to the respective arrays
-    # backg_energy_pdf, backg_multi_pdf   = obtain_pdf(backg_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", backg_names[iname])
-    # multisite_pdf_array[idx_counter, :] = backg_multi_pdf
-    # energy_pdf_array[idx_counter, :]    = backg_energy_pdf
-
-    # incremement idx counter ... not the same idx as the number of backg names!
-    # idx_counter += 1
-
-# np.save("./energy_pdf_array.npy", energy_pdf_array)
-# np.save("./multisite_pdf_array.npy", multisite_pdf_array)
-energy_pdf_array    = np.load("./energy_pdf_array.npy")
-multisite_pdf_array = np.load("./multisite_pdf_array.npy")
-
-# create the dataset --> either by building an Asimov dataset, or using real data
-# if analyse_real_data == False:
-#     normalisations_stretched = normalisations.copy() 
-#     normalisations_stretched = normalisations_stretched[:, None]
-
-#     print("Creating Asimov dataset from normalisation-scaled PDFs.")
-#     dataset_energy    = normalisations_stretched * energy_pdf_array       # multiply every bin by corresponding normalisation
-#     dataset_energy    = np.sum(dataset_energy, axis = 0)                  # remove the rows so axis = 0
-
-#     dataset_multisite = normalisations_stretched * multisite_pdf_array    # multiply every bin by corresponding normalisation
-#     dataset_multisite = np.sum(dataset_multisite, axis = 0)               # remove the rows so axis = 0
-# else:
-#     # use real data
-#     energy_vals, multisite_vals = obtain_dataset()
-#     dataset_energy, _    = np.histogram(energy_vals, bins = energy_bins)
-#     dataset_multisite, _ = np.histogram(multisite_vals, bins = multisite_bins)
-
-# np.save("./energy_dataset_asimov.npy", dataset_energy)
-# np.save("./multisite_dataset_asimov.npy", dataset_multisite)
-# np.save("./energy_dataset_real.npy", dataset_energy)
-# np.save("./multisite_dataset_real.npy", dataset_multisite)
-
-if analyse_real_data == False:
-    dataset_energy    = np.load("./energy_dataset_asimov.npy")
-    dataset_multisite = np.load("./multisite_dataset_asimov.npy")
-    plot_name         = "asimov"
+# can we load a pre-made pdf and data array or need to create from MC and ROOT files?
+if generate_datasets == True:
+    dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array = create_pdfs_and_datasets(analyse_real_data)
 else:
-    dataset_energy    = np.load("./energy_dataset_real.npy")
-    dataset_multisite = np.load("./multisite_dataset_real.npy")
-    plot_name         = "real"
+    energy_pdf_array    = np.load("./energy_pdf_array.npy")
+    multisite_pdf_array = np.load("./multisite_pdf_array.npy")
+
+    if analyse_real_data == False:
+        dataset_energy    = np.load("./energy_dataset_asimov.npy")
+        dataset_multisite = np.load("./multisite_dataset_asimov.npy")
+        plot_name         = "asimov"
+    else:
+        dataset_energy    = np.load("./energy_dataset_real.npy")
+        dataset_multisite = np.load("./multisite_dataset_real.npy")
+        plot_name         = "real"
 
 # now, whatever data we have, perform the profile likelihood scan
-profile_ll, norms = profile_likelihood_scan(expected_backg[1:], expected_backg[0], dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array)
+profile_ll, norms, errors = profile_likelihood_scan(expected_backg[1:], expected_backg[0], dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array)
 
 profile_ll[0, :] = rescale_ll(profile_ll[0, :])
 profile_ll[1, :] = rescale_ll(profile_ll[1, :])
@@ -373,6 +443,11 @@ norms_combined = norms[0, minimum_idx[0], :]
 norms_multi    = norms[1, minimum_idx[1], :]
 norms_energy   = norms[2, minimum_idx[2], :]
 
+# get the errors on the fitted norm of the Tl208
+error_combined = errors[0, minimum_idx[0]]
+error_multi    = errors[1, minimum_idx[1]]
+error_energy   = errors[2, minimum_idx[2]]
+
 # create the model out of the scaled PDFs
 combined_energy_result    = norms_combined[:, None] * energy_pdf_array
 combined_multisite_result = norms_combined[:, None] * multisite_pdf_array
@@ -381,96 +456,42 @@ multisite_result          = norms_multi[:, None]    * multisite_pdf_array
 
 fig, axes = plt.subplots(nrows = 2, ncols = 2, figsize = (15, 15))
 font_s    = 14
- # create the 4 subplots showing relative contributions of each normalisation, the sum and the data
-color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+# create the 4 subplots showing relative contributions of each normalisation, the sum and the data
+count = 0
+for i in range(2):
+    for j in range(2):
+        ax = axes[i,j]
 
-for i in range(len(normalisations)):
+        if j == 0:
+            data      = dataset_energy
+            fit_bins  = energy_bins
+            fit_error = error_combined
+            data_mids = mids_energy
+            xlims     = (2.5, 5.0)
+             
+            if i == 0:
+                fit_result = combined_energy_result
+                words      = [r"Energy Fit: Combined $\Delta log(\mathcal{L})$", "Reconstructed Energy (MeV)"]
+            else:
+                fit_result = energy_result
+                words      = [r"Energy Fit", "Reconstructed Energy (MeV)"]
+        else:
+            data      = dataset_multisite
+            fit_bins  = multisite_bins
+            data_mids = mids_multi
+            xlims     = (-1.355, -1.335) 
+            
+            if i == 0:
+                fit_result = combined_multisite_result
+                fit_error = error_multi
+                words      = [r"Multisite Fit: Combined $\Delta log(\mathcal{L})$", "Multisite Discriminant"]
+            else:
+                fit_result = multisite_result
+                fit_error = error_energy
+                words      = [r"Multisite Fit", "Multisite Discriminant"]
 
-    # plot each normalisation individually as a bar graph
-    col = next(color_cycle)
-
-    if col == '#d62728':
-        col = next(color_cycle)
-    axes[0,0].step(energy_bins, combined_energy_result[i, :].tolist() + [0], where = 'post', linewidth = 2, color=col, label = f"{labels[i]}| Num: {round(np.sum(combined_energy_result[i,:]), 2)}")
-
-# plot the sum of the model
-sum_combined_energy_model = np.sum(combined_energy_result, axis = 0)
-axes[0,0].step(energy_bins, sum_combined_energy_model.tolist() + [0], where = 'post', color = "red", linewidth = 2, label = f"Total Model: {round(np.sum(sum_combined_energy_model), 2)}")
-axes[0,0].set_title(r"Energy Fit: Combined $\Delta log(\mathcal{L})$", fontsize = font_s)
-axes[0,0].set_xlabel("Reconstructed Energy (MeV)", fontsize = font_s)
-axes[0,0].set_ylabel("Counts", fontsize = font_s)
-axes[0,0].set_ylim((0, 65))
-axes[0,0].set_xlim((2.5, 5.0))
-
-# plot the dataset and error bars
-axes[0,0].errorbar(mids_energy, dataset_energy, yerr = np.sqrt(dataset_energy), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
-axes[0,0].legend(frameon = False, fontsize = 11)
-
-color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
-for i in range(len(normalisations)):
-
-    # plot each normalisation individually as a bar graph
-    col = next(color_cycle)
-    if col == '#d62728':
-        col = next(color_cycle)
-    axes[0,1].step(multisite_bins, combined_multisite_result[i, :].tolist() + [0], linewidth = 2, where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(combined_multisite_result[i,:]), 2)}")
-
-# plot the sum of the model
-sum_combined_multisite_model = np.sum(combined_multisite_result, axis = 0)
-axes[0,1].step(multisite_bins, sum_combined_multisite_model.tolist() + [0], where = 'post', linewidth = 2, color = "red", label = f"Total Model: {round(np.sum(sum_combined_multisite_model), 2)}")
-axes[0,1].set_title(r"Multisite Fit: Combined $\Delta log(\mathcal{L})$", fontsize = font_s)
-axes[0,1].set_xlabel("Multisite Discriminant", fontsize = font_s)
-axes[0,1].set_ylabel("Counts", fontsize = font_s)
-axes[0,1].set_xlim((-1.355, -1.335))
-axes[0,1].set_ylim((0, 65))
-
-# plot the dataset and error bars
-axes[0,1].errorbar(mids_multi, dataset_multisite, yerr = np.sqrt(dataset_multisite), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
-axes[0,1].legend(frameon = False, fontsize = 11)
-
-color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
-for i in range(len(normalisations)):
-
-    # plot each normalisation individually as a bar graph
-    col = next(color_cycle)
-    if col == '#d62728':
-        col = next(color_cycle)
-    axes[1,0].step(energy_bins, energy_result[i, :].tolist() + [0], linewidth = 2, where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(energy_result[i,:]), 2)}")
-
-# plot the sum of the model
-sum_energy_model = np.sum(energy_result, axis = 0)
-axes[1,0].step(energy_bins, sum_energy_model.tolist() + [0], where = 'post',  linewidth = 2, color = "red", label = f"Total Model: {round(np.sum(sum_energy_model), 2)}")
-axes[1,0].set_title(r"Energy Fit: $\Delta log(\mathcal{L})$", fontsize = font_s)
-axes[1,0].set_xlabel("Reconstructed Energy (MeV)", fontsize = font_s)
-axes[1,0].set_ylabel("Counts", fontsize = font_s)
-axes[1,0].set_ylim((0, 65))
-axes[1,0].set_xlim((2.5, 5.0))
-
-# plot the dataset and error bars
-axes[1,0].errorbar(mids_energy, dataset_energy, yerr = np.sqrt(dataset_energy), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
-axes[1,0].legend(frameon = False, fontsize = 11)
-
-color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
-for i in range(len(normalisations)):
-
-    # plot each normalisation individually as a bar graph
-    col = next(color_cycle)
-    if col == '#d62728':
-        col = next(color_cycle)
-    axes[1,1].step(multisite_bins, multisite_result[i, :].tolist() + [0], linewidth = 2, where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(multisite_result[i,:]), 2)}")
-
-# plot the sum of the model
-sum_multisite_model = np.sum(multisite_result, axis = 0)
-axes[1,1].step(multisite_bins, sum_multisite_model.tolist() + [0], where = 'post', linewidth = 2, color = "red",  label = f"Total Model: {round(np.sum(sum_multisite_model), 2)}")
-axes[1,1].set_title(r"Multisite Fit: $\Delta log(\mathcal{L})$", fontsize = font_s)
-axes[1,1].set_xlabel("Multisite Discriminant", fontsize = font_s)
-axes[1,1].set_ylabel("Counts", fontsize = font_s)
-axes[1,1].set_xlim((-1.355, -1.335))
-axes[1,1].set_ylim((0, 65))
-
-# plot the dataset and error bars
-axes[1,1].errorbar(mids_multi, dataset_multisite, yerr = np.sqrt(dataset_multisite), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data")
-axes[1,1].legend(frameon = False, fontsize = 11)
+        
+        create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, xlims, words, fit_error)
 
 fig.tight_layout()
 plt.savefig(f"../plots/asimov_study/real_mc/advanced/fitted_background_model_{plot_name}.png")
