@@ -116,7 +116,7 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
         loglikelihood_array[0, counter] = combined_result.fun
         loglikelihood_array[1, counter] = multisite_result.fun
         loglikelihood_array[2, counter] = energy_result.fun
-
+        
         normalisations[0, counter, :] = [isig] + combined_result.x.tolist() + fixed_backgrounds
         normalisations[1, counter, :] = [isig] + multisite_result.x.tolist() + fixed_backgrounds
         normalisations[2, counter, :] = [isig] + energy_result.x.tolist() + fixed_backgrounds
@@ -130,7 +130,7 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     # return the best normalisations
     return loglikelihood_array, normalisations, errors
 
-def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range):
+def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
         """
         Extract the energy and multisite PDFs for a given isotope.
         Only use events that fall within event selection cuts (e.g. FV cut).
@@ -250,7 +250,7 @@ def create_pdfs_and_datasets(analyse_real_data):
     # obtain the signal PDF
     print("Obtaining signal PDF.")
     sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", "B8_nue")
-
+    print(sig_energy_pdf)
     # add the signal pdfs as the first row in the pdfs arrays
     multisite_pdf_array[0, :] = sig_multi_pdf
     energy_pdf_array[0, :]    = sig_energy_pdf
@@ -295,7 +295,6 @@ def create_pdfs_and_datasets(analyse_real_data):
         dataset_multisite, _ = np.histogram(multisite_vals, bins = multisite_bins)
         np.save("./energy_dataset_real.npy", dataset_energy)
         np.save("./multisite_dataset_real.npy", dataset_multisite)
-
     return dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array
 
 def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, xlims, words, fit_error):
@@ -333,7 +332,7 @@ def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, 
     ax.set_title(words[0], fontsize = font_s)
     ax.set_xlabel(words[1], fontsize = font_s)
     ax.set_ylabel("Counts", fontsize = font_s)
-    ax.set_ylim((0, 65))
+    # ax.set_ylim((0, 65))
     ax.set_xlim(xlims)
 
     # plot the dataset and error bars
@@ -355,24 +354,186 @@ def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, 
     yticks[-1] = 0  # Replace the last tick label with 0
     residual_ax.set_yticks(yticks)
 
+def calculate_uncertainty(profile_ll):
+    """
+    Function returns the 1 sigma confidence intervals on the minimum of profile LL
+    fit.
+    """
+    
+    # find idx of point on every log-likelihood curve closes in value to 1
+    distance_to_interval = np.abs(profile_ll - 1) # absolute value of the difference
+    closest_to_interval  = np.argmin(distance_to_interval, axis = 1) # find first intercept with 1 sigma level
+
+    # create a masked array and remove the first intercept
+    masked_1sig_full = np.ma.masked_array(distance_to_interval, mask = False)
+
+    # mask out the closest interval in each row
+    masked_1sig_full.mask[0, closest_to_interval[0]] = True
+    masked_1sig_full.mask[1, closest_to_interval[1]] = True
+    masked_1sig_full.mask[2, closest_to_interval[2]] = True
+
+    # find second intercept
+    second_closest = np.argmin(masked_1sig_full, axis = 1)
+
+    # find minimum LL values as variables to save typing
+    combined_min   = signal_hypothesis[np.argmin(profile_ll[0,:])]
+    combined_upper = abs(combined_min - signal_hypothesis[second_closest[0]]) 
+    combined_lower = abs(combined_min - signal_hypothesis[closest_to_interval[0]])
+    multi_min      = signal_hypothesis[np.argmin(profile_ll[1,:])]
+    multi_upper    = abs(multi_min - signal_hypothesis[second_closest[1]]) 
+    multi_lower    = abs(multi_min - signal_hypothesis[closest_to_interval[1]])
+    energy_min     = signal_hypothesis[np.argmin(profile_ll[2,:])]
+    energy_upper   = abs(energy_min - signal_hypothesis[second_closest[2]]) 
+    energy_lower   = abs(energy_min - signal_hypothesis[closest_to_interval[2]])
+
+    return [combined_min, combined_upper, combined_lower], [multi_min, multi_upper, multi_lower], [energy_min, energy_upper, energy_lower]
+
+def evaluate_bias():
+    """
+    Function uses poisson-fluctuated asimov dataset to evaluate the bias in the
+    fitting framework itself. The bias is the difference between the fitted
+    minimum of profile LL and the true asimov value.
+    """
+
+    # load the asimov dataset (assuming it exists already)
+    asimov_dataset_energy    = np.load("./energy_dataset_asimov.npy")
+    asimov_dataset_multisite = np.load("./multisite_dataset_asimov.npy")
+
+    # run the analysis on N poisson fluctuated datasets
+    # bias_combined  = []
+    # bias_multisite = []
+    # bias_energy    = []
+    # pull_combined  = []
+    # pull_multisite = []
+    # pull_energy    = []
+    # for i in range(10000):
+    #     if i % 500 == 0:
+    #         print(i)
+    #     fluctuated_energy    = np.random.poisson(asimov_dataset_energy)
+    #     fluctuated_multisite = np.random.poisson(asimov_dataset_multisite)
+
+    #     profile_ll, norms, errors = profile_likelihood_scan(expected_backg[1:], expected_backg[0], fluctuated_energy, fluctuated_multisite, energy_pdf_array, multisite_pdf_array)
+
+    #     # find the minimum of the ll functions and see how far from true value it is
+    #     minimum_idx   = np.argmin(profile_ll, axis = 1)
+    #     min_combined  = signal_hypothesis[minimum_idx[0]]
+    #     min_multisite = signal_hypothesis[minimum_idx[1]]
+    #     min_energy    = signal_hypothesis[minimum_idx[2]]
+
+    #     bias_combined.append( (min_combined - expected_signal) / expected_signal )
+    #     bias_multisite.append( (min_multisite - expected_signal) / expected_signal )
+    #     bias_energy.append( (min_energy - expected_signal) / expected_signal )
+
+    #     # evaluate the pull of the distribution
+    #     combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
+
+    #     if min_combined < expected_signal:
+    #         if min_combined < 20:
+    #             print(min_combined, combined_error[1])#
+    #             plt.plot(signal_hypothesis, profile_ll[0, :])
+    #             plt.savefig("../plots/asimov_study/real_mc/advanced/fked_result.png")
+    #             plt.close()
+    #         pull_combined.append(( min_combined - expected_signal ) / combined_error[1] )
+    #     else:
+    #         pull_combined.append(( min_combined - expected_signal ) / combined_error[2] )
+        
+    #     if min_multisite < expected_signal:
+    #         # print(min_multisite)
+    #         pull_multisite.append(( min_multisite - expected_signal ) / multisite_error[1] )
+    #     else:
+    #         pull_multisite.append(( min_multisite - expected_signal ) / multisite_error[2] )
+
+    #     if min_energy < expected_signal:
+    #         # print(min_energy)
+    #         pull_energy.append(( min_energy - expected_signal ) / energy_error[1] )
+    #     else:
+    #         pull_energy.append(( min_energy - expected_signal ) / energy_error[2] )
+
+    # np.save("./bias_combined.npy", bias_combined)
+    # np.save("./bias_multisite.npy", bias_multisite)
+    # np.save("./bias_energy.npy", bias_energy)
+    # np.save("./pull_combined.npy", pull_combined)
+    # np.save("./pull_multisite.npy", pull_multisite)
+    # np.save("./pull_energy.npy", pull_energy)
+    bias_combined  = np.load("./bias_combined.npy") 
+    bias_multisite = np.load("./bias_multisite.npy")
+    bias_energy    = np.load("./bias_energy.npy")
+    pull_combined  = np.load("./pull_combined.npy") 
+    pull_multisite = np.load("./pull_multisite.npy")
+    pull_energy    = np.load("./pull_energy.npy")
+
+    # find the mean and std of each bias distribution
+    mean_combined  = np.mean(bias_combined)
+    std_combined   = np.std(bias_combined)
+    mean_multisite = np.mean(bias_multisite)
+    std_multisite  = np.std(bias_multisite)
+    mean_energy    = np.mean(bias_energy)
+    std_energy     = np.std(bias_energy)
+
+    binning = np.arange(-100/ expected_signal, 100/ expected_signal, 2/ expected_signal)
+    plt.figure(figsize = (12,8))
+    plt.hist(bias_combined, bins = binning, color = "black", histtype = "step",  linewidth = 2)
+    plt.hist(bias_multisite, bins = binning, color = "green", histtype = "step", linewidth = 2)
+    plt.hist(bias_energy, bins = binning, color = "orange", histtype = "step", linewidth = 2)
+
+    # for nice labels
+    plt.plot([], [], color = "black", label = rf"Combined | $\mu$: {mean_combined:.3g}, $\sigma$: {std_combined:.3g}", linewidth = 2)
+    plt.plot([], [], color = "green", label = rf"Multisite | $\mu$: {mean_multisite:.3g}, $\sigma$: {std_multisite:.3g}", linewidth = 2)
+    plt.plot([], [], color = "orange", label = rf"Energy | $\mu$: {mean_energy:.3g}, $\sigma$: {std_energy:.3g}", linewidth = 2)
+
+    plt.xlabel(r"$\frac{Fit - Expected}{Expected}$", fontsize = font_s)
+    plt.xlim((-1, 1))
+    plt.ylabel("Counts", fontsize = font_s)
+    plt.legend(fontsize = font_s, frameon=False)
+    plt.savefig("../plots/asimov_study/real_mc/advanced/bias.png")
+    plt.close()
+
+    plt.figure(figsize = (12, 8))
+    binning = np.arange(-1, 1, 3/ expected_signal)
+    # find the mean and std of each bias distribution
+    mean_combined  = np.mean(pull_combined[(pull_combined >= -1 and pull_combined <= 1)])
+    std_combined   = np.std(pull_combined[(pull_combined >= -1 and pull_combined <= 1)])
+    mean_multisite = np.mean(pull_multisite[(pull_multisite >= -1 and pull_multisite <= 1)])
+    std_multisite  = np.std(pull_multisite[(pull_multisite >= -1 and pull_multisite <= 1)])
+    mean_energy    = np.mean(pull_energy[(pull_energy >= -1 and pull_energy <= 1)])
+    std_energy     = np.std(pull_energy[(pull_energy >= -1 and pull_energy <= 1)])
+
+    plt.plot([], [], color = "black", label = rf"Combined | $\mu$: {mean_combined:.3g}, $\sigma$: {std_combined:.3g}", linewidth = 2)
+    plt.plot([], [], color = "green", label = rf"Multisite | $\mu$: {mean_multisite:.3g}, $\sigma$: {std_multisite:.3g}", linewidth = 2)
+    plt.plot([], [], color = "orange", label = rf"Energy | $\mu$: {mean_energy:.3g}, $\sigma$: {std_energy:.3g}", linewidth = 2)
+
+    plt.hist(pull_combined, bins = binning, color = "black", histtype = "step", linewidth = 2)
+    plt.hist(pull_multisite, bins = binning, color = "green", histtype = "step", linewidth = 2)
+    plt.hist(pull_energy, bins = binning, color = "orange",  histtype = "step", linewidth = 2)
+    plt.legend(frameon = False, fontsize = font_s)
+    plt.savefig("../plots/asimov_study/real_mc/advanced/pull.png")
+    plt.close()
+
 # binning for the energy and multisite discriminant PDFs
 energy_bins       = np.arange(2.5, 5.1, 0.05)
 multisite_bins    = np.arange(-1.375, -1.325, 0.0005)
-backg_names       = ["Tl208", "Tl210", "Bi212", "Bi214"] 
+backg_names       = ["Tl208", "Tl210", "BiPo212", "BiPo214"] 
 labels            = ["B8"] + backg_names
 mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
-signal_hypothesis = np.arange(0, 201, 1)
+signal_hypothesis = np.arange(0, 200, 1)
 analyse_real_data = True
 generate_datasets = False
+eval_bias         = True
 expected_signal   = 101.2
 expected_backg    = [495.3, 0.93, 65.3, 38.5]
 normalisations    = np.array([expected_signal] + expected_backg)
 
 # can we load a pre-made pdf and data array or need to create from MC and ROOT files?
 if generate_datasets == True:
+    print("Generating PDFs and datasets.")
     dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array = create_pdfs_and_datasets(analyse_real_data)
+    if analyse_real_data == True:
+        plot_name = "real"
+    else:
+        plot_name = "asimov"
 else:
+    print("loading the already - computed PDF arrays...")
     energy_pdf_array    = np.load("./energy_pdf_array.npy")
     multisite_pdf_array = np.load("./multisite_pdf_array.npy")
 
@@ -381,6 +542,7 @@ else:
         dataset_multisite = np.load("./multisite_dataset_asimov.npy")
         plot_name         = "asimov"
     else:
+        print("loading real datasets")
         dataset_energy    = np.load("./energy_dataset_real.npy")
         dataset_multisite = np.load("./multisite_dataset_real.npy")
         plot_name         = "real"
@@ -393,38 +555,13 @@ profile_ll[1, :] = rescale_ll(profile_ll[1, :])
 profile_ll[2, :] = rescale_ll(profile_ll[2, :])
 
 # find 1 sigma frequentist confidence interval #
-        
-# find idx of point on every log-likelihood curve closes in value to 1
-distance_to_interval = np.abs(profile_ll - 1) # absolute value of the difference
-closest_to_interval  = np.argmin(distance_to_interval, axis = 1) # find first intercept with 1 sigma level
-
-# create a masked array and remove the first intercept
-masked_1sig_full = np.ma.masked_array(distance_to_interval, mask = False)
-
-# mask out the closest interval in each row
-masked_1sig_full.mask[0, closest_to_interval[0]] = True
-masked_1sig_full.mask[1, closest_to_interval[1]] = True
-masked_1sig_full.mask[2, closest_to_interval[2]] = True
-
-# find second intercept
-second_closest = np.argmin(masked_1sig_full, axis = 1)
-
-# find minimum LL values as variables to save typing
-combined_min   = signal_hypothesis[np.argmin(profile_ll[0,:])]
-combined_upper = abs(combined_min - signal_hypothesis[second_closest[0]]) 
-combined_lower = abs(combined_min - signal_hypothesis[closest_to_interval[0]])
-multi_min      = signal_hypothesis[np.argmin(profile_ll[1,:])]
-multi_upper    = abs(multi_min - signal_hypothesis[second_closest[1]]) 
-multi_lower    = abs(multi_min - signal_hypothesis[closest_to_interval[1]])
-energy_min     = signal_hypothesis[np.argmin(profile_ll[2,:])]
-energy_upper   = abs(energy_min - signal_hypothesis[second_closest[2]]) 
-energy_lower   = abs(energy_min - signal_hypothesis[closest_to_interval[2]])
+combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
 
 # create a plot of these
 plt.title("Profile Log-Likelihood Scan")
-plt.plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${round(energy_min, 1)}^{{+{round(energy_upper, 1)}}}_{{-{round(energy_lower, 1)}}}$")
-plt.plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${round(multi_min, 1)}^{{+{round(multi_upper, 1)}}}_{{-{round(multi_lower, 1)}}}$")
-plt.plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${round(combined_min, 1)}^{{+{round(combined_upper, 1)}}}_{{-{round(combined_lower, 1)}}}$")
+plt.plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$")
+plt.plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$")
+plt.plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$")
 plt.axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
 plt.legend()
 plt.xlabel("Signal Hypothesis")
@@ -496,6 +633,4 @@ for i in range(2):
 fig.tight_layout()
 plt.savefig(f"../plots/asimov_study/real_mc/advanced/fitted_background_model_{plot_name}.png")
 plt.close()
-
-
-
+# evaluate_bias()
