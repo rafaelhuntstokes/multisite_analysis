@@ -107,11 +107,11 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     counter = 0
     for isig in signal_hypothesis:
 
-        energy_result    = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-4, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, energy_dataset, energy_pdfs))
-        multisite_result = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-4, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, multisite_dataset, multisite_pdfs))
+        energy_result    = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-5, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, energy_dataset, energy_pdfs))
+        multisite_result = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-5, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, multisite_dataset, multisite_pdfs))
 
         # use minimizer to get combined LL result
-        combined_result  = scipy.optimize.minimize(evaluate_combined_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-4, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs))
+        combined_result  = scipy.optimize.minimize(evaluate_combined_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-5, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs))
 
         loglikelihood_array[0, counter] = combined_result.fun
         loglikelihood_array[1, counter] = multisite_result.fun
@@ -210,7 +210,7 @@ def rescale_ll(ll):
 
     return ll 
 
-def obtain_dataset():
+def obtain_dataset(energy_range):
 
     run_list = np.loadtxt("../../data_studies/runlists/quiet_period.txt", dtype = int)
 
@@ -220,18 +220,19 @@ def obtain_dataset():
     for irun in run_list:
 
         file = ROOT.TFile.Open(f"../../data_studies/extracted_data/full_analysis/processed_dataset/{irun}.root")
-        ntuple = file.Get("2p5_5p0")
+        ntuple = file.Get(f"{energy_range}")
 
         for ientry in ntuple:
             energy_vals.append(ientry.energy)
             multi_vals.append(ientry.dlogL)
+            print(ientry.dlogL)
 
         count += 1
         print(count)
 
     return energy_vals, multi_vals
 
-def create_pdfs_and_datasets(analyse_real_data):
+def create_pdfs_and_datasets(analyse_real_data, energy_string):
     """
     Extract information and create the binned PDFS for energy shape and multisite,
     for each isotope of interest.
@@ -249,7 +250,7 @@ def create_pdfs_and_datasets(analyse_real_data):
 
     # obtain the signal PDF
     print("Obtaining signal PDF.")
-    sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", "B8_nue")
+    sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue")
     print(sig_energy_pdf)
     # add the signal pdfs as the first row in the pdfs arrays
     multisite_pdf_array[0, :] = sig_multi_pdf
@@ -265,15 +266,15 @@ def create_pdfs_and_datasets(analyse_real_data):
         backg_mc_path  = f"{mc_path}/full_analysis_{backg_names[iname]}"
 
         # obtain the normalised PDFs for this background and add to the respective arrays
-        backg_energy_pdf, backg_multi_pdf   = obtain_pdf(backg_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, "2p5_5p0", backg_names[iname])
+        backg_energy_pdf, backg_multi_pdf   = obtain_pdf(backg_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, backg_names[iname])
         multisite_pdf_array[idx_counter, :] = backg_multi_pdf
         energy_pdf_array[idx_counter, :]    = backg_energy_pdf
 
         # incremement idx counter ... not the same idx as the number of backg names!
         idx_counter += 1
 
-    np.save("./energy_pdf_array.npy", energy_pdf_array)
-    np.save("./multisite_pdf_array.npy", multisite_pdf_array)
+    np.save(f"./energy_pdf_array_{energy_string}.npy", energy_pdf_array)
+    np.save(f"./multisite_pdf_array_{energy_string}.npy", multisite_pdf_array)
 
     # create the dataset --> either by building an Asimov dataset, or using real data
     if analyse_real_data == False:
@@ -286,15 +287,15 @@ def create_pdfs_and_datasets(analyse_real_data):
 
         dataset_multisite = normalisations_stretched * multisite_pdf_array    # multiply every bin by corresponding normalisation
         dataset_multisite = np.sum(dataset_multisite, axis = 0)               # remove the rows so axis = 0
-        np.save("./energy_dataset_asimov.npy", dataset_energy)
-        np.save("./multisite_dataset_asimov.npy", dataset_multisite)
+        np.save(f"./energy_dataset_asimov_{energy_string}.npy", dataset_energy)
+        np.save(f"./multisite_dataset_asimov_{energy_string}.npy", dataset_multisite)
     else:
         # use real data
-        energy_vals, multisite_vals = obtain_dataset()
+        energy_vals, multisite_vals = obtain_dataset(energy_string)
         dataset_energy, _    = np.histogram(energy_vals, bins = energy_bins)
         dataset_multisite, _ = np.histogram(multisite_vals, bins = multisite_bins)
-        np.save("./energy_dataset_real.npy", dataset_energy)
-        np.save("./multisite_dataset_real.npy", dataset_multisite)
+        np.save(f"./energy_dataset_real_{energy_string}.npy", dataset_energy)
+        np.save(f"./multisite_dataset_real_{energy_string}.npy", dataset_multisite)
     return dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array
 
 def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, xlims, words, fit_error):
@@ -510,42 +511,60 @@ def evaluate_bias():
     plt.close()
 
 # binning for the energy and multisite discriminant PDFs
-energy_bins       = np.arange(2.5, 5.1, 0.05)
-multisite_bins    = np.arange(-1.375, -1.325, 0.0005)
+energy_string     = "4p5_5p0"
+energy_bins       = np.arange(2.5, 5.05, 0.05)
+if energy_string == "2p5_5p0":
+    multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
+    fixed_backg_weights = [1, 1, 1] # Tl210, BiPo212, BiPo214
+elif energy_string == "2p5_3p0":
+    multisite_bins    = np.linspace(0.58, 0.63, 100)
+    fixed_backg_weights = [0.135, 0.969, 0.986]
+elif energy_string == "3p0_3p5":
+    multisite_bins    = np.linspace(-1.60, -1.555, 100)
+    fixed_backg_weights = [0.245, 0.031, 0.013]
+elif energy_string == "3p5_4p0":
+    multisite_bins    = np.linspace(-1.95, -1.90, 100)
+    fixed_backg_weights = [0.345, 0.0, 0.001]
+elif energy_string == "4p0_4p5":
+    multisite_bins    = np.linspace(-1.074, -1.038, 100)
+    fixed_backg_weights = [0.222, 0.0, 0.0]
+elif energy_string == "4p5_5p0":
+    multisite_bins    = np.linspace(1.780, 1.81, 25)
+    fixed_backg_weights = [0.222, 0.0, 0.0]
 backg_names       = ["Tl208", "Tl210", "BiPo212", "BiPo214"] 
 labels            = ["B8"] + backg_names
 mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
 signal_hypothesis = np.arange(0, 200, 1)
 analyse_real_data = True
-generate_datasets = False
+generate_datasets = True
 eval_bias         = True
 expected_signal   = 101.2
-expected_backg    = [495.3, 0.93, 65.3, 38.5]
+expected_backg    = [495.3, 0.93 * fixed_backg_weights[0], 65.3 * fixed_backg_weights[1], 38.5 * fixed_backg_weights[2]] # Tl208, Tl210, BiPo212, BiPo214
 normalisations    = np.array([expected_signal] + expected_backg)
 
 # can we load a pre-made pdf and data array or need to create from MC and ROOT files?
 if generate_datasets == True:
     print("Generating PDFs and datasets.")
-    dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array = create_pdfs_and_datasets(analyse_real_data)
+    dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array = create_pdfs_and_datasets(analyse_real_data, energy_string)
     if analyse_real_data == True:
-        plot_name = "real"
+        plot_name = f"real_{energy_string}"
     else:
-        plot_name = "asimov"
+        plot_name = f"asimov_{energy_string}"
 else:
     print("loading the already - computed PDF arrays...")
-    energy_pdf_array    = np.load("./energy_pdf_array.npy")
-    multisite_pdf_array = np.load("./multisite_pdf_array.npy")
+    energy_pdf_array    = np.load(f"./energy_pdf_array_{energy_string}.npy")
+    multisite_pdf_array = np.load(f"./multisite_pdf_array_{energy_string}.npy")
 
     if analyse_real_data == False:
-        dataset_energy    = np.load("./energy_dataset_asimov.npy")
-        dataset_multisite = np.load("./multisite_dataset_asimov.npy")
-        plot_name         = "asimov"
+        dataset_energy    = np.load(f"./energy_dataset_asimov_{energy_string}.npy")
+        dataset_multisite = np.load(f"./multisite_dataset_asimov_{energy_string}.npy")
+        plot_name         = f"asimov_{energy_string}"
     else:
         print("loading real datasets")
-        dataset_energy    = np.load("./energy_dataset_real.npy")
-        dataset_multisite = np.load("./multisite_dataset_real.npy")
-        plot_name         = "real"
+        dataset_energy    = np.load(f"./energy_dataset_real_{energy_string}.npy")
+        dataset_multisite = np.load(f"./multisite_dataset_real_{energy_string}.npy")
+        plot_name         = f"real_{energy_string}"
 
 # now, whatever data we have, perform the profile likelihood scan
 profile_ll, norms, errors = profile_likelihood_scan(expected_backg[1:], expected_backg[0], dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array)
@@ -615,8 +634,9 @@ for i in range(2):
         else:
             data      = dataset_multisite
             fit_bins  = multisite_bins
+            print(fit_bins)
             data_mids = mids_multi
-            xlims     = (-1.355, -1.335) 
+            xlims     = (multisite_bins[0], multisite_bins[-1]) 
             
             if i == 0:
                 fit_result = combined_multisite_result
