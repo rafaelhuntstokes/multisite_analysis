@@ -4,6 +4,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import scipy.optimize
 import ROOT
+from flux_conversion import *
+from prettytable import PrettyTable
 
 """
 Simple profile likelihood fitter using unconstrained Tl208 number, and fixed
@@ -102,31 +104,61 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     loglikelihood_array = np.zeros((3, len(signal_hypothesis)))
     normalisations      = np.zeros((3, len(signal_hypothesis), len(fixed_backgrounds) + 2))
     errors              = np.zeros((3, len(signal_hypothesis))) # single error for the Tl208 norm
-
+    background_vals     = np.arange(400, 801, 1)
     # loop over each assumed signal number and perform minimisation
     counter = 0
+    profile_ll = []
     for isig in signal_hypothesis:
 
-        energy_result    = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-5, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, energy_dataset, energy_pdfs))
-        multisite_result = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-5, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, multisite_dataset, multisite_pdfs))
+        intermediate_values = np.zeros((3, len(background_vals)))
+        # energy_result    = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, tol = 10, method = "L-BFGS-B", options = {"xtol": 10}, bounds = [(0, 1000)], args = (fixed_backgrounds, isig, energy_dataset, energy_pdfs))
+        # multisite_result = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, tol = 10, method = "L-BFGS-B", options = {"xtol": 10}, bounds = [(0, 1000)], args = (fixed_backgrounds, isig, multisite_dataset, multisite_pdfs))
 
         # use minimizer to get combined LL result
-        combined_result  = scipy.optimize.minimize(evaluate_combined_loglikelihood, x0 = initial_guess, method = "L-BFGS-B", tol = 1e-5, bounds = [(0, np.inf)], args = (fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs))
-
-        loglikelihood_array[0, counter] = combined_result.fun
-        loglikelihood_array[1, counter] = multisite_result.fun
-        loglikelihood_array[2, counter] = energy_result.fun
+        # combined_result  = scipy.optimize.minimize(evaluate_combined_loglikelihood, x0 = initial_guess, tol = 1e-4, method = "L-BFGS-B", options = {"xtol": 100}, bounds = [(0, 1000)], args = (fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs))
         
-        normalisations[0, counter, :] = [isig] + combined_result.x.tolist() + fixed_backgrounds
-        normalisations[1, counter, :] = [isig] + multisite_result.x.tolist() + fixed_backgrounds
-        normalisations[2, counter, :] = [isig] + energy_result.x.tolist() + fixed_backgrounds
 
-        errors[0, counter] = np.sqrt(np.diag((combined_result.hess_inv.todense())))
-        errors[1, counter] = np.sqrt(np.diag((multisite_result.hess_inv.todense())))
-        errors[2, counter] = np.sqrt(np.diag((energy_result.hess_inv.todense())))
+        # grid search over the Tl208 normalisations
+        for iback in range(len(background_vals)):
+            intermediate_values[0, iback] = evaluate_loglikelihood(background_vals[iback], fixed_backgrounds, isig, energy_dataset, energy_pdfs)
+            
+            intermediate_values[1, iback] = evaluate_loglikelihood(background_vals[iback], fixed_backgrounds, isig, multisite_dataset, multisite_pdfs)
+            intermediate_values[2, iback] = evaluate_combined_loglikelihood(background_vals[iback], fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs)
+
+        plt.figure()
+        plt.plot(background_vals, rescale_ll(intermediate_values[0, :]), color = "orange", label = f"Energy | Min: {background_vals[np.argmin(intermediate_values[0, :])]}")
+        plt.plot(background_vals, rescale_ll(intermediate_values[1, :]), color = "green", label = f"Multisite | Min: {background_vals[np.argmin(intermediate_values[1, :])]}")
+        plt.plot(background_vals, rescale_ll(intermediate_values[2, :]), color = "black", label = f"Combined | Min: {background_vals[np.argmin(intermediate_values[2, :])]}")
+        plt.axvline(background_vals[np.argmin(intermediate_values[0, :])], color = "orange", linestyle = "dotted")
+        plt.axvline(background_vals[np.argmin(intermediate_values[1, :])], color = "green", linestyle = "dotted")
+        plt.axvline(background_vals[np.argmin(intermediate_values[2, :])], color = "black", linestyle = "dotted")
+        plt.legend()
+        plt.xlabel("Tl208 Norm")
+        plt.ylim((0, 3))
+        plt.title(f"B8 Norm: {isig}")
+        plt.savefig(f"../plots/asimov_study/real_mc/advanced/grid_search_likelihoods/{isig}.png")
+        plt.close()
+        profile_ll.append(np.min(intermediate_values[0, :]))
+        loglikelihood_array[0, counter] = np.min(intermediate_values[2, :])#combined_result.fun
+        loglikelihood_array[1, counter] = np.min(intermediate_values[1, :])#multisite_result.fun
+        loglikelihood_array[2, counter] = np.min(intermediate_values[0, :])#energy_result.fun
+        
+        # normalisations[0, counter, :] = [isig] + combined_result.x.tolist() + fixed_backgrounds
+        # normalisations[1, counter, :] = [isig] + multisite_result.x.tolist() + fixed_backgrounds
+        # normalisations[2, counter, :] = [isig] + energy_result.x.tolist() + fixed_backgrounds
+        normalisations[0, counter, :] = [isig] + [background_vals[np.argmin(intermediate_values[2, :])]] + fixed_backgrounds
+        normalisations[1, counter, :] = [isig] + [background_vals[np.argmin(intermediate_values[1, :])]] + fixed_backgrounds
+        normalisations[2, counter, :] = [isig] + [background_vals[np.argmin(intermediate_values[0, :])]] + fixed_backgrounds
+
+        errors[0, counter] = 0#np.sqrt(np.diag((combined_result.hess_inv.todense())))
+        errors[1, counter] = 0#np.sqrt(np.diag((multisite_result.hess_inv.todense())))
+        errors[2, counter] = 0#np.sqrt(np.diag((energy_result.hess_inv.todense())))
 
         counter += 1
-
+    plt.plot(signal_hypothesis, rescale_ll(profile_ll))
+    plt.ylim((0, 3))
+    plt.savefig("../plots/asimov_study/real_mc/advanced/grid_search_likelihoods/profile.png")
+    plt.close()
     # return the best normalisations
     return loglikelihood_array, normalisations, errors
 
@@ -511,7 +543,7 @@ def evaluate_bias():
     plt.close()
 
 # binning for the energy and multisite discriminant PDFs
-energy_string     = "4p5_5p0"
+energy_string     = "2p5_5p0"
 energy_bins       = np.arange(2.5, 5.05, 0.05)
 if energy_string == "2p5_5p0":
     multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
@@ -536,10 +568,10 @@ labels            = ["B8"] + backg_names
 mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
 signal_hypothesis = np.arange(0, 200, 1)
-analyse_real_data = True
-generate_datasets = True
+analyse_real_data = False
+generate_datasets = False
 eval_bias         = True
-expected_signal   = 101.2
+expected_signal   = 66.3#101.2
 expected_backg    = [495.3, 0.93 * fixed_backg_weights[0], 65.3 * fixed_backg_weights[1], 38.5 * fixed_backg_weights[2]] # Tl208, Tl210, BiPo212, BiPo214
 normalisations    = np.array([expected_signal] + expected_backg)
 
@@ -653,4 +685,15 @@ for i in range(2):
 fig.tight_layout()
 plt.savefig(f"../plots/asimov_study/real_mc/advanced/fitted_background_model_{plot_name}.png")
 plt.close()
+
+# convert the fitted B8 number to a flux
+energy_flux, energy_positive_err, energy_negative_err       = extract_flux(norms_energy[0], energy_error[1], energy_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
+combined_flux, combined_positive_err, combined_negative_err = extract_flux(norms_combined[0], combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
+
+flux_table = np.array([["Fit Method", "Fitted Flux", "+ve Err", "-ve Err"], ["Energy", f"{energy_flux:.3g}", f"+{energy_positive_err:.3g}", f"-{energy_negative_err:.3g}"], ["Combined", f"{combined_flux:.3g}", f"+{combined_positive_err:.3g}", f"-{combined_negative_err:.3g}"]])
+tab = PrettyTable()
+tab.field_names = flux_table[0, :]
+for i in range(flux_table.shape[0] - 1):
+    tab.add_row(flux_table[i+1])
+print(tab)
 # evaluate_bias()
