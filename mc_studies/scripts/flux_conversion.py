@@ -121,7 +121,7 @@ cl = 29979245800 ## cm/s
 me = 0.511  # MeV c^-2 : Electron Mass
 
 # LAB+PPO characteristics
-rho_LAB = 0.860    # g/cm^-3 : LAB density
+rho_LAB = 0.8626    # g/cm^-3 : LAB density
 m_weight = 235.0   # g/mol : LAB molecular weight
 av_radius = 600.53 # cm : AV radius
 
@@ -172,7 +172,7 @@ atO = 8
 # Molecules, fraction by mass, and cocktail content (99.9% LAB, 0.056% PPO for 0.5g/L in the PF)
 molecules = [16*atC+26*atH,17*atC+28*atH,18*atC+30*atH,19*atC+32*atH,15*atC+24*atH,15*atC+11*atH+atN+atO]
 content = [0.204, 0.432, 0.334, 0.018, 0.012, 1]
-cocktail = [ 0.999425, 0.999425, 0.999425, 0.999425, 0.999425, 0.000575]
+cocktail = [ 0.99747, 0.99747, 0.99747, 0.99747, 0.99747, 0.00253]
 
 n_cocktail = 0
 
@@ -181,9 +181,9 @@ for i in range(len(molecules)):
 
 print(' = ', n_cocktail)
 
-n_cocktail = 0.999425 * 131 + 0.000575 * 116
+n_cocktail = 0.99747 * 131 + 0.00253 * 116
 print(' = ', n_cocktail)
-mass = 365e6 # g
+mass = 7.84e8 # g
 
 # Finally calculate the number of electron targets inside the AV volume
 n_target = n_cocktail * nA * mass * (1./m_weight)
@@ -203,37 +203,37 @@ pdfB = [0,0.0000086,0.000034,0.0000752,0.0001314,0.0002019,0.0002859,0.0003825,0
 energy = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3,3.1,3.2,3.3,3.4,3.5,3.6,3.7,3.8,3.9,4,4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.8,4.9,5,5.1,5.2,5.3,5.4,5.5,5.6,5.7,5.8,5.9,6,6.1,6.2,6.3,6.4,6.5,6.6,6.7,6.8,6.9,7,7.1,7.2,7.3,7.4,7.5,7.6,7.7,7.8,7.9,8,8.1,8.2,8.3,8.4,8.5,8.6,8.7,8.8,8.9,9,9.1,9.2,9.3,9.4,9.5,9.6,9.7,9.8,9.9,10,10.1,10.2,10.3,10.4,10.5,10.6,10.7,10.8,10.9,11,11.1,11.2,11.3,11.4,11.5,11.6,11.7,11.8,11.9,12,12.1,12.2,12.3,12.4,12.5,12.6,12.7,12.8,12.9,13,13.1,13.2,13.3,13.4,13.5,13.6,13.7,13.8,13.9,14,14.1,14.2,14.3,14.4,14.5,14.6,14.7,14.8,14.9,15,15.1,15.2,15.3,15.4,15.5]
 pdf = [0.000214,0.000763,0.001513,0.002507,0.003763,0.005239,0.006914,0.008772,0.010798,0.012976,0.015292,0.017735,0.020292,0.02295,0.025699,0.028528,0.031427,0.034386,0.037395,0.040447,0.043531,0.04664,0.049767,0.052903,0.056041,0.059174,0.062296,0.065401,0.068482,0.071533,0.074549,0.077526,0.080456,0.083337,0.086164,0.088931,0.091635,0.094272,0.096839,0.099331,0.101746,0.104081,0.106332,0.108497,0.110574,0.11256,0.114452,0.11625,0.117951,0.119553,0.121056,0.122457,0.123755,0.124951,0.126042,0.127028,0.127909,0.128683,0.129351,0.129914,0.130369,0.130719,0.130963,0.131101,0.131134,0.131063,0.130888,0.130611,0.130232,0.129752,0.129174,0.128497,0.127724,0.126856,0.125895,0.124843,0.123701,0.122471,0.121156,0.119758,0.118278,0.11672,0.115086,0.113378,0.111599,0.109751,0.107838,0.105862,0.103827,0.101734,0.099587,0.09739,0.095146,0.092857,0.090528,0.088161,0.085759,0.083328,0.080869,0.078387,0.075885,0.073368,0.070837,0.068298,0.065754,0.063209,0.060667,0.058131,0.055606,0.053095,0.050602,0.048131,0.045686,0.043271,0.040889,0.038545,0.036242,0.033984,0.031774,0.029616,0.027515,0.025472,0.023493,0.021579,0.019735,0.017963,0.016266,0.014647,0.01311,0.011655,0.010286,0.009005,0.007813,0.006712,0.005703,0.004787,0.003965,0.003237,0.002602,0.002058,0.001602,0.001228,0.000929,0.000694,0.000513,0.000376,0.000273,0.000196,0.00014,0.000099,0.000069,0.000047,0.000032,0.000021,0.000014]
 
-plt.plot(energyB, pdfB, linestyle='-', color="blue", label="J. Bahcall (1996)") 
-plt.plot(energy, pdf, linestyle='-', color="orange", label="W. T. Winter (2006)") 
+# plt.plot(energyB, pdfB, linestyle='-', color="blue", label="J. Bahcall (1996)") 
+# plt.plot(energy, pdf, linestyle='-', color="orange", label="W. T. Winter (2006)") 
 
-plt.gca().minorticks_on()
-plt.gca().set_xlabel('Energy (MeV)',fontproperties=prop_font,size=32, x=1, ha='right')
-plt.gca().set_ylabel(r'$\mathdefault{S}_{\nu}$',fontproperties=prop_font,size=32, y=1, ha='right')
-plt.gca().get_xaxis().set_tick_params(which='both',direction='in', width=1)
-plt.gca().get_yaxis().set_tick_params(which='both',direction='in', width=1)
-plt.gca().yaxis.set_ticks_position('both')
-plt.gca().xaxis.set_ticks_position('both')
-plt.gca().get_yaxis().get_offset_text().set_fontsize(32)
-plt.gca().get_yaxis().get_offset_text().set_fontproperties(prop_font)
+# plt.gca().minorticks_on()
+# plt.gca().set_xlabel('Energy (MeV)',fontproperties=prop_font,size=32, x=1, ha='right')
+# plt.gca().set_ylabel(r'$\mathdefault{S}_{\nu}$',fontproperties=prop_font,size=32, y=1, ha='right')
+# plt.gca().get_xaxis().set_tick_params(which='both',direction='in', width=1)
+# plt.gca().get_yaxis().set_tick_params(which='both',direction='in', width=1)
+# plt.gca().yaxis.set_ticks_position('both')
+# plt.gca().xaxis.set_ticks_position('both')
+# plt.gca().get_yaxis().get_offset_text().set_fontsize(32)
+# plt.gca().get_yaxis().get_offset_text().set_fontproperties(prop_font)
 #f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
 #g = lambda rrr,pos : "${}$".format(f._formatSciNotation('%1.10e' % x))
 #plt.gca().yaxis.set_major_formatter(mticker.FormatStrFormatter('%.2e'))
 #plt.gca().yaxis.major.formatter._useMathText = True
 
-plt.gca().yaxis.major.formatter._useMathText = True
+# plt.gca().yaxis.major.formatter._useMathText = True
 
 for label in plt.gca().get_xticklabels():
   label.set_fontproperties(prop_font)
 for label in plt.gca().get_yticklabels():
   label.set_fontproperties(prop_font)
 
-handles, labels = plt.gca().get_legend_handles_labels()
+# handles, labels = plt.gca().get_legend_handles_labels()
 # remove the errorbars
 #handles = [h[0] for h in handles]
 
-plt.gca().legend(handles, labels,loc='upper right', fancybox=False, numpoints=1,prop=prop_font,frameon=False)
+# plt.gca().legend(handles, labels,loc='upper right', fancybox=False, numpoints=1,prop=prop_font,frameon=False)
 
-plt.show()
+# plt.show()
 #exit()
 
 # Normalize energy spectrum
@@ -356,13 +356,13 @@ print(R)
 ############################################################################
 ############################################################################
 
-frac = [0.147994 ,0.209213,0.277836]
+frac = [0.138, 0.138] # weighted average of nu e and nu mu efficiencies
 
-rrr = [4.5,5,5.5]
+rrr = [4.5, 4.5]     # FV in m
 
-nfit = [26.4149,30.8787,43.9561]
-nfiterrp = [0.28483111,0.264076074,0.220220562] #%
-nfiterrn = [0.243795301,0.229732324,0.198173972]
+nfit = [134, 55]
+nfiterrp = [0.209, 0.309] # positive and negative % error on fitted B8%
+nfiterrn = [0.224, 0.273]
 
 print('\n')
 print(frac)
@@ -377,11 +377,15 @@ result = []
 resulterrp = []
 resulterrn = []
 for i in range(len(rrr)):
+  # livetime in ... hours
+  print("Appending: ", nfit[i], nfiterrp[i], nfiterrn[i])
+  result.append(nfit[i] / frac[i] / 3496.8 /60.0 /60.0 / integral / n_target)
+  resulterrp.append(((nfit[i]*(1.0+nfiterrp[i])) / frac[i] / 3496.8 /60.0 /60.0 / integral / n_target) - result[-1])
 
-  result.append(nfit[i] / frac[i] / 2209.27 /60.0 /60.0 / integral / n_target)
-  resulterrp.append((nfit[i]*(1.0+nfiterrp[i])) / frac[i] / 2209.27 /60.0 /60.0 / integral / n_target)
-  resulterrn.append((nfit[i]*(1.0-nfiterrn[i])) / frac[i] / 2209.27 /60.0 /60.0 / integral / n_target)
+  resulterrn.append(result[-1] - ((nfit[i]*(1.0-nfiterrn[i])) / frac[i] / 3496.8 /60.0 /60.0 / integral / n_target))
 
+  print(nfit[i]*(1.0+nfiterrp[i]))
+  print(nfit[i]*(1.0-nfiterrn[i]))
 print(result)
 
 print(resulterrp)
@@ -391,19 +395,28 @@ print(resulterrn)
 
 
 asymmetric_error = [resulterrn, resulterrp]
+print(asymmetric_error)
 rrrr = [4.4,5,5.6]
-horiz_line_data = np.array([5.66e6 for i in range(len(rrrr))])
-plt.plot(rrrr, horiz_line_data, linestyle='--', color="grey", label="Observed flux, from Vitagliano et al. (2020)",linewidth=3) 
+# horiz_line_data = np.array([5.66e6 for i in range(len(rrrr))])
+best_measured_flux = 5.66e6
+# plt.plot(rrrr, horiz_line_data, linestyle='--', color="grey", label="Observed flux, from Vitagliano et al. (2020)",linewidth=3) 
+# print(asymmetric_error[0], asymmetric_error[1])
+# plt.errorbar(rrr[0], result[0], yerr=[[asymmetric_error[0][0]], [asymmetric_error[1][0]]], fmt='o', label="Fitted flux, Energy", color="orange", markersize=10)
+# plt.errorbar(rrr[0], result[1], yerr=[[asymmetric_error[0][1]], [asymmetric_error[1][1]]], fmt='o', label="Fitted flux, Combined", alpha = 0.5, color="black", markersize=10)
 
-plt.errorbar(rrr, result, yerr=asymmetric_error, fmt='o', label="Fitted flux, this analysis", color="red", markersize=10)
+# create a better plot for me
+plt.axhline(best_measured_flux, linestyle = "dashed", color = "grey", label = "Observed flux, from Vitagliano et al. (2020)")
+plt.errorbar(["Energy"], result[0], yerr = [[asymmetric_error[0][0]], [asymmetric_error[1][0]]], fmt='o', label="Fitted flux, Energy", color="orange", markersize=10)
+plt.errorbar(["Combined"], result[1], yerr = [[asymmetric_error[0][1]], [asymmetric_error[1][1]]], fmt='o', label="Fitted flux, Combined", color="black", markersize=10)
 
 handles, labels = plt.gca().get_legend_handles_labels()
 # remove the errorbars
 #handles = [h[0] for h in handles]
 lgnd = plt.legend(handles,labels,loc='upper right', fancybox=False, numpoints=1, prop=prop_font,frameon=False)
 
-plt.gca().minorticks_on()
-plt.gca().set_xlabel("Fiducial volume radius (m)",fontproperties=prop_font,size=32, x=1, ha='right')
+# plt.gca().minorticks_on()
+# plt.gca().set_xlabel("Fiducial volume radius (m)",fontproperties=prop_font,size=32, x=1, ha='right')
+plt.ylabel("Fit Method")
 plt.gca().set_ylabel("$^{\mathdefault{8}}$B solar neutrino flux (cm$^{-\mathdefault{2}}$ s$^{-\mathdefault{1}}$)",fontproperties=prop_font,size=32, y=1, ha='right')
 plt.gca().get_xaxis().set_tick_params(which='both',direction='in', width=1)
 plt.gca().get_yaxis().set_tick_params(which='both',direction='in', width=1)
@@ -421,7 +434,7 @@ for label in plt.gca().get_xticklabels():
 for label in plt.gca().get_yticklabels():
   label.set_fontproperties(prop_font)
 
-plt.xlim([4.4, 5.6])
-plt.ylim([6e5, 1.8e7])
+# plt.xlim([4.4, 5.6])
+# plt.ylim([6e5, 1.8e7])
 
 plt.show()
