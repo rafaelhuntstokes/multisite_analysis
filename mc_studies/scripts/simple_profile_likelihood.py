@@ -16,16 +16,23 @@ def evaluate_loglikelihood(variable_background, fixed_backgrounds, signal_number
     """
     Function evaluates the extended binned log-likelihood value for a given
     number of signal events (B8).
+
+    variable_background: normalisation of Tl208, float
+    fixed_backgrounds:   array of floats [Tl210, Bi212, Bi214]
+    signal_number:       norm of B8, float
+    dataset:             binned counts in either energy or multisite of the dataset, array of floats length nbins
+    pdfs:                array of binned PDFs in either multisite or energy (same binning as dataset)
+                         contains the pdf for EACH normalisation -- > dimensions (n_pdfs, nbins)
     """
 
-    # create array of total normalisations
+    # create array of total normalisations --> [B8 norm, Tl208 Norm, Tl210 norm, Bi212 Norm, Bi214 norm]
     normalisations   = np.array([signal_number] + [variable_background] + fixed_backgrounds)
 
-    # we allow the total normalisation to float so see what it is
-    norm_sum         = np.sum(normalisations) # common to both 
+    # we allow the total normalisation to float
+    norm_sum         = np.sum(normalisations)   # sum the normalisations as the first term in eqn
 
     # have to do this inside the function for scipy.optimize.minimize doesn't
-    # respect the reshaping being done outside its own calls ... 
+    # respect the reshaping being done outside its own calls ...
     normalisations   = normalisations[:, None]
 
     """
@@ -45,8 +52,7 @@ def evaluate_loglikelihood(variable_background, fixed_backgrounds, signal_number
 
     # convert to 2 * -log(L)
     loglikelihood    = 2 * (norm_sum - scaled_log)
-
-
+    # print(f"\nnorm sum: {norm_sum} | log: {log.shape} | normalisations: {normalisations} | | dataset shape: {dataset.shape} | pdf_shape: {pdfs.shape} | pdf_norms_shape: {pdf_norm.shape}\n")
     return loglikelihood
 
 def evaluate_combined_loglikelihood(variable_background, fixed_backgrounds, signal_number, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs):
@@ -162,6 +168,72 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     # return the best normalisations
     return loglikelihood_array, normalisations, errors
 
+def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs):
+    """
+    Function performs a 2D grid search to exhaustively explore the LL space. The
+    minimum Tl208 norm for each B8 norm is returned and plotted.
+    
+    This is to compare with that found using the profile likelihood method. 
+    
+    The overall minimum and confidence interval (in 2D) is plotted.
+    """
+
+    l_space_energy    = np.zeros((len(signal_hypothesis), len(background_hypothesis)))
+    l_space_multisite = np.zeros((len(signal_hypothesis), len(background_hypothesis)))
+    l_space_combined  = np.zeros((len(signal_hypothesis), len(background_hypothesis)))
+
+    for isig in range(len(signal_hypothesis)):
+        for iback in range(len(background_hypothesis)):
+
+            # evaluate log-likelihood with each of the 3 methods
+            l_space_energy[isig, iback]    = evaluate_loglikelihood(background_hypothesis[iback], fixed_backgrounds, signal_hypothesis[isig], energy_dataset, energy_pdfs)
+            l_space_multisite[isig, iback] = evaluate_loglikelihood(background_hypothesis[iback], fixed_backgrounds, signal_hypothesis[isig], multisite_dataset, multisite_pdfs)
+            l_space_combined[isig, iback]  = evaluate_combined_loglikelihood(background_hypothesis[iback], fixed_backgrounds, signal_hypothesis[isig], energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs)
+
+    # rescale the LL
+    l_space_energy = rescale_ll(l_space_energy)
+    l_space_multisite = rescale_ll(l_space_multisite)
+    l_space_combined  = rescale_ll(l_space_combined)
+
+    # find minimum of each
+    idx_energy = np.argwhere(l_space_energy == np.min(l_space_energy))[0]
+    idx_multisite = np.argwhere(l_space_multisite == np.min(l_space_multisite))[0]
+    idx_combined = np.argwhere(l_space_combined == np.min(l_space_combined))[0]
+    print(idx_energy, idx_multisite, idx_combined)
+
+    fig, axes = plt.subplots(nrows = 3, ncols = 1, figsize = (12, 10))
+
+    im = axes[0].imshow(np.log(l_space_energy), extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    axes[0].scatter(background_hypothesis[idx_energy[1]], signal_hypothesis[idx_energy[0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_energy[0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_energy[1]]:.3g}")
+    fig.colorbar(im, ax = axes[0])
+    axes[0].set_title("Energy")
+    axes[0].set_xlabel("Tl208 Normalisation")
+    axes[0].set_ylabel("B8 Normalisation")
+    axes[0].set_aspect("equal")
+    axes[0].legend()
+
+    im = axes[1].imshow(np.log(l_space_multisite), extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    axes[1].scatter(background_hypothesis[idx_multisite[1]], signal_hypothesis[idx_multisite[0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_multisite[0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_multisite[1]]:.3g}")
+    fig.colorbar(im, ax = axes[1])
+    axes[1].set_title("Multisite")
+    axes[1].set_xlabel("Tl208 Normalisation")
+    axes[1].set_ylabel("B8 Normalisation")
+    axes[1].set_ylim(axes[0].get_ylim())
+    axes[1].legend()
+
+    im = axes[2].imshow(np.log(l_space_combined), extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    axes[2].scatter(background_hypothesis[idx_combined[1]], signal_hypothesis[idx_combined[0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_combined[0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_combined[1]]:.3g}")
+    fig.colorbar(im, ax = axes[2])
+    axes[2].set_title("Combined")
+    axes[2].set_xlabel("Tl208 Normalisation")
+    axes[2].set_ylabel("B8 Normalisation")
+    axes[2].set_aspect("equal")
+    axes[2].legend()
+    
+    fig.tight_layout()
+    plt.savefig("../plots/asimov_study/real_mc/advanced/heatmap_log.png")
+    plt.close()
+
 def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
         """
         Extract the energy and multisite PDFs for a given isotope.
@@ -237,7 +309,7 @@ def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_r
 def rescale_ll(ll):
         
     min_idx   = np.argmin(ll)
-    diff_zero = 0 - np.ravel(ll)[min_idx]
+    diff_zero = 1 - np.ravel(ll)[min_idx]
     ll        = ll + diff_zero
 
     return ll 
@@ -542,9 +614,19 @@ def evaluate_bias():
     plt.savefig("../plots/asimov_study/real_mc/advanced/pull.png")
     plt.close()
 
+# def convert_fitted_tl_to_thorium(fitted_tl208, fit_error):
+#     """
+#     Function takes the fitted Tl208 normalisation and converts this into a Th223
+#     concentration in the scintillator.
+#     """
+#     pass
+    
+
+
 # binning for the energy and multisite discriminant PDFs
 energy_string     = "2p5_5p0"
 energy_bins       = np.arange(2.5, 5.05, 0.05)
+print(len(energy_bins) -1)
 if energy_string == "2p5_5p0":
     multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
     fixed_backg_weights = [1, 1, 1] # Tl210, BiPo212, BiPo214
@@ -568,7 +650,8 @@ labels            = ["B8"] + backg_names
 mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
 signal_hypothesis = np.arange(0, 200, 1)
-analyse_real_data = False
+background_hypothesis = np.arange(200, 800, 1)
+analyse_real_data = True
 generate_datasets = False
 eval_bias         = True
 expected_signal   = 66.3#101.2
@@ -604,6 +687,7 @@ profile_ll, norms, errors = profile_likelihood_scan(expected_backg[1:], expected
 profile_ll[0, :] = rescale_ll(profile_ll[0, :])
 profile_ll[1, :] = rescale_ll(profile_ll[1, :])
 profile_ll[2, :] = rescale_ll(profile_ll[2, :])
+# profile_ll = np.sqrt(profile_ll)
 
 # find 1 sigma frequentist confidence interval #
 combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
@@ -617,7 +701,7 @@ plt.axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequ
 plt.legend()
 plt.xlabel("Signal Hypothesis")
 plt.ylabel(r"$-2log(\mathcal{L})$")
-plt.ylim((0, 3))
+plt.ylim((0, 10))
 plt.savefig(f"../plots/asimov_study/real_mc/advanced/unconstrained_profileLL_{plot_name}.png")
 plt.close()
 
@@ -630,7 +714,7 @@ minimum_idx = np.argmin(profile_ll, axis = 1)
 norms_combined = norms[0, minimum_idx[0], :]
 norms_multi    = norms[1, minimum_idx[1], :]
 norms_energy   = norms[2, minimum_idx[2], :]
-
+print(norms_energy)
 # get the errors on the fitted norm of the Tl208
 error_combined = errors[0, minimum_idx[0]]
 error_multi    = errors[1, minimum_idx[1]]
@@ -696,4 +780,6 @@ tab.field_names = flux_table[0, :]
 for i in range(flux_table.shape[0] - 1):
     tab.add_row(flux_table[i+1])
 print(tab)
+
+likelihood_gridsearch(expected_backg[1:], expected_backg[0], dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array)
 # evaluate_bias()
