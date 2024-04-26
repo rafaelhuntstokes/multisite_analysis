@@ -110,61 +110,37 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     loglikelihood_array = np.zeros((3, len(signal_hypothesis)))
     normalisations      = np.zeros((3, len(signal_hypothesis), len(fixed_backgrounds) + 2))
     errors              = np.zeros((3, len(signal_hypothesis))) # single error for the Tl208 norm
-    background_vals     = np.arange(400, 801, 1)
+    
     # loop over each assumed signal number and perform minimisation
     counter = 0
-    profile_ll = []
-    for isig in signal_hypothesis:
-
-        intermediate_values = np.zeros((3, len(background_vals)))
-        # energy_result    = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, tol = 10, method = "L-BFGS-B", options = {"xtol": 10}, bounds = [(0, 1000)], args = (fixed_backgrounds, isig, energy_dataset, energy_pdfs))
-        # multisite_result = scipy.optimize.minimize(evaluate_loglikelihood, x0 = initial_guess, tol = 10, method = "L-BFGS-B", options = {"xtol": 10}, bounds = [(0, 1000)], args = (fixed_backgrounds, isig, multisite_dataset, multisite_pdfs))
-
-        # use minimizer to get combined LL result
-        # combined_result  = scipy.optimize.minimize(evaluate_combined_loglikelihood, x0 = initial_guess, tol = 1e-4, method = "L-BFGS-B", options = {"xtol": 100}, bounds = [(0, 1000)], args = (fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs))
+    for sig in signal_hypothesis:
         
-
+        # save the LL profiles for this B8 norm for each method
+        intermediate_values = np.zeros((3, len(background_hypothesis)))
+        
         # grid search over the Tl208 normalisations
-        for iback in range(len(background_vals)):
-            intermediate_values[0, iback] = evaluate_loglikelihood(background_vals[iback], fixed_backgrounds, isig, energy_dataset, energy_pdfs)
-            
-            intermediate_values[1, iback] = evaluate_loglikelihood(background_vals[iback], fixed_backgrounds, isig, multisite_dataset, multisite_pdfs)
-            intermediate_values[2, iback] = evaluate_combined_loglikelihood(background_vals[iback], fixed_backgrounds, isig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs)
+        for iback in range(len(background_hypothesis)):
+            intermediate_values[0, iback] = evaluate_combined_loglikelihood(background_hypothesis[iback], fixed_backgrounds, sig, energy_dataset, multisite_dataset, energy_pdfs, multisite_pdfs)
+            intermediate_values[1, iback] = evaluate_loglikelihood(background_hypothesis[iback], fixed_backgrounds, sig, multisite_dataset, multisite_pdfs)
+            intermediate_values[2, iback] = evaluate_loglikelihood(background_hypothesis[iback], fixed_backgrounds, sig, energy_dataset, energy_pdfs)
 
-        plt.figure()
-        plt.plot(background_vals, rescale_ll(intermediate_values[0, :]), color = "orange", label = f"Energy | Min: {background_vals[np.argmin(intermediate_values[0, :])]}")
-        plt.plot(background_vals, rescale_ll(intermediate_values[1, :]), color = "green", label = f"Multisite | Min: {background_vals[np.argmin(intermediate_values[1, :])]}")
-        plt.plot(background_vals, rescale_ll(intermediate_values[2, :]), color = "black", label = f"Combined | Min: {background_vals[np.argmin(intermediate_values[2, :])]}")
-        plt.axvline(background_vals[np.argmin(intermediate_values[0, :])], color = "orange", linestyle = "dotted")
-        plt.axvline(background_vals[np.argmin(intermediate_values[1, :])], color = "green", linestyle = "dotted")
-        plt.axvline(background_vals[np.argmin(intermediate_values[2, :])], color = "black", linestyle = "dotted")
-        plt.legend()
-        plt.xlabel("Tl208 Norm")
-        plt.ylim((0, 3))
-        plt.title(f"B8 Norm: {isig}")
-        plt.savefig(f"../plots/asimov_study/real_mc/advanced/grid_search_likelihoods/{isig}.png")
-        plt.close()
-        profile_ll.append(np.min(intermediate_values[0, :]))
-        loglikelihood_array[0, counter] = np.min(intermediate_values[2, :])#combined_result.fun
-        loglikelihood_array[1, counter] = np.min(intermediate_values[1, :])#multisite_result.fun
-        loglikelihood_array[2, counter] = np.min(intermediate_values[0, :])#energy_result.fun
+        # find the minimum value of the LL for each method and store
+        loglikelihood_array[0, counter] = np.min(intermediate_values[0, :]) # combined
+        loglikelihood_array[1, counter] = np.min(intermediate_values[1, :]) # multiite
+        loglikelihood_array[2, counter] = np.min(intermediate_values[2, :]) # energy
         
-        # normalisations[0, counter, :] = [isig] + combined_result.x.tolist() + fixed_backgrounds
-        # normalisations[1, counter, :] = [isig] + multisite_result.x.tolist() + fixed_backgrounds
-        # normalisations[2, counter, :] = [isig] + energy_result.x.tolist() + fixed_backgrounds
-        normalisations[0, counter, :] = [isig] + [background_vals[np.argmin(intermediate_values[2, :])]] + fixed_backgrounds
-        normalisations[1, counter, :] = [isig] + [background_vals[np.argmin(intermediate_values[1, :])]] + fixed_backgrounds
-        normalisations[2, counter, :] = [isig] + [background_vals[np.argmin(intermediate_values[0, :])]] + fixed_backgrounds
+        # find the corresponding normalisations to this minimum
+        normalisations[0, counter, :] = [sig] + [background_hypothesis[np.argmin(intermediate_values[0, :])]] + fixed_backgrounds
+        normalisations[1, counter, :] = [sig] + [background_hypothesis[np.argmin(intermediate_values[1, :])]] + fixed_backgrounds
+        normalisations[2, counter, :] = [sig] + [background_hypothesis[np.argmin(intermediate_values[2, :])]] + fixed_backgrounds
 
-        errors[0, counter] = 0#np.sqrt(np.diag((combined_result.hess_inv.todense())))
-        errors[1, counter] = 0#np.sqrt(np.diag((multisite_result.hess_inv.todense())))
-        errors[2, counter] = 0#np.sqrt(np.diag((energy_result.hess_inv.todense())))
+        # error on the fitted norms --> setting to zero for now as 'not important'
+        errors[0, counter] = 0
+        errors[1, counter] = 0
+        errors[2, counter] = 0
 
         counter += 1
-    plt.plot(signal_hypothesis, rescale_ll(profile_ll))
-    plt.ylim((0, 3))
-    plt.savefig("../plots/asimov_study/real_mc/advanced/grid_search_likelihoods/profile.png")
-    plt.close()
+
     # return the best normalisations
     return loglikelihood_array, normalisations, errors
 
@@ -309,7 +285,7 @@ def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_r
 def rescale_ll(ll):
         
     min_idx   = np.argmin(ll)
-    diff_zero = 1 - np.ravel(ll)[min_idx]
+    diff_zero = 0 - np.ravel(ll)[min_idx]
     ll        = ll + diff_zero
 
     return ll 
@@ -626,7 +602,7 @@ def evaluate_bias():
 # binning for the energy and multisite discriminant PDFs
 energy_string     = "2p5_5p0"
 energy_bins       = np.arange(2.5, 5.05, 0.05)
-print(len(energy_bins) -1)
+
 if energy_string == "2p5_5p0":
     multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
     fixed_backg_weights = [1, 1, 1] # Tl210, BiPo212, BiPo214
@@ -645,6 +621,7 @@ elif energy_string == "4p0_4p5":
 elif energy_string == "4p5_5p0":
     multisite_bins    = np.linspace(1.780, 1.81, 25)
     fixed_backg_weights = [0.222, 0.0, 0.0]
+
 backg_names       = ["Tl208", "Tl210", "BiPo212", "BiPo214"] 
 labels            = ["B8"] + backg_names
 mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
