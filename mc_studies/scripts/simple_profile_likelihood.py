@@ -179,7 +179,7 @@ def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, mult
 
     fig, axes = plt.subplots(nrows = 3, ncols = 1, figsize = (12, 10))
 
-    im = axes[0].imshow(np.log(l_space_energy), extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    im = axes[0].imshow(np.log(l_space_energy), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     axes[0].scatter(background_hypothesis[idx_energy[1]], signal_hypothesis[idx_energy[0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_energy[0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_energy[1]]:.3g}")
     fig.colorbar(im, ax = axes[0])
     axes[0].set_title("Energy")
@@ -188,7 +188,7 @@ def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, mult
     axes[0].set_aspect("equal")
     axes[0].legend()
 
-    im = axes[1].imshow(np.log(l_space_multisite), extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    im = axes[1].imshow(np.log(l_space_multisite), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     axes[1].scatter(background_hypothesis[idx_multisite[1]], signal_hypothesis[idx_multisite[0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_multisite[0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_multisite[1]]:.3g}")
     fig.colorbar(im, ax = axes[1])
     axes[1].set_title("Multisite")
@@ -197,7 +197,7 @@ def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, mult
     axes[1].set_ylim(axes[0].get_ylim())
     axes[1].legend()
 
-    im = axes[2].imshow(np.log(l_space_combined), extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    im = axes[2].imshow(np.log(l_space_combined), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     axes[2].scatter(background_hypothesis[idx_combined[1]], signal_hypothesis[idx_combined[0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_combined[0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_combined[1]]:.3g}")
     fig.colorbar(im, ax = axes[2])
     axes[2].set_title("Combined")
@@ -590,14 +590,31 @@ def evaluate_bias():
     plt.savefig("../plots/asimov_study/real_mc/advanced/pull.png")
     plt.close()
 
-# def convert_fitted_tl_to_thorium(fitted_tl208, fit_error):
-#     """
-#     Function takes the fitted Tl208 normalisation and converts this into a Th223
-#     concentration in the scintillator.
-#     """
-#     pass
+def convert_fitted_tl_to_thorium(fitted_tl208):
+    """
+    Function takes the fitted Tl208 normalisation and converts this into a Th223
+    concentration in the scintillator.
+    """
     
+    efficiency_4p5m = 0.43
+    mass_av         = 7.84e8                # g
+    Na              = 6.02e23               # avogadro number per mole
+    mr_th232        = 232                   # molar mass Th232, g per mole
+    branching_ratio = 0.3594                # ratio of Bi212 --> Tl208
+    livetime        = 145.7                 # days
+    half_life       = 14e9 * 3.154e7        # Th232 t1/2, seconds 
+    decay_constant  = np.log(2) / half_life # per second
 
+    # convert the fitted number in 4.5 m --> total number in 6 m 
+    rate_in_av = fitted_tl208 / efficiency_4p5m # number in livetime
+
+    # convert the rate into correct unit
+    rate_in_av = rate_in_av / ( livetime * 24 * 60 * 60 ) # rate per second
+    print(rate_in_av)
+    # convert into a concentration
+    th232_concentration = ( rate_in_av * mr_th232 ) / ( mass_av * Na * branching_ratio * decay_constant)
+
+    return th232_concentration
 
 # binning for the energy and multisite discriminant PDFs
 energy_string     = "2p5_5p0"
@@ -748,10 +765,16 @@ plt.savefig(f"../plots/asimov_study/real_mc/advanced/fitted_background_model_{pl
 plt.close()
 
 # convert the fitted B8 number to a flux
-energy_flux, energy_positive_err, energy_negative_err       = extract_flux(norms_energy[0], energy_error[1], energy_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
-combined_flux, combined_positive_err, combined_negative_err = extract_flux(norms_combined[0], combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
+energy_flux, energy_positive_err, energy_negative_err          = extract_flux(norms_energy[0], energy_error[1], energy_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
+multisite_flux, multisite_positive_err, multisite_negative_err = extract_flux(norms_multi[0], multisite_error[1], multisite_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
+combined_flux, combined_positive_err, combined_negative_err    = extract_flux(norms_combined[0], combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138)
 
-flux_table = np.array([["Fit Method", "Fitted Flux", "+ve Err", "-ve Err"], ["Energy", f"{energy_flux:.3g}", f"+{energy_positive_err:.3g}", f"-{energy_negative_err:.3g}"], ["Combined", f"{combined_flux:.3g}", f"+{combined_positive_err:.3g}", f"-{combined_negative_err:.3g}"]])
+# extract the fitted Th322 g/g for each method
+th232_conc_energy    = convert_fitted_tl_to_thorium(norms_energy[1]) 
+th232_conc_multisite = convert_fitted_tl_to_thorium(norms_multi[1]) 
+th232_conc_combined  = convert_fitted_tl_to_thorium(norms_combined[1])
+
+flux_table = np.array([["Fit Method", "Fitted Flux", "+ve Err", "-ve Err", "Fitted Tl208", "Th232 Conc (g/g)"], ["Energy", f"{energy_flux:.3g}", f"+{energy_positive_err:.3g}", f"-{energy_negative_err:.3g}", f"{norms_energy[1]:.3g}", f"{th232_conc_energy:.3g}"], ["Multisite", f"{multisite_flux:.3g}", f"+{multisite_positive_err:.3g}", f"-{multisite_negative_err:.3g}", f"{norms_multi[1]:.3g}", f"{th232_conc_multisite:.3g}"], ["Combined", f"{combined_flux:.3g}", f"+{combined_positive_err:.3g}", f"-{combined_negative_err:.3g}", f"{norms_combined[1]:.3g}", f"{th232_conc_combined:.3g}"]])
 tab = PrettyTable()
 tab.field_names = flux_table[0, :]
 for i in range(flux_table.shape[0] - 1):
