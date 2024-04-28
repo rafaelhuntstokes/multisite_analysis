@@ -194,12 +194,12 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     // define ratds input file location and output TTree file locations
     std::string input_fname  = input_fpath + "/simulation" + isotope + "_" + std::to_string(run_number) + "*.root";
-    std::string output_fname = output_fpath + "/full_analysis_" + isotope + "/" + std::to_string(run_number) + ".root"; 
+    std::string output_fname = output_fpath + "/full_analysis2_" + isotope + "/" + std::to_string(run_number) + ".root"; 
     
     // load the PDF files for each isotope
     std::string working_directory = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies";
-    std::string pdf_B8_fname      = working_directory + "/run_by_run_pdf/full_analysis_B8_solar_nue/total.root";
-    std::string pdf_Tl208_fname   = working_directory + "/run_by_run_pdf/full_analysis_Tl208/total.root";
+    std::string pdf_B8_fname      = working_directory + "/run_by_run_pdf/full_analysis2_B8_solar_nue/total.root";
+    std::string pdf_Tl208_fname   = working_directory + "/run_by_run_pdf/full_analysis2_Tl208/total.root";
     TFile *PDF_B8 = new TFile(pdf_B8_fname.c_str());
     TFile *PDF_Tl208 = new TFile(pdf_Tl208_fname.c_str());
     // get the directionality histograms from the files (use B8 PDF only!)
@@ -208,34 +208,17 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     BE CAREFUL ! if you put in the wrong name of the histograms, dynamic_cast returns a null_ptr.
     No error is reported until you try to access the histograms...
     */                                             
-    // TH2D *dir_pdf_2p5_5p0    = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_5.0"));
-    // TH2D *dir_pdf_2p5_3p125  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_2.5_3.125"));
-    // TH2D *dir_pdf_3p125_3p75 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.125_3.75"));
-    // TH2D *dir_pdf_3p75_4p375 = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_3.75_4.375"));
-    // TH2D *dir_pdf_4p375_5p0  = dynamic_cast<TH2D*>(PDF_B8->Get("directionality_4.375_5.0"));
-    // if (dir_pdf_2p5_5p0 == false){
-    //     std::cout << "Broken! 2.5 --> 5.0" << std::endl;
-    // }
-    // if (dir_pdf_2p5_3p125 == false){
-    //     std::cout << "Broken! 2.5 --> 3.125" << std::endl;
-    // }
-    // if (dir_pdf_3p125_3p75 == false){
-    //     std::cout << "Broken! 3.125 --> 3.75" << std::endl;
-    // }
-    // if (dir_pdf_3p75_4p375 == false){
-    //     std::cout << "Broken! 3.75 --> 4.375" << std::endl;
-    // }
-    // if (dir_pdf_4p375_5p0 == false){
-    //     std::cout << "Broken! 4.75 --> 5.0" << std::endl;
-    // }
 
     // get the multisite histograms from the files (for both isotopes!)
-    TH1D *multi_pdf_B8_2p5_5p0 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
-    TH1D *multi_pdf_B8_2p5_3p0 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.0"));
-    TH1D *multi_pdf_B8_3p0_3p5 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.0_3.5"));
-    TH1D *multi_pdf_B8_3p5_4p0 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_4.0"));
-    TH1D *multi_pdf_B8_4p0_4p5 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.0_4.5"));
-    TH1D *multi_pdf_B8_4p5_5p0 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_5p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_3p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.0"));
+    TH1D *multi_pdf_B8_3p0_3p5  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.0_3.5"));
+    TH1D *multi_pdf_B8_3p5_4p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_4.0"));
+    TH1D *multi_pdf_B8_4p0_4p5  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.0_4.5"));
+    TH1D *multi_pdf_B8_4p5_5p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_3p75 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.75"));
+    TH1D *multi_pdf_B8_3p75_5p0 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_5.0"));
+    TH1D *multi_pdf_B8_3p5_5p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_5.0"));
 
     TH1D *multi_pdf_Tl208_2p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
     TH1D *multi_pdf_Tl208_2p5_3p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.0"));
@@ -243,15 +226,9 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     TH1D *multi_pdf_Tl208_3p5_4p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_4.0"));
     TH1D *multi_pdf_Tl208_4p0_4p5 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.0_4.5"));
     TH1D *multi_pdf_Tl208_4p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.5_5.0"));
-    // TH1D *multi_pdf_Tl208_2p5_5p0    = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
-    // TH1D *multi_pdf_B8_2p5_3p125     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.125"));
-    // TH1D *multi_pdf_Tl208_2p5_3p125  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.125"));
-    // TH1D *multi_pdf_B8_3p125_3p75    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.125_3.75"));
-    // TH1D *multi_pdf_Tl208_3p125_3p75 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.125_3.75"));
-    // TH1D *multi_pdf_B8_3p75_4p375    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_4.375"));
-    // TH1D *multi_pdf_Tl208_3p75_4p375 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.75_4.375"));
-    // TH1D *multi_pdf_B8_4p375_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.375_5.0"));
-    // TH1D *multi_pdf_Tl208_4p375_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.375_5.0"));
+    TH1D *multi_pdf_Tl208_2p5_3p75 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.75"));
+    TH1D *multi_pdf_Tl208_3p75_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.75_5.0"));
+    TH1D *multi_pdf_Tl208_3p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_5.0"));
 
     // create the output ntuple with an output TTree containing discriminants for each energy PDF
     std::cout << output_fname << std::endl;
@@ -263,6 +240,9 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     TTree *info_3p5_4p0 = new TTree("3p5_4p0", "3p5_4p0");
     TTree *info_4p0_4p5 = new TTree("4p0_4p5", "4p0_4p5");
     TTree *info_4p5_5p0 = new TTree("4p5_5p0", "4p5_5p0");
+    TTree *info_2p5_3p75 = new TTree("2p5_3p75", "2p5_3p75");
+    TTree *info_3p75_5p0 = new TTree("3p75_5p0", "3p75_5p0");
+    TTree *info_3p5_5p0 = new TTree("3p5_5p0", "3p5_5p0");
 
     // define the variables to fill branches with
     double energy, x, y, z, dlogL, fisher, IQR, cos_theta_sun, itr;
@@ -327,6 +307,36 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     info_4p5_5p0->Branch("fisher", &fisher);
     info_4p5_5p0->Branch("IQR", &IQR);
     info_4p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+
+    info_2p5_3p75->Branch("energy", &energy);
+    info_2p5_3p75->Branch("itr", &itr);
+    info_2p5_3p75->Branch("x", &x);
+    info_2p5_3p75->Branch("y", &y);
+    info_2p5_3p75->Branch("z", &z);
+    info_2p5_3p75->Branch("dlogL", &dlogL);
+    info_2p5_3p75->Branch("fisher", &fisher);
+    info_2p5_3p75->Branch("IQR", &IQR);
+    info_2p5_3p75->Branch("cos_theta_sun", &cos_theta_sun);
+
+    info_3p75_5p0->Branch("energy", &energy);
+    info_3p75_5p0->Branch("itr", &itr);
+    info_3p75_5p0->Branch("x", &x);
+    info_3p75_5p0->Branch("y", &y);
+    info_3p75_5p0->Branch("z", &z);
+    info_3p75_5p0->Branch("dlogL", &dlogL);
+    info_3p75_5p0->Branch("fisher", &fisher);
+    info_3p75_5p0->Branch("IQR", &IQR);
+    info_3p75_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+
+    info_3p5_5p0->Branch("energy", &energy);
+    info_3p5_5p0->Branch("itr", &itr);
+    info_3p5_5p0->Branch("x", &x);
+    info_3p5_5p0->Branch("y", &y);
+    info_3p5_5p0->Branch("z", &z);
+    info_3p5_5p0->Branch("dlogL", &dlogL);
+    info_3p5_5p0->Branch("fisher", &fisher);
+    info_3p5_5p0->Branch("IQR", &IQR);
+    info_3p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
 
     // info_1p25_3p0->Branch("energy", &energy);
     // info_1p25_3p0->Branch("itr", &itr);
@@ -404,7 +414,7 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
         // check that event energy fits into the large domain
         // CHANGED FOR THE Bi214 STUDY !! Remember to change back !!
-        if (energy <= 2.5 or energy >= 5.0){
+        if (energy < 2.5 or energy > 5.0){
             // outside energy ROI!
             continue;
         }
@@ -529,6 +539,56 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
                 info_2p5_5p0->Fill();
             }
         }
+
+        // split in half analysis result
+        if (energy >= 2.5 and energy < 3.75){
+            std::cout << "Repeating for 2.5 --> 3.75 MeV PDF." << std::endl;
+            // now repeat it using the full 2.5 --> 5.0 PDF
+            cos_theta_sun = 100;//directionality_fitter(solar_dir, event_position_recon, pmt_x, pmt_y, pmt_z, time_residuals, dir_pdf_2p5_5p0);
+            std::cout << "Cos(theta_sun) = " << cos_theta_sun << std::endl;
+            // only calculate multisite discriminants if cos_theta_sun fit succeeded
+            if (cos_theta_sun != -999.9){
+                std::cout << "Evaluating multisite discriminant." << std::endl;
+                dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_2p5_3p75, multi_pdf_Tl208_2p5_3p75);
+                IQR           = 0; // not implemented yet
+                fisher        = 0; // not implemented yet
+
+                info_2p5_3p75->Fill();
+            }
+        }
+        // split in half analysis result
+        if (energy >= 3.75 and energy <= 5.0){
+            std::cout << "Repeating for 3.75 --> 5.0 MeV PDF." << std::endl;
+            // now repeat it using the full 2.5 --> 5.0 PDF
+            cos_theta_sun = 100;//directionality_fitter(solar_dir, event_position_recon, pmt_x, pmt_y, pmt_z, time_residuals, dir_pdf_2p5_5p0);
+            std::cout << "Cos(theta_sun) = " << cos_theta_sun << std::endl;
+            // only calculate multisite discriminants if cos_theta_sun fit succeeded
+            if (cos_theta_sun != -999.9){
+                std::cout << "Evaluating multisite discriminant." << std::endl;
+                dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_3p75_5p0, multi_pdf_Tl208_3p75_5p0);
+                IQR           = 0; // not implemented yet
+                fisher        = 0; // not implemented yet
+
+                info_3p75_5p0->Fill();
+            }
+        }
+
+        // high E analysis result
+        if (energy >= 3.5 and energy <= 5.0){
+            std::cout << "Repeating for 3.75 --> 5.0 MeV PDF." << std::endl;
+            // now repeat it using the full 2.5 --> 5.0 PDF
+            cos_theta_sun = 100;//directionality_fitter(solar_dir, event_position_recon, pmt_x, pmt_y, pmt_z, time_residuals, dir_pdf_2p5_5p0);
+            std::cout << "Cos(theta_sun) = " << cos_theta_sun << std::endl;
+            // only calculate multisite discriminants if cos_theta_sun fit succeeded
+            if (cos_theta_sun != -999.9){
+                std::cout << "Evaluating multisite discriminant." << std::endl;
+                dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_3p5_5p0, multi_pdf_Tl208_3p5_5p0);
+                IQR           = 0; // not implemented yet
+                fisher        = 0; // not implemented yet
+
+                info_3p5_5p0->Fill();
+            }
+        }
     }
 
     std::cout << "Writing results to file." << std::endl;
@@ -540,6 +600,9 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     info_3p5_4p0->Write();
     info_4p0_4p5->Write();
     info_4p5_5p0->Write();
+    info_2p5_3p75->Write();
+    info_3p75_5p0->Write();
+    info_3p5_5p0->Write();
     output_file->Close();
 }
 

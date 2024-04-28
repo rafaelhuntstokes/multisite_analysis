@@ -34,7 +34,7 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     std::string input_fname = input_fpath + "/simulation" + isotope + "_" + std::to_string(run_number) + "*.root";
 
     // create the output file
-    std::string output_path = output_fpath + "/full_analysis_" + isotope + "/" + std::to_string(run_number) + ".root";
+    std::string output_path = output_fpath + "/full_analysis2_" + isotope + "/" + std::to_string(run_number) + ".root";
     TFile *output           = new TFile(output_path.c_str(), "RECREATE");
 
     // populate the output file with a TTree and branches to save relevant information
@@ -60,6 +60,10 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     TH2D* dir_pdf_3p5_4p0  = new TH2D("directionality_3.5_4.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
     TH2D* dir_pdf_4p0_4p5  = new TH2D("directionality_4.0_4.5", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
     TH2D* dir_pdf_4p5_5p0  = new TH2D("directionality_4.5_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+
+    TH2D* dir_pdf_2p5_3p75 = new TH2D("directionality_2.5_3.75", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_3p75_5p0 = new TH2D("directionality_3.75_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
+    TH2D* dir_pdf_3p5_5p0  = new TH2D("directionality_3.5_5.0", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
     // TH2D* dir_pdf_2p5_3p125    = new TH2D("directionality_2.5_3.125", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
     // TH2D* dir_pdf_3p125_3p75   = new TH2D("directionality_3.125_3.75", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
     // TH2D* dir_pdf_3p75_4p375   = new TH2D("directionality_3.75_4.375", "", 401, -100.5, 300.5, 20, -1.0, 1.0);
@@ -73,6 +77,11 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     TH1D* multi_pdf_4p0_4p5 = new TH1D("multi_4.0_4.5", "", 401, -100.5, 300.5);
     TH1D* multi_pdf_4p5_5p0 = new TH1D("multi_4.5_5.0", "", 401, -100.5, 300.5);
 
+    // add pdfs for analysis 'split in half' and a high energy combined analysis 3.5 --> 5.0
+    TH1D* multi_pdf_2p5_3p75 = new TH1D("multi_2.5_3.75", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_3p75_5p0 = new TH1D("multi_3.75_5.0", "", 401, -100.5, 300.5);
+    TH1D* multi_pdf_3p5_5p0  = new TH1D("multi_3.5_5.0", "", 401, -100.5, 300.5);
+
     // push back these histograms into vectors --> this is important when deciding which energy histo to fill
     // efficienctly inside the time residual loop
     std::vector<TH1D*> multi_pdf_vec;
@@ -84,6 +93,9 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     multi_pdf_vec.push_back(multi_pdf_3p5_4p0);
     multi_pdf_vec.push_back(multi_pdf_4p0_4p5);
     multi_pdf_vec.push_back(multi_pdf_4p5_5p0);
+    multi_pdf_vec.push_back(multi_pdf_2p5_3p75);
+    multi_pdf_vec.push_back(multi_pdf_3p75_5p0);
+    multi_pdf_vec.push_back(multi_pdf_3p5_5p0);
 
     dir_pdf_vec.push_back(dir_pdf_2p5_5p0);
     dir_pdf_vec.push_back(dir_pdf_2p5_3p0);
@@ -91,6 +103,9 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     dir_pdf_vec.push_back(dir_pdf_3p5_4p0);
     dir_pdf_vec.push_back(dir_pdf_4p0_4p5);
     dir_pdf_vec.push_back(dir_pdf_4p5_5p0);
+    dir_pdf_vec.push_back(dir_pdf_2p5_3p75);
+    dir_pdf_vec.push_back(dir_pdf_3p75_5p0);
+    dir_pdf_vec.push_back(dir_pdf_3p5_5p0);
 
     // load the input MC file
     std::cout << "Reading file: " << input_fname << std::endl;
@@ -170,6 +185,20 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
         // find what energy bin pdf to fill
         int idx_to_fill_pdf;
         bool fill_roi_hist = false;
+        bool fill_first_half = false;
+        bool fill_second_half = false;
+        bool fill_high_E = false;
+
+        if (energy >= 2.5 and energy < 3.75){
+            fill_first_half = true;
+        }
+        if (energy >= 3.75 and energy <= 5.0){
+            fill_second_half = true;
+        }
+        if (energy >=3.5 and energy <= 5.0){
+            fill_high_E = true;
+        }
+
         if (energy >= 2.5 and energy < 3.0){
             idx_to_fill_pdf = 1;
             fill_roi_hist = true;
@@ -186,7 +215,8 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
             fill_roi_hist = true;
             idx_to_fill_pdf = 4;
         }
-        else {
+        else if (energy >= 4.5 and energy <= 5.0){
+            fill_roi_hist = true;
             idx_to_fill_pdf = 5;
         }
 
@@ -231,6 +261,20 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
                 multi_pdf_2p5_5p0->Fill(tres_recon);
             }
             
+            // fill the half bins
+            if (fill_first_half == true){
+                dir_pdf_2p5_3p75->Fill(tres_mc, cerenkov_angle);
+                multi_pdf_2p5_3p75->Fill(tres_recon);
+            }
+            if (fill_second_half == true){
+                dir_pdf_3p75_5p0->Fill(tres_mc, cerenkov_angle);
+                multi_pdf_3p75_5p0->Fill(tres_recon);
+            }
+            if (fill_high_E == true){
+                dir_pdf_3p5_5p0->Fill(tres_mc, cerenkov_angle);
+                multi_pdf_3p5_5p0->Fill(tres_recon);
+            }
+
             dir_pdf_vec.at(idx_to_fill_pdf)->Fill(tres_mc, cerenkov_angle);
             multi_pdf_vec.at(idx_to_fill_pdf)->Fill(tres_recon);
         }
@@ -243,6 +287,9 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     dir_pdf_3p5_4p0->Write();
     dir_pdf_4p0_4p5->Write();
     dir_pdf_4p5_5p0->Write();
+    dir_pdf_2p5_3p75->Write();
+    dir_pdf_3p75_5p0->Write();
+    dir_pdf_3p5_5p0->Write();
 
     multi_pdf_2p5_5p0->Write();
     multi_pdf_2p5_3p0->Write();
@@ -250,6 +297,9 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     multi_pdf_3p5_4p0->Write();
     multi_pdf_4p0_4p5->Write();
     multi_pdf_4p5_5p0->Write();
+    multi_pdf_2p5_3p75->Write();
+    multi_pdf_3p75_5p0->Write();
+    multi_pdf_3p5_5p0->Write();
 
     hit_level->Write();
     event_level->Write();
