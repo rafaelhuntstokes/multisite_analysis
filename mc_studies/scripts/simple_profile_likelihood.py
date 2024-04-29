@@ -6,11 +6,100 @@ import scipy.optimize
 import ROOT
 from flux_conversion import *
 from prettytable import PrettyTable
-
+import time
 """
 Simple profile likelihood fitter using unconstrained Tl208 number, and fixed
 normalisations for the backgrounds Bi214, Bi212 and Tl210.
 """
+def evaluate_loglikelihood_vectorised_grid_search(normalisations, dataset_energy, dataset_multisite, pdfs_energy, pdfs_multisite):
+    """
+    This function is made to speed up the grid search method used instead of the
+    optimiser, so the loops are only computed over the signal norms.
+
+    It is expected the normalisations array is (N_tl208_norms, N_norms), with
+    a row for each Tl208 signal normalisation for a given B8 number.
+
+    The PDFs are of shape (N_norms, N_bins), as normal.
+    """
+
+    # get the sum of norms for each row (i.e. remove the cols)
+    norm_sum             = np.sum(normalisations, axis = 1)
+
+    # see log book entry 29th April 2024
+    pdf_norm_energy      = normalisations[:, :, None] * pdfs_energy[None, :] # (Results in a 'row' for each Tl208 norm used)
+    pdf_norm_multisite   = normalisations[:, :, None] * pdfs_multisite[None, :]
+
+    # calculate the sum of the log terms for each Tl208 norms (over each row in each Tl208 block)
+    inner_log_energy     = np.sum(pdf_norm_energy, axis = 1) # result is (N_tl208, Nbins)
+    inner_log_multisite  = np.sum(pdf_norm_multisite, axis = 1)
+
+    # element-wise logarithm - easy
+    log_energy           = np.log(inner_log_energy)
+    log_multisite        = np.log(inner_log_multisite) 
+
+    # multiply by the counts in the dataset and sum each Tl208 norm
+    scaled_log_energy    = np.sum(dataset_energy * log_energy, axis = 1) # result is (N_tl208, ) 1D
+    scaled_log_multisite = np.sum(dataset_multisite * log_multisite, axis = 1)
+    
+    # convert to a -2log(L) value for each Tl208 norm
+    loglikelihood_energy    = 2 * (norm_sum - scaled_log_energy)    # elementwise - easy
+    loglikelihood_multisite = 2 * (norm_sum - scaled_log_multisite)
+    loglikelihood_combined  = loglikelihood_energy + loglikelihood_multisite
+
+    return loglikelihood_combined, loglikelihood_multisite, loglikelihood_energy
+
+def vectorised_profile_likelihood(fixed_backgrounds):
+    """
+    Calls the vectorised version of the evaluate_loglikelihood function for bias / pull studies.
+    """
+
+    # arrays store the loglikelihood value for each assumed B8 number
+    loglikelihood_array = np.zeros((3, len(signal_hypothesis)))
+    
+    # fit result norms
+    fitted_norms = np.zeros((3, len(signal_hypothesis), len(fixed_backgrounds) + 2))
+
+    # create an array containing the normalisations for each Tl208
+    normalisations = np.zeros((len(background_hypothesis), len(fixed_backgrounds) + 2))
+
+    # fill in all the Tl208 norms
+    normalisations[:, 1] = background_hypothesis
+
+    # fill in the fixed backgrounds
+    normalisations[:, 2:] = fixed_backgrounds
+
+    # single error for the Tl208 norm
+    errors              = np.zeros((3, len(signal_hypothesis))) 
+    
+    # loop over each assumed signal number and perform minimisation
+    counter = 0
+    for sig in signal_hypothesis:
+
+        # fill in the signal values
+        normalisations[:, 0] = sig
+                
+        # evaluate the loglikelihood with each method for each Tl208 norm
+        combined_LL, multisite_LL, energy_LL = evaluate_loglikelihood_vectorised_grid_search(normalisations, dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array)
+
+        # find the minimum value of the LL for each method and store
+        loglikelihood_array[0, counter] = np.min(combined_LL)  # combined
+        loglikelihood_array[1, counter] = np.min(multisite_LL) # multisite
+        loglikelihood_array[2, counter] = np.min(energy_LL)    # energy
+        
+        # find the corresponding normalisations to this minimum
+        fitted_norms[0, counter, :] = [sig] + [background_hypothesis[np.argmin(combined_LL)]]  + fixed_backgrounds
+        fitted_norms[1, counter, :] = [sig] + [background_hypothesis[np.argmin(multisite_LL)]] + fixed_backgrounds
+        fitted_norms[2, counter, :] = [sig] + [background_hypothesis[np.argmin(energy_LL)]]    + fixed_backgrounds
+
+        # error on the fitted norms --> setting to zero for now as 'not important'
+        errors[0, counter] = 0
+        errors[1, counter] = 0
+        errors[2, counter] = 0
+
+        counter += 1
+
+    # return the best normalisations
+    return loglikelihood_array, normalisations, errors
 
 def evaluate_loglikelihood(variable_background, fixed_backgrounds, signal_number, dataset, pdfs):
     """
@@ -126,7 +215,7 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
 
         # find the minimum value of the LL for each method and store
         loglikelihood_array[0, counter] = np.min(intermediate_values[0, :]) # combined
-        loglikelihood_array[1, counter] = np.min(intermediate_values[1, :]) # multiite
+        loglikelihood_array[1, counter] = np.min(intermediate_values[1, :]) # multisite
         loglikelihood_array[2, counter] = np.min(intermediate_values[2, :]) # energy
         
         # find the corresponding normalisations to this minimum
@@ -481,61 +570,64 @@ def evaluate_bias():
     asimov_dataset_multisite = np.load("./multisite_dataset_asimov.npy")
 
     # run the analysis on N poisson fluctuated datasets
-    # bias_combined  = []
-    # bias_multisite = []
-    # bias_energy    = []
-    # pull_combined  = []
-    # pull_multisite = []
-    # pull_energy    = []
-    # for i in range(10000):
-    #     if i % 500 == 0:
-    #         print(i)
-    #     fluctuated_energy    = np.random.poisson(asimov_dataset_energy)
-    #     fluctuated_multisite = np.random.poisson(asimov_dataset_multisite)
+    bias_combined  = []
+    bias_multisite = []
+    bias_energy    = []
+    pull_combined  = []
+    pull_multisite = []
+    pull_energy    = []
+    start = time.time()
+    for i in range(10):
 
-    #     profile_ll, norms, errors = profile_likelihood_scan(expected_backg[1:], expected_backg[0], fluctuated_energy, fluctuated_multisite, energy_pdf_array, multisite_pdf_array)
+        fluctuated_energy    = np.random.poisson(asimov_dataset_energy)
+        fluctuated_multisite = np.random.poisson(asimov_dataset_multisite)
 
-    #     # find the minimum of the ll functions and see how far from true value it is
-    #     minimum_idx   = np.argmin(profile_ll, axis = 1)
-    #     min_combined  = signal_hypothesis[minimum_idx[0]]
-    #     min_multisite = signal_hypothesis[minimum_idx[1]]
-    #     min_energy    = signal_hypothesis[minimum_idx[2]]
+        old_profile_ll, old_norms, old_errors = profile_likelihood_scan(expected_backg[1:], expected_backg[0], fluctuated_energy, fluctuated_multisite, energy_pdf_array, multisite_pdf_array)
 
-    #     bias_combined.append( (min_combined - expected_signal) / expected_signal )
-    #     bias_multisite.append( (min_multisite - expected_signal) / expected_signal )
-    #     bias_energy.append( (min_energy - expected_signal) / expected_signal )
+        profile_ll, norms, errors = vectorised_profile_likelihood(expected_backg[1:])
+        print(i)
+        # find the minimum of the ll functions and see how far from true value it is
+        minimum_idx   = np.argmin(profile_ll, axis = 1)
+        min_combined  = signal_hypothesis[minimum_idx[0]]
+        min_multisite = signal_hypothesis[minimum_idx[1]]
+        min_energy    = signal_hypothesis[minimum_idx[2]]
 
-    #     # evaluate the pull of the distribution
-    #     combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
+        bias_combined.append( (min_combined - expected_signal) / expected_signal )
+        bias_multisite.append( (min_multisite - expected_signal) / expected_signal )
+        bias_energy.append( (min_energy - expected_signal) / expected_signal )
 
-    #     if min_combined < expected_signal:
-    #         if min_combined < 20:
-    #             print(min_combined, combined_error[1])#
-    #             plt.plot(signal_hypothesis, profile_ll[0, :])
-    #             plt.savefig("../plots/asimov_study/real_mc/advanced/fked_result.png")
-    #             plt.close()
-    #         pull_combined.append(( min_combined - expected_signal ) / combined_error[1] )
-    #     else:
-    #         pull_combined.append(( min_combined - expected_signal ) / combined_error[2] )
+        # evaluate the pull of the distribution
+        combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
+
+        if min_combined < expected_signal:
+            if min_combined < 20:
+                print(min_combined, combined_error[1])#
+                plt.plot(signal_hypothesis, profile_ll[0, :])
+                plt.savefig("../plots/asimov_study/real_mc/advanced/fked_result.png")
+                plt.close()
+            pull_combined.append(( min_combined - expected_signal ) / combined_error[1] )
+        else:
+            pull_combined.append(( min_combined - expected_signal ) / combined_error[2] )
         
-    #     if min_multisite < expected_signal:
-    #         # print(min_multisite)
-    #         pull_multisite.append(( min_multisite - expected_signal ) / multisite_error[1] )
-    #     else:
-    #         pull_multisite.append(( min_multisite - expected_signal ) / multisite_error[2] )
+        if min_multisite < expected_signal:
+            # print(min_multisite)
+            pull_multisite.append(( min_multisite - expected_signal ) / multisite_error[1] )
+        else:
+            pull_multisite.append(( min_multisite - expected_signal ) / multisite_error[2] )
 
-    #     if min_energy < expected_signal:
-    #         # print(min_energy)
-    #         pull_energy.append(( min_energy - expected_signal ) / energy_error[1] )
-    #     else:
-    #         pull_energy.append(( min_energy - expected_signal ) / energy_error[2] )
-
-    # np.save("./bias_combined.npy", bias_combined)
-    # np.save("./bias_multisite.npy", bias_multisite)
-    # np.save("./bias_energy.npy", bias_energy)
-    # np.save("./pull_combined.npy", pull_combined)
-    # np.save("./pull_multisite.npy", pull_multisite)
-    # np.save("./pull_energy.npy", pull_energy)
+        if min_energy < expected_signal:
+            # print(min_energy)
+            pull_energy.append(( min_energy - expected_signal ) / energy_error[1] )
+        else:
+            pull_energy.append(( min_energy - expected_signal ) / energy_error[2] )
+    end = time.time()
+    print(f"Took {end -start} s; {(end-start)/10} s per dataset.")
+    np.save("./bias_combined.npy", bias_combined)
+    np.save("./bias_multisite.npy", bias_multisite)
+    np.save("./bias_energy.npy", bias_energy)
+    np.save("./pull_combined.npy", pull_combined)
+    np.save("./pull_multisite.npy", pull_multisite)
+    np.save("./pull_energy.npy", pull_energy)
     bias_combined  = np.load("./bias_combined.npy") 
     bias_multisite = np.load("./bias_multisite.npy")
     bias_energy    = np.load("./bias_energy.npy")
@@ -645,7 +737,7 @@ mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
 signal_hypothesis = np.arange(0, 200, 1)
 background_hypothesis = np.arange(200, 800, 1)
-analyse_real_data = True
+analyse_real_data = False
 generate_datasets = False
 eval_bias         = True
 expected_signal   = 66.3#101.2
