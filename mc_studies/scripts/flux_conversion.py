@@ -5,22 +5,6 @@ import numpy as np
 import matplotlib
 import matplotlib.font_manager as fm
 import matplotlib.ticker as mticker
-prop_font = fm.FontProperties(fname='/home/hunt-stokes/LiberationSerif-Regular.ttf',size=28)
-
-matplotlib.rcParams['xtick.major.size'] = 10
-matplotlib.rcParams['xtick.major.width'] = 2
-matplotlib.rcParams['xtick.minor.size'] = 5
-matplotlib.rcParams['xtick.minor.width'] = 1
-matplotlib.rcParams['ytick.major.size'] = 10
-matplotlib.rcParams['ytick.major.width'] = 2
-matplotlib.rcParams['ytick.minor.size'] = 5
-matplotlib.rcParams['ytick.minor.width'] = 1
-matplotlib.rcParams['axes.linewidth'] = 2 #set the value globally
-matplotlib.rcParams['figure.facecolor'] = 'white'
-matplotlib.rcParams['figure.figsize'] = 18, 10
-matplotlib.rcParams['xtick.major.pad']='12'
-matplotlib.rcParams['ytick.major.pad']='12'
-#matplotlib.rcParams.update({'mathtext.default':  prop_font })
 
 ############################################################################
 ############################################################################
@@ -30,73 +14,7 @@ matplotlib.rcParams['ytick.major.pad']='12'
 ############################################################################
 ############################################################################
 
-def integrand(x):
-  return float(math.log(1-x)/x)
-def integrand2(x):
-  return float(math.log(x)/(1-x))
 
-def xSection(T):
-
-  rhoNC = 1.0126
-  rhoNC_err = 0.0016
-
-  # Term multiplying the parenthesis
-  term1 = 2*GF2*me / Pi
-
-  x = math.sqrt( 1. + ( 2.*me/T ))
-  x2 = x*x
-  I = (1./6.) * ( (1./3.) + (3.-x2)*( (0.5*x*math.log((x+1.)/(x-1.))) -1. ))
-
-  k = 0.
-  k_err = 0.
-  gL = 0.
-  gR = 0.
-
-  if type == 'nue':
-    k = 0.9791 + (0.0097*I)
-    k_err = 0.0025
-
-    gL = (rhoNC * ( 0.5 - k*sin2_thetaW )) - 1
-    gR = -rhoNC * k * sin2_thetaW
-
-  if type == 'numu':
-    k = 0.9970 + (0.00037*I)
-    k_err = 0.0025
-
-    gL = rhoNC * ( 0.5 - k*sin2_thetaW )
-    gR = -rhoNC * k * sin2_thetaW
-
-  gL2 = gL * gL
-  gR2 = gR * gR
-
-  z = T/Enu
-  E = T + me
-
-  l = math.sqrt((E*E) - (me*me))
-  beta = l/E
-
-  zmax = Tmax/Enu
-  m1zmax = 1. - zmax
-  Lz = quad(integrand, 0, zmax)
-  L1mz = quad(integrand2, 0, m1zmax)
-
-  Emax = Tmax + me
-  betamax = math.sqrt((Emax*Emax) - (me*me))/Emax
-  Lbeta = quad(integrand, 0, betamax)
-
-  fminus = ( ((E/l)*math.log((E+l)/me)) -1. ) * ( 2.*math.log(1.-z-(me/(E+l))) - math.log(1.-z) - 0.5*math.log(z) - (5./12.) ) + 0.5*Lz[0] - 0.5*Lbeta[0] - 0.5*math.log(1.-z)*math.log(1.-z) - ((11./12.)+(z/2.))*math.log(1.-z) + z*(math.log(z) + 0.5*math.log(2.*Enu/me)) - ((31./18.)+(1./12.)*math.log(z))*beta - (11./12.)*z + (z*z/24.)
-
-  oneminusz2fplus = ( (E/l)*math.log((E+l)/me) -1 ) * ( (1-z)*(1-z)*( 2*math.log(1-z-(me/(E+l))) - math.log(1-z) - (math.log(z)/2) - (2/3) ) - 0.5*(z*z*math.log(z) + 1 - z))  - 0.5*(1-z)*(1-z)*( math.log(1-z)*math.log(1-z) + beta*(L1mz[0] - math.log(z)*math.log(1-z))) + math.log(1-z) * ( 0.5*z*z*math.log(z) + (1-z)*(2*z-0.5)/3) - 0.5*z*z*L1mz[0] - (z*(1-2*z)*math.log(z)/3) - (z*(1-z)/6) - (beta/12)*(math.log(z) + ((1-z)*(115-109*z)/6))
-
-  fpm = ((((E/l)*math.log((E+l)/me)))-1)*2*math.log( 1 -z - (me/(E+l)) )
-
-  term2 = gL2*( 1 + ((alpha/Pi)*fminus))
-  term3 = (gR2*(1-z)*(1-z)) + (gR2*(alpha/Pi)*oneminusz2fplus)
-  term4 = -gR*gL*me*(z/Enu)*(1+((alpha/Pi)*fpm))
-
-  dsigmadT = term1 * ( term2 + term3 + term4 ) *hbar*hbar*cl*cl
-
-  return dsigmadT
 
 ############################################################################
 ############################################################################
@@ -108,6 +26,74 @@ def xSection(T):
 
 ######################## Definition of Variables ###########################
 def extract_flux(fitted_b8, positive_error, negative_error, livetime, neutrino_detection_efficiency):
+
+  def integrand(x):
+    return float(math.log(1-x)/x)
+  def integrand2(x):
+    return float(math.log(x)/(1-x))
+
+  def xSection(T):
+
+    rhoNC = 1.0126
+    rhoNC_err = 0.0016
+
+    # Term multiplying the parenthesis
+    term1 = 2*GF2*me / Pi
+
+    x = math.sqrt( 1. + ( 2.*me/T ))
+    x2 = x*x
+    I = (1./6.) * ( (1./3.) + (3.-x2)*( (0.5*x*math.log((x+1.)/(x-1.))) -1. ))
+
+    k = 0.
+    k_err = 0.
+    gL = 0.
+    gR = 0.
+
+    if type == 'nue':
+      k = 0.9791 + (0.0097*I)
+      k_err = 0.0025
+
+      gL = (rhoNC * ( 0.5 - k*sin2_thetaW )) - 1
+      gR = -rhoNC * k * sin2_thetaW
+
+    if type == 'numu':
+      k = 0.9970 + (0.00037*I)
+      k_err = 0.0025
+
+      gL = rhoNC * ( 0.5 - k*sin2_thetaW )
+      gR = -rhoNC * k * sin2_thetaW
+
+    gL2 = gL * gL
+    gR2 = gR * gR
+
+    z = T/Enu
+    E = T + me
+
+    l = math.sqrt((E*E) - (me*me))
+    beta = l/E
+
+    zmax = Tmax/Enu
+    m1zmax = 1. - zmax
+    Lz = quad(integrand, 0, zmax)
+    L1mz = quad(integrand2, 0, m1zmax)
+
+    Emax = Tmax + me
+    betamax = math.sqrt((Emax*Emax) - (me*me))/Emax
+    Lbeta = quad(integrand, 0, betamax)
+
+    fminus = ( ((E/l)*math.log((E+l)/me)) -1. ) * ( 2.*math.log(1.-z-(me/(E+l))) - math.log(1.-z) - 0.5*math.log(z) - (5./12.) ) + 0.5*Lz[0] - 0.5*Lbeta[0] - 0.5*math.log(1.-z)*math.log(1.-z) - ((11./12.)+(z/2.))*math.log(1.-z) + z*(math.log(z) + 0.5*math.log(2.*Enu/me)) - ((31./18.)+(1./12.)*math.log(z))*beta - (11./12.)*z + (z*z/24.)
+
+    oneminusz2fplus = ( (E/l)*math.log((E+l)/me) -1 ) * ( (1-z)*(1-z)*( 2*math.log(1-z-(me/(E+l))) - math.log(1-z) - (math.log(z)/2) - (2/3) ) - 0.5*(z*z*math.log(z) + 1 - z))  - 0.5*(1-z)*(1-z)*( math.log(1-z)*math.log(1-z) + beta*(L1mz[0] - math.log(z)*math.log(1-z))) + math.log(1-z) * ( 0.5*z*z*math.log(z) + (1-z)*(2*z-0.5)/3) - 0.5*z*z*L1mz[0] - (z*(1-2*z)*math.log(z)/3) - (z*(1-z)/6) - (beta/12)*(math.log(z) + ((1-z)*(115-109*z)/6))
+
+    fpm = ((((E/l)*math.log((E+l)/me)))-1)*2*math.log( 1 -z - (me/(E+l)) )
+
+    term2 = gL2*( 1 + ((alpha/Pi)*fminus))
+    term3 = (gR2*(1-z)*(1-z)) + (gR2*(alpha/Pi)*oneminusz2fplus)
+    term4 = -gR*gL*me*(z/Enu)*(1+((alpha/Pi)*fpm))
+
+    dsigmadT = term1 * ( term2 + term3 + term4 ) *hbar*hbar*cl*cl
+
+    return dsigmadT
   
   # Physics constants
   Pi = math.pi              # Pi
