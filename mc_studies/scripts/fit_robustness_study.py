@@ -346,177 +346,190 @@ def generate_dataset():
     # plt.close()
 
     return dataset_energy, dataset_multisite
+signal_fractions = np.linspace(0.01, 1.00, 20)
+input_signal     = 66.3
+total_backg      = 495.3 + 0.93 + 65.3 + 38.5
+backg_ratios     = np.array([495.3, 0.93, 65.3, 38.5]) / total_backg
+print("Background fractions: ", backg_ratios)
+for frac in signal_fractions:
+    print("Signal Fraction: ", frac)
+    # work out how many signal events there are in this dataset
+    backg               = 66.3 / frac
+    print("Input background counts: ", backg)
 
-# define the background model expectations for each isotope
-model_expectations  = np.array([66.3, 495.3, 0.93, 65.3, 38.5])
-isotope_names       = ["B8", "Tl208", "Tl210", "Bi212", "Bi214"]
-num_datasets        = 1000 # how many fake datasets to create? 
-signal_hypothesis   = np.arange(0, 201, 1)
-background_hypothesis = np.arange(200, 800, 1)
+    # define the background model expectations for each isotope
+    model_expectations  = np.array([input_signal, backg_ratios[0] * backg, backg_ratios[1] * backg, backg_ratios[2] * backg, backg_ratios[3] * backg])
+    print("Total backgrounds inputted to dataset: ", np.sum(model_expectations[1:]))
 
-bias_bins           = np.arange(-1, +1, 0.05)
-pull_bins           = np.arange(-10, +10, 0.25)
-biases              = np.zeros((3, num_datasets))
-pulls               = np.zeros((3, num_datasets))
+    isotope_names       = ["B8", "Tl208", "Tl210", "Bi212", "Bi214"]
+    num_datasets        = 1000 # how many fake datasets to create?
+    signal_hypothesis   = np.arange(0, 200, 1)
+    background_hypothesis = np.arange(0, backg + 100, 1)
 
-# load the binned pdfs in energy and multisite
-energy_bins         = np.arange(2.5, 5.05, 0.05)         # need to use the same binning as the pdfs were saved with
-energy_mids         = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
-multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
-multisite_mids      = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
-pdf_array_energy    = np.load("./energy_pdf_array.npy")
-pdf_array_multisite = np.load("./multisite_pdf_array.npy")
+    bias_bins           = np.arange(-1, +1, 0.05)
+    pull_bins           = np.arange(-10, +10, 0.25)
+    biases              = np.zeros((3, num_datasets))
+    pulls               = np.zeros((3, num_datasets))
 
-# run analysis for each fake dataset
-start = time.time()
-for idataset in range(num_datasets):
-    # if idataset % 100 == 0:
-    print(idataset, f"{time.time() - start} s.")
-    
-    # generate fake dataset
-    dataset_energy, dataset_multisite = generate_dataset()
+    # load the binned pdfs in energy and multisite
+    energy_bins         = np.arange(2.5, 5.05, 0.05)         # need to use the same binning as the pdfs were saved with
+    energy_mids         = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
+    multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
+    multisite_mids      = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
+    pdf_array_energy    = np.load("./energy_pdf_array.npy")
+    pdf_array_multisite = np.load("./multisite_pdf_array.npy")
 
-    # perform profile log-likelihood analysis
-    # profile_ll, norms, errors = vectorised_profile_likelihood(model_expectations[2:].tolist()) 
-    profile_ll, norms, errors = profile_likelihood_scan(model_expectations[2:].tolist(), model_expectations[1], dataset_energy, dataset_multisite, pdf_array_energy, pdf_array_multisite)
-    
-    # scale LL so the minimum of each curve is at 0
-    profile_ll[0, :] = rescale_ll(profile_ll[0, :])
-    profile_ll[1, :] = rescale_ll(profile_ll[1, :])
-    profile_ll[2, :] = rescale_ll(profile_ll[2, :])
-
-    # find 1 sigma frequentist confidence interval and fitted minimums 
-    combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
-
-    # find the norms corresponding to the minimum LL value for each LL function
-    minimum_idx = np.argmin(profile_ll, axis = 1)
-
-    # find the normalisations fom energy, multisite and combined LL giving that minimum
-    norms_combined = norms[0, minimum_idx[0], :]
-    norms_multi    = norms[1, minimum_idx[1], :]
-    norms_energy   = norms[2, minimum_idx[2], :]
-
-    # get the errors on the fitted norm of the Tl208
-    error_combined = errors[0, minimum_idx[0]]
-    error_multi    = errors[1, minimum_idx[1]]
-    error_energy   = errors[2, minimum_idx[2]]
-
-    # create the model out of the scaled PDFs
-    combined_energy_result    = norms_combined[:, None] * pdf_array_energy
-    combined_multisite_result = norms_combined[:, None] * pdf_array_multisite
-    energy_result             = norms_energy[:, None]   * pdf_array_energy
-    multisite_result          = norms_multi[:, None]    * pdf_array_multisite
-
-    if idataset < 10:
-        # create a plot for a few of these
-        fig, axes = plt.subplots(nrows = 1, ncols = 3, figsize = (18, 8))
-        axes[0].set_title("Profile Log-Likelihood Scan")
-        axes[0].axvline(np.sum(dataset_energy[0, :]), color = "red", linestyle = "dotted", label = f"True Signal Counts: {np.sum(dataset_energy[0, :])}")
-        axes[0].plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$")
-        axes[0].plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$")
-        axes[0].plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$")
-        axes[0].axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
-        axes[0].legend(frameon = False, loc = "upper left")
-        axes[0].set_xlabel("Signal Hypothesis")
-        axes[0].set_ylabel(r"$-2log(\mathcal{L})$")
-        axes[0].set_ylim((0, 3))
-
-        for i in range(5):
-
-            # plot the 'true' underlying sampled data for each isotope
-            axes[1].step(energy_bins, dataset_energy[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_energy[i, :])} Counts")
-            axes[2].step(multisite_bins, dataset_multisite[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_multisite[i, :])} Counts")
+    # run analysis for each fake dataset
+    start = time.time()
+    for idataset in range(num_datasets):
+        # if idataset % 100 == 0:
+        print(idataset, f"{time.time() - start} s.")
         
-        # plot the total datasets (what the detector would see in real life)
-        axes[1].errorbar(energy_mids, np.sum(dataset_energy, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_energy, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_energy)}")
-        axes[2].errorbar(multisite_mids, np.sum(dataset_multisite, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_multisite, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_multisite)}")
+        # generate fake dataset
+        dataset_energy, dataset_multisite = generate_dataset()
+
+        # perform profile log-likelihood analysis
+        profile_ll, norms, errors = vectorised_profile_likelihood(model_expectations[2:].tolist()) 
+        # profile_ll, norms, errors = profile_likelihood_scan(model_expectations[2:].tolist(), model_expectations[1], dataset_energy, dataset_multisite, pdf_array_energy, pdf_array_multisite)
         
-        # plot the fitted model for energy, multisite and combined together
-        axes[1].step(energy_bins, np.sum(energy_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Energy Fit: {np.sum(energy_result):.3g} Counts")
-        axes[1].step(energy_bins, np.sum(combined_energy_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_energy_result):.3g} Counts")
-        axes[2].step(multisite_bins, np.sum(multisite_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Multisite Fit: {np.sum(multisite_result):.3g} Counts")
-        axes[2].step(multisite_bins, np.sum(combined_multisite_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_multisite_result):.3g} Counts")
+        # scale LL so the minimum of each curve is at 0
+        profile_ll[0, :] = rescale_ll(profile_ll[0, :])
+        profile_ll[1, :] = rescale_ll(profile_ll[1, :])
+        profile_ll[2, :] = rescale_ll(profile_ll[2, :])
+
+        # find 1 sigma frequentist confidence interval and fitted minimums 
+        combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
+
+        # find the norms corresponding to the minimum LL value for each LL function
+        minimum_idx = np.argmin(profile_ll, axis = 1)
+
+        # find the normalisations fom energy, multisite and combined LL giving that minimum
+        norms_combined = norms[0, minimum_idx[0], :]
+        norms_multi    = norms[1, minimum_idx[1], :]
+        norms_energy   = norms[2, minimum_idx[2], :]
+
+        # get the errors on the fitted norm of the Tl208
+        error_combined = errors[0, minimum_idx[0]]
+        error_multi    = errors[1, minimum_idx[1]]
+        error_energy   = errors[2, minimum_idx[2]]
+
+        # create the model out of the scaled PDFs
+        combined_energy_result    = norms_combined[:, None] * pdf_array_energy
+        combined_multisite_result = norms_combined[:, None] * pdf_array_multisite
+        energy_result             = norms_energy[:, None]   * pdf_array_energy
+        multisite_result          = norms_multi[:, None]    * pdf_array_multisite
+
+        if idataset < 10:
+            # create a plot for a few of these
+            fig, axes = plt.subplots(nrows = 1, ncols = 3, figsize = (18, 8))
+            axes[0].set_title("Profile Log-Likelihood Scan")
+            axes[0].axvline(np.sum(dataset_energy[0, :]), color = "red", linestyle = "dotted", label = f"True Signal Counts: {np.sum(dataset_energy[0, :])}")
+            axes[0].plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$")
+            axes[0].plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$")
+            axes[0].plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$")
+            axes[0].axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
+            axes[0].legend(frameon = False, loc = "upper left")
+            axes[0].set_xlabel("Signal Hypothesis")
+            axes[0].set_ylabel(r"$-2log(\mathcal{L})$")
+            axes[0].set_ylim((0, 3))
+
+            for i in range(5):
+
+                # plot the 'true' underlying sampled data for each isotope
+                axes[1].step(energy_bins, dataset_energy[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_energy[i, :])} Counts")
+                axes[2].step(multisite_bins, dataset_multisite[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_multisite[i, :])} Counts")
+            
+            # plot the total datasets (what the detector would see in real life)
+            axes[1].errorbar(energy_mids, np.sum(dataset_energy, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_energy, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_energy)}")
+            axes[2].errorbar(multisite_mids, np.sum(dataset_multisite, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_multisite, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_multisite)}")
+            
+            # plot the fitted model for energy, multisite and combined together
+            axes[1].step(energy_bins, np.sum(energy_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Energy Fit: {np.sum(energy_result):.3g} Counts")
+            axes[1].step(energy_bins, np.sum(combined_energy_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_energy_result):.3g} Counts")
+            axes[2].step(multisite_bins, np.sum(multisite_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Multisite Fit: {np.sum(multisite_result):.3g} Counts")
+            axes[2].step(multisite_bins, np.sum(combined_multisite_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_multisite_result):.3g} Counts")
 
 
-        axes[1].set_xlabel("Reconstructed Energy (MeV)")
-        axes[2].set_xlabel("Multisite Discriminant")
-        axes[1].set_ylabel("Counts")
-        axes[2].set_ylabel("Counts")
-        axes[1].set_title("Fake Dataset: Energy")
-        axes[2].set_title("Fake Dataset: Multisite")
-        axes[2].set_xlim((-1.355, -1.334))
-        axes[1].legend(frameon = False, loc = "upper left")
-        axes[2].legend(frameon = False, loc = "upper left")
-        axes[1].set_ylim((0, 75))
-        axes[2].set_ylim((0, 75))
-        fig.tight_layout()
-        plt.savefig(f"../plots/asimov_study/real_mc/advanced/fluctuated_datasets/scan_{idataset}.png")
-        plt.close()
+            axes[1].set_xlabel("Reconstructed Energy (MeV)")
+            axes[2].set_xlabel("Multisite Discriminant")
+            axes[1].set_ylabel("Counts")
+            axes[2].set_ylabel("Counts")
+            axes[1].set_title("Fake Dataset: Energy")
+            axes[2].set_title("Fake Dataset: Multisite")
+            axes[2].set_xlim((-1.355, -1.334))
+            axes[1].legend(frameon = False, loc = "upper left")
+            axes[2].legend(frameon = False, loc = "upper left")
+            axes[1].set_ylim((0, 75))
+            axes[2].set_ylim((0, 75))
+            fig.tight_layout()
+            plt.savefig(f"../plots/asimov_study/real_mc/advanced/fluctuated_datasets/scan_{idataset}_{round(frac, 3)}.png")
+            plt.close()
 
-    # calculate the bias and pull using each fit method
-    biases[0, idataset] = (norms_energy[0]   - model_expectations[0]) / model_expectations[0]
-    biases[1, idataset] = (norms_multi[0]    - model_expectations[0]) / model_expectations[0]
-    biases[2, idataset] = (norms_combined[0] - model_expectations[0]) / model_expectations[0]
+        # calculate the bias and pull using each fit method
+        biases[0, idataset] = (norms_energy[0]   - model_expectations[0]) / model_expectations[0]
+        biases[1, idataset] = (norms_multi[0]    - model_expectations[0]) / model_expectations[0]
+        biases[2, idataset] = (norms_combined[0] - model_expectations[0]) / model_expectations[0]
 
-    if norms_energy[0] <= model_expectations[0]:
-        pulls[0, idataset] = ( model_expectations[0] - norms_energy[0] ) / energy_error[1]
-    else:
-        pulls[0, idataset] = ( norms_energy[0] - model_expectations[0] ) / -energy_error[2]
+        if norms_energy[0] <= model_expectations[0]:
+            pulls[0, idataset] = ( model_expectations[0] - norms_energy[0] ) / energy_error[1]
+        else:
+            pulls[0, idataset] = ( norms_energy[0] - model_expectations[0] ) / -energy_error[2]
 
-    if norms_multi[0] <= model_expectations[0]:
-        pulls[1, idataset] = ( model_expectations[0] - norms_multi[0] ) / multisite_error[1]
-    else:
-        pulls[1, idataset] = ( norms_multi[0] - model_expectations[0] ) / -multisite_error[2]
-        
-    if norms_combined[0] <= model_expectations[0]:
-        pulls[2, idataset] = ( model_expectations[0] - norms_combined[0] ) / combined_error[1]
-    else:
-        pulls[2, idataset] = ( norms_combined[0] - model_expectations[0] ) / -combined_error[2]
+        if norms_multi[0] <= model_expectations[0]:
+            pulls[1, idataset] = ( model_expectations[0] - norms_multi[0] ) / multisite_error[1]
+        else:
+            pulls[1, idataset] = ( norms_multi[0] - model_expectations[0] ) / -multisite_error[2]
+            
+        if norms_combined[0] <= model_expectations[0]:
+            pulls[2, idataset] = ( model_expectations[0] - norms_combined[0] ) / combined_error[1]
+        else:
+            pulls[2, idataset] = ( norms_combined[0] - model_expectations[0] ) / -combined_error[2]
 
-# np.save("./bias.npy", biases)
-# np.save("./pull.npy", pulls)
-biases = np.load("./bias.npy")
-print(len(biases[np.isinf(biases)]))
-biases[np.isinf(biases)] = -999
+    np.save(f"./bias_and_pull_arrays/bias_{round(frac, 3)}.npy", biases)
+    np.save(f"./bias_and_pull_arrays/pull_{round(frac, 3)}.npy", pulls)
 
-pulls  = np.load("./pull.npy")
-print(len(pulls[np.isinf(pulls)]))
-pulls[np.isinf(pulls)] = -999
+# biases = np.load("./bias.npy")
+# print(len(biases[np.isinf(biases)]))
+# biases[np.isinf(biases)] = -999
 
-# create a mask to calculate the mean of the distributions without including these bad values
-bias_mask  = (biases != -999)
-pulls_mask = (pulls != -999)
-print(bias_mask.shape)
-bias_means = np.ma.masked_array(biases, ~bias_mask).mean(axis = 1)
-print(bias_means)
-bias_std   = np.ma.masked_array(biases, ~bias_mask).std(axis = 1)
-pulls_means = np.ma.masked_array(pulls, ~pulls_mask).mean(axis = 1)
-pulls_std   = np.ma.masked_array(pulls, ~pulls_mask).std(axis = 1)
+# pulls  = np.load("./pull.npy")
+# print(len(pulls[np.isinf(pulls)]))
+# pulls[np.isinf(pulls)] = -999
 
-# make a plot of bias
-fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (10, 6))
+# # create a mask to calculate the mean of the distributions without including these bad values
+# bias_mask  = (biases != -999)
+# pulls_mask = (pulls != -999)
+# print(bias_mask.shape)
+# bias_means = np.ma.masked_array(biases, ~bias_mask).mean(axis = 1)
+# print(bias_means)
+# bias_std   = np.ma.masked_array(biases, ~bias_mask).std(axis = 1)
+# pulls_means = np.ma.masked_array(pulls, ~pulls_mask).mean(axis = 1)
+# pulls_std   = np.ma.masked_array(pulls, ~pulls_mask).std(axis = 1)
 
-axes[0].hist(biases[0,:], bins = bias_bins, histtype = "step", color = "orange")
-axes[0].hist(biases[1,:], bins = bias_bins, histtype = "step", color = "green")
-axes[0].hist(biases[2,:], bins = bias_bins, histtype = "step", color = "black")
-axes[0].plot([], [], color = "orange", label = rf"Energy | $\mu$: {bias_means[0]:.2g}, $\sigma$: {bias_std[0]:.2g}")
-axes[0].plot([], [], color = "green", label = rf"Multisite | $\mu$: {bias_means[1]:.2g}, $\sigma$: {bias_std[1]:.2g}")
-axes[0].plot([], [], color = "black", label = rf"Combined | $\mu$: {bias_means[2]:.2g}, $\sigma$: {bias_std[2]:.2g}")
+# # make a plot of bias
+# fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (10, 6))
 
-axes[0].set_xlabel("Bias")
-axes[0].set_ylabel("Counts")
-axes[0].legend(frameon = False, loc = "upper left")
+# axes[0].hist(biases[0,:], bins = bias_bins, histtype = "step", color = "orange")
+# axes[0].hist(biases[1,:], bins = bias_bins, histtype = "step", color = "green")
+# axes[0].hist(biases[2,:], bins = bias_bins, histtype = "step", color = "black")
+# axes[0].plot([], [], color = "orange", label = rf"Energy | $\mu$: {bias_means[0]:.2g}, $\sigma$: {bias_std[0]:.2g}")
+# axes[0].plot([], [], color = "green", label = rf"Multisite | $\mu$: {bias_means[1]:.2g}, $\sigma$: {bias_std[1]:.2g}")
+# axes[0].plot([], [], color = "black", label = rf"Combined | $\mu$: {bias_means[2]:.2g}, $\sigma$: {bias_std[2]:.2g}")
 
-axes[1].hist(pulls[0,:], bins = pull_bins, histtype = "step", color = "orange")
-axes[1].hist(pulls[1,:], bins = pull_bins, histtype = "step", color = "green")
-axes[1].hist(pulls[2,:], bins = pull_bins, histtype = "step", color = "black")
-axes[1].plot([], [], color = "orange", label = rf"Energy | $\mu$: {pulls_means[0]:.2g}, $\sigma$: {pulls_std[0]:.2g}")
-axes[1].plot([], [], color = "green", label = rf"Multisite | $\mu$: {pulls_means[1]:.2g}, $\sigma$: {pulls_std[1]:.2g}")
-axes[1].plot([], [], color = "black", label = rf"Combined | $\mu$: {pulls_means[2]:.2g}, $\sigma$: {pulls_std[2]:.2g}")
+# axes[0].set_xlabel("Bias")
+# axes[0].set_ylabel("Counts")
+# axes[0].legend(frameon = False, loc = "upper left")
 
-axes[1].set_xlabel("Pull")
-axes[1].set_ylabel("Counts")
-axes[1].legend(frameon = False, loc = "upper left")
-fig.tight_layout()
-plt.savefig("../plots/asimov_study/real_mc/advanced/bias_fake_data.png")
-plt.close()
+# axes[1].hist(pulls[0,:], bins = pull_bins, histtype = "step", color = "orange")
+# axes[1].hist(pulls[1,:], bins = pull_bins, histtype = "step", color = "green")
+# axes[1].hist(pulls[2,:], bins = pull_bins, histtype = "step", color = "black")
+# axes[1].plot([], [], color = "orange", label = rf"Energy | $\mu$: {pulls_means[0]:.2g}, $\sigma$: {pulls_std[0]:.2g}")
+# axes[1].plot([], [], color = "green", label = rf"Multisite | $\mu$: {pulls_means[1]:.2g}, $\sigma$: {pulls_std[1]:.2g}")
+# axes[1].plot([], [], color = "black", label = rf"Combined | $\mu$: {pulls_means[2]:.2g}, $\sigma$: {pulls_std[2]:.2g}")
+
+# axes[1].set_xlabel("Pull")
+# axes[1].set_ylabel("Counts")
+# axes[1].legend(frameon = False, loc = "upper left")
+# fig.tight_layout()
+# plt.savefig("../plots/asimov_study/real_mc/advanced/bias_fake_data.png")
+# plt.close()
