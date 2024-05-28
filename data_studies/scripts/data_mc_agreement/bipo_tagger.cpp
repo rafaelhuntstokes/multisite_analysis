@@ -150,6 +150,11 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   for (int iEntry = 0; iEntry < chain->GetEntries(); iEntry++){
     chain->GetEntry(iEntry);
     
+    // check if the event is flagged as an ORPHAN!
+    if (triggerWord == 0){
+        std::cout << "Orphan! Skipping GTID: " << gtid << std::endl;
+        continue;
+    }
     // check if event is high energy or tagged as a muon by DC
     if (nhits_clean > 5000 or ((DCflagged&0x80) != 0x80)){
         std::cout << "\nDeadtime Triggered - GTID: " << gtid << std::endl;
@@ -240,11 +245,6 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
     // apply retrigger cut
     if (retrigger_cut_time < 500){
         // event is a retrigger!
-        continue;
-    }
-
-    // check if the event is flagged as an ORPHAN!
-    if (triggerWord == 0){
         continue;
     }
 
@@ -392,9 +392,9 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   tag_info->Write();
   g->Close();
 
-  double deadtime =  (20 * num_vetos) + (pileupTime + loneFollowerTime) * pow(10, -9); // in ns
+  double deadtime =  (20 * num_vetos) + (pileupTime + loneFollowerTime) * pow(10, -9); // in s
   std::cout << "Num Tagged: " << num_tagged << std::endl;
-  std::cout << "PileupTime: " << pileupTime << std::endl;
+  std::cout << "PileupTime: " << pileupTime * pow(10, -9) << " s" << std::endl;
   std::cout << "Num. highE vetos: " << num_vetos << std::endl;
   std::cout << "highE deadtime: " << deadtime << " s" << std::endl;
 
@@ -425,23 +425,38 @@ int main(int argc, char* argv[]){
   std::vector<int> tagList;
   int iRun;
 
-  std::string inFile1;
-  std::string data_path = "/data/snoplus3/SNOplusData/processing/fullFill/rat-7.0.8/ntuples";
+  std::string inFile1, ratds1;
+  std::string data_path  = "/data/snoplus3/SNOplusData/processing/fullFill/rat-7.0.8/ntuples";
+  std::string ratds_path = "/data/snoplus3/SNOplusData/processing/fullFill/rat-7.0.8/ratds";
   if (std::stoi(runNum) < 307613){
-    inFile1 = data_path + "/" + "Analysis20R_r0000";
+    inFile1 = data_path  + "/" + "Analysis20R_r0000";
+    ratds1  = ratds_path + "/" + "Analysis20R_r0000";
   }
   if (std::stoi(runNum) >= 307613){
-      inFile1 = data_path + "/" + "Analysis20_r0000";
+      inFile1 = data_path + "/"  + "Analysis20_r0000";
+      ratds1  = ratds_path + "/" + "Analysis20_r0000";
   }
   
   std::string inFile2 = "*";
-  const std::string inFileName = inFile1+runNum+inFile2;
+  const std::string inFileName   = inFile1+runNum+inFile2;
+  const std::string ratdsFileName = ratds1 + runNum + inFile2; 
   std::cout << inFileName << std::endl;
+  std::cout << "Ratds Fname: " << ratdsFileName << std::endl;
   std::vector<std::string> filelist = globVector(inFileName);
 
+  // check if the corresponding RATDS files exist
+  std::vector<std::string> ratds_filelist = globVector(ratdsFileName);
+
+  // check if the number of files in the ratds vector matches the ntuple
+  if (filelist.size() != ratds_filelist.size()){
+    std::cout << "Num. ntuple subruns: " << filelist.size() << std::endl;
+    std::cout << "Num. RATDS subruns: " << ratds_filelist.size() << std::endl;
+    std::cout << "Not tagging run due to discrepency!" << std::endl;
+    return 0;
+  }
   // if we find no subrun files, skip the run!
   if (filelist.empty()){
-    std::cout << "No valid files!" << std::endl;
+    std::cout << "No valid ntuple files!" << std::endl;
     return 0;
   } else {
     // Begin run and load DB
