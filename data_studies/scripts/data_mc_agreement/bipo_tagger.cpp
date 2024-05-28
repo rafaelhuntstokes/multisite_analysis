@@ -20,9 +20,8 @@
 #include "THistPainter.h"
 #include "TPaveStats.h"
 
-double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, double zOff, int run_num, int isotope) {
+double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, double zOff, int run_num) {
 
-  std::cout << "ISOTOPE: " << isotope << std::endl;
   int num_vetos      = 0;        // number of times the high E / muon veto is triggered        
   int failedFit      = 0;
   int failedEnergy   = 0;
@@ -57,15 +56,14 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   // set up the output file location and name
   std::string output_name = outdir + "/" + std::to_string(run_num) + ".root";
   TFile *g = new TFile(output_name.c_str(), "RECREATE");
-  std::string ntuple_name = "ntuple" + std::to_string(isotope);
   
   // variables of interest to save
-  double energy1, energy2, dR, dT, nhits_scaled1, nhits_scaled2, x1, x2, y1, y2, z1, z2, itr1, itr2, posFOM1, posFOM1_hits, posFOM2, posFOM2_hits;
+  double energy1, energy2, dR, dT, nhits_scaled1, nhits_scaled2, x1, x2, y1, y2, z1, z2, itr1, itr2, posFOM1, posFOM2;
   float HC_ratio1, HC_ratio2;
   int nhits_clean1, nhits_clean2, nhits_raw1, nhits_raw2, gtid1, gtid2;
-  
+  UInt_t posFOM1_hits, posFOM2_hits;
   // define the output TTree variables
-  TTree *tag_info          = new TTree("tag_info", "tag_info");
+  TTree *tag_info = new TTree("tag_info", "tag_info");
   
   tag_info->Branch("energy_po", &energy1);
   tag_info->Branch("energy_bi", &energy2);
@@ -86,7 +84,7 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   tag_info->Branch("y_bi", &y2);
   tag_info->Branch("z_bi", &z2);
   tag_info->Branch("hc_po", &HC_ratio1);
-  tag_info->Branch("hc_bi", HC_ratio2);
+  tag_info->Branch("hc_bi", &HC_ratio2);
   tag_info->Branch("itr_po", &itr1);
   tag_info->Branch("itr_bi", &itr2);
   tag_info->Branch("posFOM_po", &posFOM1);
@@ -105,8 +103,10 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   std::cout << "TChain contains " << chain->GetEntries() << " entries." << std::endl;
   
   // define the variables extracted from each event in the TChain
-  double posX, posY, posZ, energy, nhits_scaled, posFOM, posFOM_hits, itr;
+  double posX, posY, posZ, energy, nhits_scaled, posFOM, itr;
   int nhits_clean, nhits_raw, ev, gtid;
+  UInt_t posFOM_hits;
+  Int_t triggerWord;
   bool fit, fitValid;
   ULong64_t clock50, DCapplied, DCflagged;
   chain->SetBranchAddress("posx", &posX);
@@ -126,6 +126,7 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   chain->SetBranchAddress("itr", &itr);
   chain->SetBranchAddress("posFOM", &posFOM);
   chain->SetBranchAddress("posFOM2", &posFOM_hits);
+  chain->SetBranchAddress("triggerWord", &triggerWord);
   
   // loop over the entries for the BiPo214 analysis
   int numEntries = chain->GetEntries();
@@ -239,6 +240,11 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
     // apply retrigger cut
     if (retrigger_cut_time < 500){
         // event is a retrigger!
+        continue;
+    }
+
+    // check if the event is flagged as an ORPHAN!
+    if (triggerWord == 0){
         continue;
     }
 
@@ -386,11 +392,11 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
   tag_info->Write();
   g->Close();
 
-  double deadtime =  (20 * pow(10, 9) * num_vetos) + (pileupTime + loneFollowerTime); // in ns
+  double deadtime =  (20 * num_vetos) + (pileupTime + loneFollowerTime) * pow(10, -9); // in ns
   std::cout << "Num Tagged: " << num_tagged << std::endl;
   std::cout << "PileupTime: " << pileupTime << std::endl;
   std::cout << "Num. highE vetos: " << num_vetos << std::endl;
-  std::cout << "highE deadtime: " << deadtime * pow(10, -9) << " s" << std::endl;
+  std::cout << "highE deadtime: " << deadtime << " s" << std::endl;
 
   std::cout << "% failed fit: " << float(failedFit) / float(numEntries) << std::endl;
   std::cout << "% failed energy: " << float(failedEnergy) / float(numEntries) << std::endl;
@@ -398,7 +404,6 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
 
   return deadtime;
 }
-
 
 std::vector<std::string> globVector(const std::string& pattern){
   glob_t glob_result;
@@ -415,7 +420,6 @@ std::vector<std::string> globVector(const std::string& pattern){
 int main(int argc, char* argv[]){
 
   std::string runNum      = argv[1];
-  int         isotope     = std::stoi(argv[2]);
   std::string out_dir     = argv[2];
   
   std::vector<int> tagList;
@@ -464,20 +468,20 @@ int main(int argc, char* argv[]){
     end_day = dblink->GetD("stop_day");
     end_sec = dblink->GetD("stop_sec");
     end_nsec = dblink->GetD("stop_nsc");
-    start_time = start_day * 24 * 3600 * pow(10, 9) + start_sec * pow(10, 9) + start_nsec;
-    end_time = end_day * 24 * 3600 * pow(10, 9) + end_sec * pow(10, 9) + end_nsec;
+    start_time = start_day * 24 * 3600 + start_sec;
+    end_time = end_day * 24 * 3600 + end_sec;
     duration = end_time - start_time;
-    std::cout << "Duration of run: " << duration * pow(10, -9) << " s" << std::endl;
+    std::cout << "Duration of run: " << duration << " s" << std::endl;
 
-    double deadtime = bipo_tagger_full(filelist, out_dir, zOff, runID, isotope);
+    double deadtime = bipo_tagger_full(filelist, out_dir, zOff, runID);
     double adjusted_livetime = duration - deadtime; 
 
-    std::cout << "Adjusted Livetime: " << adjusted_livetime * pow(10, -9) << " s" << std::endl;
+    std::cout << "Adjusted Livetime: " << adjusted_livetime << " s" << std::endl;
     
     // create output txt file containing the livetime
     std::ofstream livetime;
     livetime.open(out_dir + "/livetime/" + runNum + ".txt");
-    livetime << "1";
+    livetime << adjusted_livetime;
     livetime.close();
     
     return 0;
