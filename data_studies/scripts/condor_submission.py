@@ -331,8 +331,59 @@ def extract_low_itr_bi214_evs_info():
         os.system(command)
         time.sleep(2)
 
+def submit_new_bipo214_tagging():
+    """
+    New tagging script written in data_mc_agreement folder to tag BiPo214 in 
+    quiet data period.
+    """
+
+    run_list     = np.loadtxt("../runlists/quiet_period.txt", dtype = int)
+    EXCLUDE_LIST = [300000, 301140, 301148, 305479] # gtids written out of order 
+    condor_path  = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor"
+
+    # define the folder to save the output TTRees containing the tagged BiPo214 information
+    output_dir = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/better_tagging/raw_tagging_output"
+    
+    # load up the templates
+    with open("../condor/better_tagging_template.sh", "r") as infile:
+        rawTextSh = string.Template(infile.read())
+    with open("../condor/analysis_template.submit", "r") as infile:
+        rawTextSubmit = string.Template(infile.read())
+
+    job_count = 0
+    for irun in run_list:
+        if irun in EXCLUDE_LIST:
+            continue
+        
+        outTextSh = rawTextSh.substitute(RUN_NUMBER = irun, OUT_DIR = output_dir)
+        
+        name = f"new_bi214_tagging_{irun}"
+        
+        outTextSubmit = rawTextSubmit.substitute(SH_NAME = f"{condor_path}/sh/{name}.sh", LOG_NAME = name)
+
+        # create the files
+        with open(f"{condor_path}/sh/{name}.sh", "w") as outfile:
+            outfile.write(outTextSh)
+        os.chmod(f"{condor_path}/sh/{name}.sh", 0o0777)
+
+        with open(f"{condor_path}/submit/{name}.submit", "w") as outfile:
+            outfile.write(outTextSubmit)
+        
+        # submit this pdf extraction
+        command = f"condor_submit -b better_tagging {condor_path}/submit/{name}.submit"
+        os.system(command)
+        time.sleep(2)
+
+        job_count += 1
+
+        if job_count == 500:
+            print("Submitted up to and including run ", irun)
+            break
+
+
 # submit_analysis(4500.0, -6000.0)
 # submit_ratds_extraction("../runlists/batch4_1_missing.txt", "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/gtids", f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds", "extraction-batch4-1-reruns")
 # submit_reprocessing()
 # submit_reprocessing_analysis()
-extract_low_itr_bi214_evs_info()
+# extract_low_itr_bi214_evs_info()
+submit_new_bipo214_tagging()
