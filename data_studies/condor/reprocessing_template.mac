@@ -1,0 +1,14 @@
+/rat/inroot/load ${IN}
+
+/run/initialize
+
+/rat/proc count
+/rat/procset update 1
+
+/rat/proc scintFitter
+/rat/proclast outroot
+/rat/procset file "${OUT}"
+
+/rat/inroot/read
+
+exit
