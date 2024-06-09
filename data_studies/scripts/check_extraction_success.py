@@ -4,6 +4,7 @@ import ROOT
 import glob
 import rat
 from ROOT import RAT
+import shutil
 """
 Utility scripts to check solar candidate extraction worked.
 
@@ -309,7 +310,7 @@ def check_analysis_success():
     re-running and bug checking.
     """
 
-    runlist = np.loadtxt("../runlists/data_analysis.txt", dtype = int)
+    runlist = np.loadtxt("../runlists/directionality_list.txt", dtype = int)
 
     missing_ntuple   = [] # if the ntuple doesn't exist for a given run
     bad_ratds        = [] # files missing / corrupted / wrong number of events
@@ -339,7 +340,7 @@ def check_analysis_success():
         # find the total extracted number of events in the ratds subrun files
         num_evs_ratds = 0
         try:
-            file = ROOT.TFile.Open(f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/processed_dataset/{irun}.root")
+            file = ROOT.TFile.Open(f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis2/processed_dataset/{irun}.root")
             tree = file.Get("2p5_5p0")
             num_evs_ratds += tree.GetEntries()
         except:
@@ -407,8 +408,55 @@ def delete_full_ratds():
             # break
         # break
 
+def count_extracted_events():
+    """
+    Globs all the ratds extracted files in a folder, and counts the number of entries
+    in each one.
+    """
 
+    dir_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/reprocessed_ratds_7.0.8"
 
+    flist = glob.glob(f"{dir_path}/*.root")
+
+    num_events = 0
+    for ifile in flist:
+        print(ifile)
+        try:
+            file = ROOT.TFile.Open(ifile)
+            tree = file.Get("T")
+            num_events += tree.GetEntries()
+        except:
+            continue
+    print(f"Found {num_events} events.")
+
+def copy_extracted_files_containing_events():
+    """
+    Function runs through folder of extracted RATDS files and copies ones that contain
+    Bi214 (or whatever) events to a new folder. This results in a folder which only
+    contains uncorrupted files with events present.
+    """
+
+    dir_path   = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds"
+    targer_loc = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/extracted_ratds_7.0.8" 
+    flist = glob.glob(f"{dir_path}/*.root")
+
+    
+    for ifile in flist:
+        try:
+            file = ROOT.TFile.Open(ifile)
+            tree = file.Get("T")
+            num_events = tree.GetEntries()
+        except:
+            continue
+
+        if num_events == 0:
+            continue
+
+        # otherwise we have an uncorrupted file that contains events - copy it to a new location
+        if len(ifile) == 121:
+            shutil.copyfile(ifile, f"{targer_loc}/{ifile[-13:]}")
+        else:
+            shutil.copyfile(ifile, f"{targer_loc}/{ifile[-14:]}")
 
 
 # data_dir   = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/above_5MeV/solar_run_by_run_ntuples/livetimes"
@@ -419,5 +467,8 @@ def delete_full_ratds():
 # run_list = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/runlists/directionality_list.txt"
 # check_runs(run_list, data_dir)
 # check_extraction_success()
-check_analysis_success()
+# check_analysis_success()
 # delete_full_ratds()
+
+copy_extracted_files_containing_events()
+count_extracted_events()

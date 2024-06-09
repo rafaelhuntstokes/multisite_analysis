@@ -21,8 +21,9 @@ def submit_analysis(fv_cut, z_cut):
     condor_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor"
     
     # load up the pdf run list
-    run_list = np.loadtxt("../runlists/data_analysis.txt", dtype = int)
+    run_list = np.loadtxt("../runlists/batch4_1_missing.txt", dtype = int)
     
+    count = 0
     # load up the templates
     with open("../condor/analysis_template.sh", "r") as infile:
         rawTextSh = string.Template(infile.read())
@@ -45,8 +46,13 @@ def submit_analysis(fv_cut, z_cut):
             outfile.write(outTextSubmit)
         
         # submit this pdf extraction
-        command = f"condor_submit -b data_analysis_batch2 {condor_path}/submit/{name}.submit"
+        command = f"condor_submit -b data_analysis_again {condor_path}/submit/{name}.submit"
         os.system(command)
+
+        count += 1
+        if count == 50:
+            print(f"Submitted up to and including run {irun}")
+            break
         time.sleep(2)
         
 def submit_solar_identification(fv_cut, z_cut):
@@ -170,8 +176,8 @@ def submit_ratds_extraction(candidate_runlist, gtid_path, output_path, batch_nam
         command = f"condor_submit -b extract_{batch_name} ../condor/submit/extract_{irun}.submit"
         os.system(command)
         num_submitted += 1
-        time.sleep(2)
-        if num_submitted == 500:
+        time.sleep(4)
+        if num_submitted == 1000:
             print("submitted up to and including: ", irun)
             break
     for irun in no_data:
@@ -186,7 +192,7 @@ def submit_reprocessing():
     """
 
     # load the runlist
-    candidate_runlist = np.loadtxt("../runlists/contains_solar_candidates.txt", dtype= int)
+    candidate_runlist = np.loadtxt("../runlists/batch4_2_missing.txt", dtype= int)
     batch_name        = "bi214_reproc"
 
     # open the templates
@@ -198,8 +204,8 @@ def submit_reprocessing():
         rawTextSubmit = string.Template(infile.read())
 
     # path to snoplus data
-    data_dir    = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/bismuth214_extracted_ratds"
-    output_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/bi214/reprocessed_7.0.15_ratds"
+    data_dir    = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/better_tagging/extracted_bi214_ratds_contains_events"
+    output_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/better_tagging/reprocessed_bi214_ratds_7.0.15"
     # loop over the runs with candidates identified in them
     num_submitted = 0
     bad_runs = [300000, 301140, 301148, 305479]
@@ -215,6 +221,7 @@ def submit_reprocessing():
         print(f"Found {len(flist)} subruns for run {irun}.")
         if len(flist) == 0:
             no_data.append(irun)
+            continue
         # loop over each subrun and create the macro, sh and submit file for the job
         macro_string = ""
         for isub in range(len(flist)):
@@ -238,12 +245,13 @@ def submit_reprocessing():
         with open(f"../condor/submit/reprocess_{irun}.submit", "w") as outfile:
             outfile.write(outTextSubmit)
 
-        command = f"condor_submit -b extract_{batch_name} ../condor/submit/reprocess_{irun}.submit"
+        # command = f"condor_submit -b extract_{batch_name} ../condor/submit/reprocess_{irun}.submit"
+        command = f"source ../condor/sh/reprocess_{irun}.sh" 
         os.system(command)
         num_submitted += 1
-        time.sleep(2)
-        
-        if num_submitted == 500:
+        # time.sleep(4)
+        break
+        if num_submitted == 100:
             print("submitted up to and including: ", irun)
             break
     for irun in no_data:
@@ -254,16 +262,18 @@ def submit_reprocessing_analysis():
     """
     Evaluate the multisite discriminant for the reprocessed Bi214 or B8 solar candidates.
     """
-    fv_cut     = 5250
+    fv_cut     = 6000
     z_cut      = -6000
-    event_type = 1 # 1 - bi214 , 2 = solar
-
+    event_type = 2 # 1 - bi214 , 2 = solar
+    mc_flag    = 1
     # path to save the individual sh and submit files to
     condor_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor"
     
     # load up the pdf run list
-    run_list = np.loadtxt("../runlists/contains_solar_candidates.txt", dtype = int)
-    
+    # run_list = np.loadtxt("../runlists/better_tagged_bi214.txt", dtype = int)
+    run_list = np.loadtxt("../../mc_studies/runlists/full_test.txt", dtype = int)
+    # run_list = np.loadtxt("../runlists/contains_solar_candidates.txt", dtype = int)
+
     # load up the templates
     with open("../condor/reprocessing_analysis_template.sh", "r") as infile:
         rawTextSh = string.Template(infile.read())
@@ -271,7 +281,7 @@ def submit_reprocessing_analysis():
         rawTextSubmit = string.Template(infile.read())
 
     for irun in run_list:
-        outTextSh = rawTextSh.substitute(RUN_NUMBER = irun, FV_CUT = fv_cut, Z_CUT = z_cut, EVENT_TYPE = event_type)
+        outTextSh = rawTextSh.substitute(RUN_NUMBER = irun, FV_CUT = fv_cut, Z_CUT = z_cut, EVENT_TYPE = event_type, MC_FLAG = mc_flag)
         
         name = f"reproc_analysis_{irun}"
         
@@ -286,9 +296,10 @@ def submit_reprocessing_analysis():
             outfile.write(outTextSubmit)
         
         # submit this pdf extraction
-        command = f"condor_submit -b bi214 {condor_path}/submit/{name}.submit"
+        # command = f"condor_submit -b solar {condor_path}/submit/{name}.submit"
+        command = f"source {condor_path}/sh/{name}.sh"
         os.system(command)
-        time.sleep(2)
+        # time.sleep(2)
 
 def extract_low_itr_bi214_evs_info():
     """
@@ -337,7 +348,7 @@ def submit_new_bipo214_tagging():
     quiet data period.
     """
 
-    run_list     = np.loadtxt("../runlists/quiet_period.txt", dtype = int)
+    run_list     = np.loadtxt("../runlists/extra_list.txt", dtype = int)
     EXCLUDE_LIST = [300000, 301140, 301148, 305479] # gtids written out of order 
     condor_path  = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor"
 
@@ -381,9 +392,9 @@ def submit_new_bipo214_tagging():
             break
 
 
-# submit_analysis(4500.0, -6000.0)
-# submit_ratds_extraction("../runlists/batch4_1_missing.txt", "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/gtids", f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds", "extraction-batch4-1-reruns")
+submit_analysis(6000.0, -6000.0)
+# submit_ratds_extraction("../runlists/batch4_2_missing.txt", "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/better_tagging/bi214_gtids", f"/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/better_tagging/extracted_bi214_ratds", "extraction-bi214")
 # submit_reprocessing()
 # submit_reprocessing_analysis()
 # extract_low_itr_bi214_evs_info()
-submit_new_bipo214_tagging()
+# submit_new_bipo214_tagging()

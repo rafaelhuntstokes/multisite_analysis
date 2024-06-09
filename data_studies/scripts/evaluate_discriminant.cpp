@@ -179,7 +179,7 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
 
     // define input and output paths
     std::string input_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds/" + std::to_string(run_number) + "*.root";    
-    std::string output_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis2/processed_dataset/" + std::to_string(run_number) + ".root";
+    std::string output_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/processed_dataset/" + std::to_string(run_number) + ".root";
     
     // load the PDF files for each isotope
     std::string working_directory = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies";
@@ -227,7 +227,9 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     TTree *info_3p5_5p0 = new TTree("3p5_5p0", "3p5_5p0");
     
     // define the variables to fill branches with
-    double energy, x, y, z, dlogL, fisher, IQR, cos_theta_sun, itr;
+    double energy, x, y, z, dlogL, itr, HC_ratio, posFOM, cos_theta_sun;
+    Int_t nhitsCleaned, nhitsRaw, gtid;
+    UInt_t posFOM_hits;
 
     info_2p5_5p0->Branch("energy", &energy);
     info_2p5_5p0->Branch("itr", &itr);
@@ -235,9 +237,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_2p5_5p0->Branch("y", &y);
     info_2p5_5p0->Branch("z", &z);
     info_2p5_5p0->Branch("dlogL", &dlogL);
-    info_2p5_5p0->Branch("fisher", &fisher);
-    info_2p5_5p0->Branch("IQR", &IQR);
-    info_2p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_2p5_5p0->Branch("nhitsCleaned", &nhitsCleaned);
+    info_2p5_5p0->Branch("nhitsRaw", &nhitsRaw);
+    info_2p5_5p0->Branch("HC_ratio", &HC_ratio);
+    info_2p5_5p0->Branch("posFOM", &posFOM);
+    info_2p5_5p0->Branch("posFOM_hits", &posFOM_hits);
+    info_2p5_5p0->Branch("gtid", &gtid);
 
     info_2p5_3p0->Branch("energy", &energy);
     info_2p5_3p0->Branch("itr", &itr);
@@ -245,9 +250,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_2p5_3p0->Branch("y", &y);
     info_2p5_3p0->Branch("z", &z);
     info_2p5_3p0->Branch("dlogL", &dlogL);
-    info_2p5_3p0->Branch("fisher", &fisher);
-    info_2p5_3p0->Branch("IQR", &IQR);
-    info_2p5_3p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_2p5_3p0->Branch("nhitsCleaned", &nhitsCleaned);
+    info_2p5_3p0->Branch("nhitsRaw", &nhitsRaw);
+    info_2p5_3p0->Branch("HC_ratio", &HC_ratio);
+    info_2p5_3p0->Branch("posFOM", &posFOM);
+    info_2p5_3p0->Branch("posFOM_hits", &posFOM_hits);
+    info_2p5_3p0->Branch("gtid", &gtid);
 
     info_3p0_3p5->Branch("energy", &energy);
     info_3p0_3p5->Branch("itr", &itr);
@@ -255,9 +263,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_3p0_3p5->Branch("y", &y);
     info_3p0_3p5->Branch("z", &z);
     info_3p0_3p5->Branch("dlogL", &dlogL);
-    info_3p0_3p5->Branch("fisher", &fisher);
-    info_3p0_3p5->Branch("IQR", &IQR);
-    info_3p0_3p5->Branch("cos_theta_sun", &cos_theta_sun);
+    info_3p0_3p5->Branch("nhitsCleaned", &nhitsCleaned);
+    info_3p0_3p5->Branch("nhitsRaw", &nhitsRaw);
+    info_3p0_3p5->Branch("HC_ratio", &HC_ratio);
+    info_3p0_3p5->Branch("posFOM", &posFOM);
+    info_3p0_3p5->Branch("posFOM_hits", &posFOM_hits);
+    info_3p0_3p5->Branch("gtid", &gtid);
 
     info_3p5_4p0->Branch("energy", &energy);
     info_3p5_4p0->Branch("itr", &itr);
@@ -265,9 +276,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_3p5_4p0->Branch("y", &y);
     info_3p5_4p0->Branch("z", &z);
     info_3p5_4p0->Branch("dlogL", &dlogL);
-    info_3p5_4p0->Branch("fisher", &fisher);
-    info_3p5_4p0->Branch("IQR", &IQR);
-    info_3p5_4p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_3p5_4p0->Branch("nhitsCleaned", &nhitsCleaned);
+    info_3p5_4p0->Branch("nhitsRaw", &nhitsRaw);
+    info_3p5_4p0->Branch("HC_ratio", &HC_ratio);
+    info_3p5_4p0->Branch("posFOM", &posFOM);
+    info_3p5_4p0->Branch("posFOM_hits", &posFOM_hits);
+    info_3p5_4p0->Branch("gtid", &gtid);
 
     info_4p0_4p5->Branch("energy", &energy);
     info_4p0_4p5->Branch("itr", &itr);
@@ -275,9 +289,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_4p0_4p5->Branch("y", &y);
     info_4p0_4p5->Branch("z", &z);
     info_4p0_4p5->Branch("dlogL", &dlogL);
-    info_4p0_4p5->Branch("fisher", &fisher);
-    info_4p0_4p5->Branch("IQR", &IQR);
-    info_4p0_4p5->Branch("cos_theta_sun", &cos_theta_sun);
+    info_4p0_4p5->Branch("nhitsCleaned", &nhitsCleaned);
+    info_4p0_4p5->Branch("nhitsRaw", &nhitsRaw);
+    info_4p0_4p5->Branch("HC_ratio", &HC_ratio);
+    info_4p0_4p5->Branch("posFOM", &posFOM);
+    info_4p0_4p5->Branch("posFOM_hits", &posFOM_hits);
+    info_4p0_4p5->Branch("gtid", &gtid);
 
     info_4p5_5p0->Branch("energy", &energy);
     info_4p5_5p0->Branch("itr", &itr);
@@ -285,9 +302,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_4p5_5p0->Branch("y", &y);
     info_4p5_5p0->Branch("z", &z);
     info_4p5_5p0->Branch("dlogL", &dlogL);
-    info_4p5_5p0->Branch("fisher", &fisher);
-    info_4p5_5p0->Branch("IQR", &IQR);
-    info_4p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_4p5_5p0->Branch("nhitsCleaned", &nhitsCleaned);
+    info_4p5_5p0->Branch("nhitsRaw", &nhitsRaw);
+    info_4p5_5p0->Branch("HC_ratio", &HC_ratio);
+    info_4p5_5p0->Branch("posFOM", &posFOM);
+    info_4p5_5p0->Branch("posFOM_hits", &posFOM_hits);
+    info_4p5_5p0->Branch("gtid", &gtid);
 
     info_2p5_3p75->Branch("energy", &energy);
     info_2p5_3p75->Branch("itr", &itr);
@@ -295,9 +315,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_2p5_3p75->Branch("y", &y);
     info_2p5_3p75->Branch("z", &z);
     info_2p5_3p75->Branch("dlogL", &dlogL);
-    info_2p5_3p75->Branch("fisher", &fisher);
-    info_2p5_3p75->Branch("IQR", &IQR);
-    info_2p5_3p75->Branch("cos_theta_sun", &cos_theta_sun);
+    info_2p5_3p75->Branch("nhitsCleaned", &nhitsCleaned);
+    info_2p5_3p75->Branch("nhitsRaw", &nhitsRaw);
+    info_2p5_3p75->Branch("HC_ratio", &HC_ratio);
+    info_2p5_3p75->Branch("posFOM", &posFOM);
+    info_2p5_3p75->Branch("posFOM_hits", &posFOM_hits);
+    info_2p5_3p75->Branch("gtid", &gtid);
 
     info_3p75_5p0->Branch("energy", &energy);
     info_3p75_5p0->Branch("itr", &itr);
@@ -305,9 +328,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_3p75_5p0->Branch("y", &y);
     info_3p75_5p0->Branch("z", &z);
     info_3p75_5p0->Branch("dlogL", &dlogL);
-    info_3p75_5p0->Branch("fisher", &fisher);
-    info_3p75_5p0->Branch("IQR", &IQR);
-    info_3p75_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_3p75_5p0->Branch("nhitsCleaned", &nhitsCleaned);
+    info_3p75_5p0->Branch("nhitsRaw", &nhitsRaw);
+    info_3p75_5p0->Branch("HC_ratio", &HC_ratio);
+    info_3p75_5p0->Branch("posFOM", &posFOM);
+    info_3p75_5p0->Branch("posFOM_hits", &posFOM_hits);
+    info_3p75_5p0->Branch("gtid", &gtid);
 
     info_3p5_5p0->Branch("energy", &energy);
     info_3p5_5p0->Branch("itr", &itr);
@@ -315,9 +341,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     info_3p5_5p0->Branch("y", &y);
     info_3p5_5p0->Branch("z", &z);
     info_3p5_5p0->Branch("dlogL", &dlogL);
-    info_3p5_5p0->Branch("fisher", &fisher);
-    info_3p5_5p0->Branch("IQR", &IQR);
-    info_3p5_5p0->Branch("cos_theta_sun", &cos_theta_sun);
+    info_3p5_5p0->Branch("nhitsCleaned", &nhitsCleaned);
+    info_3p5_5p0->Branch("nhitsRaw", &nhitsRaw);
+    info_3p5_5p0->Branch("HC_ratio", &HC_ratio);
+    info_3p5_5p0->Branch("posFOM", &posFOM);
+    info_3p5_5p0->Branch("posFOM_hits", &posFOM_hits);
+    info_3p5_5p0->Branch("gtid", &gtid);
 
     // setup deadtime veto code
     bool veto_flag          = false;
@@ -326,7 +355,6 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
     double pileupTime       = 0;
     int num_vetos           = 0;
     ULong64_t veto_start_time, lone_start_time, dcApplied, dcFlagged, clock50;
-    int nhitsCleaned;
     Int_t fPass;
 
     // use glob function to create a filelist of each subrun ratds corresponding to this run
@@ -367,6 +395,10 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
 
             // apply neck hotspot / weird stuff removal and deadtime cuts
             nhitsCleaned = rEV.GetNhitsCleaned();
+            nhitsRaw     = rEV.GetNhits();
+            HC_ratio     = float(nhitsCleaned) / float(nhitsRaw);
+            posFOM       = rEV.GetFitResult("scintFitter").GetFOM("PositionLogL");
+            posFOM_hits  = rEV.GetFitResult("scintFitter").GetFOM("PositionSelectedNHit");
             fPass        = rEV.GetDataCleaningFlags().GetLatestPass();
             clock50      = rEV.GetClockCount50();
             if(fPass >= 0){
@@ -495,8 +527,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
             // passed all event selection cuts! Now we evaluate the discriminants
 
             // get the solar direction for this run
-            RAT::DS::UniversalTime event_time = rEV.GetUniversalTime();
-            TVector3 solar_dir                = RAT::SunDirection(event_time.GetDays(), event_time.GetSeconds(), event_time.GetNanoSeconds()).Unit();
+            // RAT::DS::UniversalTime event_time = rEV.GetUniversalTime();
+            // TVector3 solar_dir                = RAT::SunDirection(event_time.GetDays(), event_time.GetSeconds(), event_time.GetNanoSeconds()).Unit();
 
             // check result exists for the directionality
             bool dir_flag = false;
@@ -570,12 +602,12 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
                 std::cout << "Evaluating multisite discriminant." << std::endl;
                 
                 dlogL         = multisite_discriminant(time_residuals, pdf_B8_multi, pdf_Tl208_multi);
-                IQR           = 0; // not implemented yet
-                fisher        = 0; // not implemented yet
+                // IQR           = 0; // not implemented yet
+                // fisher        = 0; // not implemented yet
 
                 // fill the ntuples
                 if (energy >= 2.5 and energy < 3.0){
-                info_2p5_3p0->Fill();
+                    info_2p5_3p0->Fill();
                 }
                 if (energy >= 3.0 and energy < 3.5){
                     info_3p0_3p5->Fill();
@@ -597,8 +629,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
                 // only calculate multisite discriminants if cos_theta_sun fit succeeded
                 if (cos_theta_sun != -999.9){
                     dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_2p5_5p0, multi_pdf_Tl208_2p5_5p0);
-                    IQR           = 0; // not implemented yet
-                    fisher        = 0; // not implemented yet
+                    // IQR           = 0; // not implemented yet
+                    // fisher        = 0; // not implemented yet
 
                     info_2p5_5p0->Fill();
                 }
@@ -614,8 +646,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
                 if (cos_theta_sun != -999.9){
                     std::cout << "Evaluating multisite discriminant." << std::endl;
                     dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_2p5_3p75, multi_pdf_Tl208_2p5_3p75);
-                    IQR           = 0; // not implemented yet
-                    fisher        = 0; // not implemented yet
+                    // IQR           = 0; // not implemented yet
+                    // fisher        = 0; // not implemented yet
 
                     info_2p5_3p75->Fill();
                 }
@@ -630,8 +662,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
                 if (cos_theta_sun != -999.9){
                     std::cout << "Evaluating multisite discriminant." << std::endl;
                     dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_3p75_5p0, multi_pdf_Tl208_3p75_5p0);
-                    IQR           = 0; // not implemented yet
-                    fisher        = 0; // not implemented yet
+                    // IQR           = 0; // not implemented yet
+                    // fisher        = 0; // not implemented yet
 
                     info_3p75_5p0->Fill();
                 }
@@ -647,8 +679,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut){
                 if (cos_theta_sun != -999.9){
                     std::cout << "Evaluating multisite discriminant." << std::endl;
                     dlogL         = multisite_discriminant(time_residuals, multi_pdf_B8_3p5_5p0, multi_pdf_Tl208_3p5_5p0);
-                    IQR           = 0; // not implemented yet
-                    fisher        = 0; // not implemented yet
+                    // IQR           = 0; // not implemented yet
+                    // fisher        = 0; // not implemented yet
 
                     info_3p5_5p0->Fill();
                 }
@@ -688,4 +720,10 @@ int main(int argc, char* argv[]){
     
     // run the analysis!
     evaluate_discriminants(run_number, fv_cut, z_cut);
+
+    // create the job completed flag output
+    std::ofstream completed("/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/job_completed_flag/" + std::to_string(run_number) + ".txt");
+    completed << "1";
+    completed.close();
+
 }

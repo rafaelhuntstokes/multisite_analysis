@@ -16,24 +16,24 @@ def compare_dlogL_data_mc():
     
     # data = ROOT.TFile.Open(working_dir + "/extracted_data/above_5MeV/solar_data_discriminants/total.root")
     # mc   = ROOT.TFile.Open("/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test/B8_solar_nue/total.root")
-    data = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/bismuth214_data_discriminants/total.root")
+    # data = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/bismuth214_data_discriminants/total.root")
+    data = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/discriminants_7.0.8_2.5_3.125_PDF/total.root")
     mc   = ROOT.TFile.Open("/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test/Bi214/total.root")
 
     # grab the above 5MeV TTrees
     # data_5MeV_tree = data.Get("5p0_plus")
     # mc_5MeV_tree   = mc.Get("5p0_plus")
-    data_5MeV_tree = data.Get("1p25_3p0")
+    data_5MeV_tree = data.Get("bi214")
     mc_5MeV_tree   = mc.Get("1p25_3p0")
     
     FV_CUT      = 5250
-    ITR_LOW     = 0.21 
+    ITR_LOW     = 0.0 
     ITR_HIGH    = 0.3
     E_CUT_LOW   = 1.25
     E_CUT_HIGH  = 3.0
     data_dlogL  = []
     mc_dlogL    = []
     data_itr    = []
-    cos_theta   = []
     data_energy = []
     
     for ientry in data_5MeV_tree:
@@ -46,7 +46,6 @@ def compare_dlogL_data_mc():
                 continue
             data_dlogL.append(ientry.dlogL)
             data_itr.append(ientry.itr)
-            cos_theta.append(ientry.cos_theta_sun)
             data_energy.append(ientry.energy)
     for ientry in mc_5MeV_tree:
         if ientry.itr > ITR_LOW and ientry.itr < ITR_HIGH and ientry.energy >= E_CUT_LOW and ientry.energy < E_CUT_HIGH:
@@ -160,7 +159,7 @@ def compare_dlogL_data_mc():
         axes[i].legend(fontsize = 15, loc = "upper left", frameon = False)
 
     fig.tight_layout()
-    plt.savefig(f"../plots/bi214_dlogL_energy_comparison_FV_{FV_CUT}mm.pdf")
+    plt.savefig(f"../plots/bi214_dlogL_energy_comparison_FV_{FV_CUT}mm_new.pdf")
 
 def check_candidate_health():
     """
@@ -355,7 +354,7 @@ def get_bipo_info():
     plt.suptitle(r"$^{214}$Bi Candidates", fontsize = 20)
     plt.savefig("../plots/bipo_dT_dR_vsE.pdf")
 
-get_bipo_info()
+# get_bipo_info()
 # check_candidate_health()
-# compare_dlogL_data_mc()
+compare_dlogL_data_mc()
 # compare_single_site_data_mc()
