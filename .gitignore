@@ -4,6 +4,11 @@ data_studies/condor/macros
 data_studies/condor/outputs
 data_studies/condor/sh
 data_studies/condor/submit
+data_studies/condor/dag_arguments
+data_studies/condor/dag_error
+data_studies/condor/dag_log
+data_studies/condor/dag_output
+data_studies/condor/dag_submit
 data_studies/extracted_data
 data_studies/plots
 mc_studies/condor/errors
