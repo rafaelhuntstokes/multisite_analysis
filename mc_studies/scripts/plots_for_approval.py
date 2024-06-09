@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib.ticker import MultipleLocator
 import matplotlib.ticker as ticker
 import seaborn as sns
+from scipy.optimize import curve_fit
 
 """
 USE env_poster in nuPhysPoster!
@@ -118,9 +119,10 @@ def create_time_residual_pdfs():
 
 
     fig = plt.figure()
-    b8 = plt.step(multi_B8_bins[:-1], multi_B8_counts,  where = 'post', linewidth = 2, color = col1, label = r"$^8B$")
-    tl208 = plt.step(multi_B8_bins[:-1], multi_Tl208_counts,  where = 'post', linewidth = 2, linestyle = "dashed", alpha = 1, color = col2, label = r"$^{208}Tl$")
-    plt.legend(handles = [plt.plot([], [], color = col1)[0], plt.plot([], [], linestyle = "dashed", color = col2)[0]], labels = [r"${^8}$B", r"$^{208}$Tl"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+    ax = fig.add_axes([0.13, 0.13, 0.8, 0.8])
+    b8 = ax.step(multi_B8_bins[:-1], multi_B8_counts,  where = 'post', linewidth = 2, color = col1, label = r"$^8B$")
+    tl208 = ax.step(multi_B8_bins[:-1], multi_Tl208_counts,  where = 'post', linewidth = 2, linestyle = "dashed", alpha = 1, color = col2, label = r"$^{208}Tl$")
+    plt.legend(handles = [plt.plot([], [], color = col1)[0], plt.plot([], [], linestyle = "dashed", color = col2)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 18),frameon=False)
     plt.xlabel("Time Residual [ns]", fontproperties = prop_font, fontsize = 26)
     plt.ylabel("Normalised Counts", fontproperties = prop_font, fontsize = 26)
     # plt.title(r"Time Residuals for $^8$B and $^{208}$Tl Events", fontproperties = prop_font, fontsize = 26)
@@ -173,16 +175,17 @@ def create_dlogL_plot():
     binning_full = np.arange(-1.375, -1.325, 0.0005)
     binning_3p5_5p0 = np.arange(-1.309, -1.26, 0.0005)
     fig = plt.figure()
+    ax = fig.add_axes([0.13, 0.13, 0.8, 0.8])
     # plt.step(binning_3p5_5p0, b8_pdf.tolist() + [0], where = "post", linewidth = 2, color = col1)
     # plt.step(binning_3p5_5p0, tl208_pdf.tolist() + [0], where = "post", linestyle = "dashed", linewidth = 2, color = col2)
-    plt.step(binning_full, b8_pdf.tolist() + [0], where = "post", linewidth = 2, color = col1)
-    plt.step(binning_full, tl208_pdf.tolist() + [0], where = "post", linestyle = "dashed", linewidth = 2, color = col2)
+    ax.step(binning_full, b8_pdf.tolist() + [0], where = "post", linewidth = 2, color = col1)
+    ax.step(binning_full, tl208_pdf.tolist() + [0], where = "post", linestyle = "dashed", linewidth = 2, color = col2)
     plt.xlabel(r"$\Delta log(\mathcal{L})$ Multisite Discriminant", fontproperties = prop_font, fontsize = 26)
     plt.ylabel("Normalised Counts", fontproperties = prop_font, fontsize = 26)
     # plt.title(r"Multisite Discriminants for $^8$B and $^{208}$Tl", fontproperties = prop_font, fontsize = 26)
-    plt.ylim((0, 0.12))
+    plt.ylim((0, 0.139))
 
-    plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], color = col2, linewidth = 2, linestyle = "dashed")[0]], labels = [r"${^8}$B", r"$^{208}$Tl"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+    plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], color = col2, linewidth = 2, linestyle = "dashed")[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$"], loc = "upper right", fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 18),frameon=False)
 
     ax = plt.gca()
     for label in ax.get_xticklabels():
@@ -190,7 +193,7 @@ def create_dlogL_plot():
 
     for label in ax.get_yticklabels():
         label.set_fontproperties(prop_font)
-    ax.text(0.125, 0.6, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"2.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 18)
+    ax.text(0.06, 0.6, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"2.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 18)
 
     #### create ROC curve from the PDFs ####
     signal_acceptance     = []
@@ -204,7 +207,7 @@ def create_dlogL_plot():
     
     # create the ROC curve inset graph
     factor = 1.5
-    left, bottom, width, height = [0.25, 0.28, 0.2*factor, 0.2*factor]
+    left, bottom, width, height = [0.23, 0.26, 0.2*factor, 0.2*factor]
     ax2 = fig.add_axes([left, bottom, width, height])
     ax2.plot(signal_acceptance, background_acceptance, color = "black", linewidth = 2)
     ax2.set_xlim((0,1))
@@ -239,7 +242,7 @@ def create_asimov_dataset_graphs():
     cmap = sns.color_palette(map, 8)
     col1 = cmap[1]
     col2 = cmap[2]
-    col3 = cmap[7]
+    col3 = "black"#cmap[7]
     col4 = cmap[3]
     col5 = cmap[4]
 
@@ -250,7 +253,8 @@ def create_asimov_dataset_graphs():
     pdfs_energy    = np.load("energy_pdf_array_2p5_5p0.npy")
 
     # define the normalisations of each - from background model and livetime
-    normalisations = np.array([66.3, 468.9, 0.9081, 59.227, 38.528])
+    # normalisations = np.array([66.3, 468.9, 0.9081, 59.227, 38.528]) # 145.7 days livetime (what I have in dataset)
+    normalisations = np.array([166.084, 1174.61, 2.27, 148.38, 96.52]) # 1 yr scaled livetime
     weights        = np.array([0.551, 0.634, 0.620, 0, 0])
     weights        = np.array([1, 1, 1, 1, 1])
     normalisations = normalisations * weights
@@ -270,6 +274,7 @@ def create_asimov_dataset_graphs():
     
     ### energy plot ###
     fig = plt.figure()
+    ax = fig.add_axes([0.13, 0.13, 0.8, 0.8])
     # plt.step(energy_bins_3p5_5p0, scaled_energy[0, :].tolist() + [0], color = col1, where = 'post', linewidth = 2)
     # plt.step(energy_bins_3p5_5p0, scaled_energy[1, :].tolist() + [0], color = col2, where = 'post', linestyle = "dashdot", linewidth = 2)
     # # plt.step(energy_bins, scaled_energy[2, :].tolist() + [0], color = col3, where = 'post', linestyle = "dotted", linewidth = 2)
@@ -277,12 +282,12 @@ def create_asimov_dataset_graphs():
     # # plt.step(energy_bins_3p5_5p0, scaled_energy[4, :].tolist() + [0], color = col4, where = 'post', dashes = [10,2], linewidth = 2)
     # plt.step(energy_bins_3p5_5p0, np.sum(scaled_energy, axis= 0).tolist() + [0], color = col3, linestyle = "dotted", where = 'post', linewidth = 2)
 
-    plt.step(energy_bins, scaled_energy[0, :].tolist() + [0], color = col1, where = 'post', linewidth = 2)
-    plt.step(energy_bins, scaled_energy[1, :].tolist() + [0], color = col2, where = 'post', linestyle = "dashdot", linewidth = 2)
+    ax.step(energy_bins, scaled_energy[0, :].tolist() + [0], color = col1, where = 'post', linewidth = 2)
+    ax.step(energy_bins, scaled_energy[1, :].tolist() + [0], color = col2, where = 'post', linestyle = "dashdot", linewidth = 2)
     # plt.step(energy_bins, scaled_energy[2, :].tolist() + [0], color = col3, where = 'post', linestyle = "dotted", linewidth = 2)
-    plt.step(energy_bins, scaled_energy[3, :].tolist() + [0], color = col5, where = 'post', dashes = [5, 2], linewidth = 2)
-    plt.step(energy_bins, scaled_energy[4, :].tolist() + [0], color = col4, where = 'post', dashes = [10,2], linewidth = 2)
-    plt.step(energy_bins, np.sum(scaled_energy, axis= 0).tolist() + [0], color = col3, linestyle = "dotted", where = 'post', linewidth = 2)
+    ax.step(energy_bins, scaled_energy[3, :].tolist() + [0], color = col5, where = 'post', dashes = [5, 2], linewidth = 2)
+    ax.step(energy_bins, scaled_energy[4, :].tolist() + [0], color = col4, where = 'post', dashes = [10,2], linewidth = 2)
+    ax.step(energy_bins, np.sum(scaled_energy, axis= 0).tolist() + [0], color = col3, linestyle = "dotted", where = 'post', linewidth = 2)
 
 
     plt.xlabel("Reconstructed Energy [MeV]", fontproperties = prop_font, fontsize = 26)
@@ -303,7 +308,7 @@ def create_asimov_dataset_graphs():
     plt.yticks(fontsize = 20)
     plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], color = col2, linewidth = 2, linestyle = "dashdot")[0],  \
                           plt.plot([], [], color = col5, linewidth = 2, dashes = [5, 2])[0],\
-                          plt.plot([], [], color = col4, linewidth = 2, dashes = [10, 2])[0], plt.plot([], [], color = col3, linewidth = 2)[0]], labels = [r"${^8}$B", r"$^{208}$Tl", "BiPo212", "BiPo214", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+                          plt.plot([], [], color = col4, linewidth = 2, dashes = [10, 2])[0], plt.plot([], [], color = col3, linestyle = "dotted", linewidth = 2)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$", "BiPo212 (pileup)", "$^{214}$Bi", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
     # plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], color = col2, linewidth = 2, linestyle = "dashdot")[0],  \
     #                       plt.plot([], [], color = col3, linewidth = 2, linestyle = "dotted")[0]], labels = [r"${^8}$B", r"$^{208}$Tl", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
 
@@ -315,6 +320,7 @@ def create_asimov_dataset_graphs():
 
     ### multisite plot ###
     fig = plt.figure()
+    ax = fig.add_axes([0.13, 0.13, 0.8, 0.8])
     # plt.step(multisite_bins_3p5_5p0, scaled_multisite[0, :].tolist() + [0], color = col1, where = 'post', linewidth = 2)
     # plt.step(multisite_bins_3p5_5p0, scaled_multisite[1, :].tolist() + [0], color = col2, where = 'post', linestyle = "dashdot", linewidth = 2)
     # plt.step(multisite_bins, scaled_multisite[2, :].tolist() + [0], color = "green", where = 'post', linewidth = 2)
@@ -322,12 +328,12 @@ def create_asimov_dataset_graphs():
     # plt.step(multisite_bins_3p5_5p0, scaled_multisite[4, :].tolist() + [0], color = col4, where = 'post', dashes = [10, 2], linewidth = 2)
     # plt.step(multisite_bins_3p5_5p0, np.sum(scaled_multisite, axis = 0).tolist() + [0], color = col3, where = 'post', linestyle = "dotted", linewidth =2)
 
-    plt.step(multisite_bins, scaled_multisite[0, :].tolist() + [0], color = col1, where = 'post', linewidth = 2)
-    plt.step(multisite_bins, scaled_multisite[1, :].tolist() + [0], color = col2, where = 'post', linestyle = "dashdot", linewidth = 2)
+    ax.step(multisite_bins, scaled_multisite[0, :].tolist() + [0], color = col1, where = 'post', linewidth = 2)
+    ax.step(multisite_bins, scaled_multisite[1, :].tolist() + [0], color = col2, where = 'post', linestyle = "dashdot", linewidth = 2)
     # plt.step(multisite_bins, scaled_multisite[2, :].tolist() + [0], color = "green", where = 'post', linewidth = 2)
-    plt.step(multisite_bins, scaled_multisite[3, :].tolist() + [0], color = col5, where = 'post', dashes = [5, 2], linewidth = 2)
-    plt.step(multisite_bins, scaled_multisite[4, :].tolist() + [0], color = col4, where = 'post', dashes = [10, 2], linewidth = 2)
-    plt.step(multisite_bins, np.sum(scaled_multisite, axis = 0).tolist() + [0], color = col3, where = 'post', linestyle = "dotted", linewidth =2)
+    ax.step(multisite_bins, scaled_multisite[3, :].tolist() + [0], color = col5, where = 'post', dashes = [5, 2], linewidth = 2)
+    ax.step(multisite_bins, scaled_multisite[4, :].tolist() + [0], color = col4, where = 'post', dashes = [10, 2], linewidth = 2)
+    ax.step(multisite_bins, np.sum(scaled_multisite, axis = 0).tolist() + [0], color = col3, where = 'post', linestyle = "dotted", linewidth =2)
 
     plt.xlabel(r"$\Delta log(\mathcal{L})$ Multisite Discriminant", fontproperties = prop_font, fontsize = 26)
     plt.ylabel("Relative Counts", fontproperties = prop_font, fontsize = 26)
@@ -345,7 +351,7 @@ def create_asimov_dataset_graphs():
     plt.xticks(fontsize = 20)
     plt.yticks(fontsize = 20)
     plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], linestyle = "dashdot", linewidth = 2, color = col2)[0],  \
-                          plt.plot([], [], color = col5, dashes = [5, 2], linewidth = 2)[0], plt.plot([], [], linewidth = 2, dashes = [10, 2], color = col4)[0], plt.plot([], [], linewidth = 2, linestyle = "dotted", color = col3)[0]], labels = [r"${^8}$B", r"$^{208}$Tl", "BiPo212", "BiPo214", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+                          plt.plot([], [], color = col5, dashes = [5, 2], linewidth = 2)[0], plt.plot([], [], linewidth = 2, dashes = [10, 2], color = col4)[0], plt.plot([], [], linewidth = 2, linestyle = "dotted", color = col3)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$", "BiPo212 (pileup)", "$^{214}$Bi", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
 
     ax = plt.gca()
     # ax.text(0.05, 0.55, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"3.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 20)
@@ -409,7 +415,7 @@ def create_asimov_dataset_graphs():
 
     # fig.tight_layout()
     # fig.subplots_adjust(wspace=0.30)
-    # plt.savefig("../plots/plots_for_approval/asimov_combined.pdf")
+    # plt.savefig("../plots/plots_for_approval/asimov_combined.pdf")bounds
     # plt.close()
 
 def calculate_uncertainty(profile_ll):
@@ -453,8 +459,9 @@ def create_profile_LL_asimov_plot():
     """
     
     # load the profile LL curves
-    profile_ll = np.load("profile_ll_asimov_3p5_5p0.npy")
+    # profile_ll = np.load("profile_ll_asimov_3p5_5p0.npy")
     # profile_ll = np.load("profile_ll_asimov.npy")
+    profile_ll = np.load('profile_ll_asimov_1yr_fullROI.npy')
     combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
     signal_hypothesis = np.arange(0, 800, 1)
     
@@ -472,10 +479,11 @@ def create_profile_LL_asimov_plot():
     col3 = cmap[7]
     col4 = cmap[0]
     # col5 = cmap[4]
-    plt.figure()
-    plt.plot(signal_hypothesis, profile_ll[2, :], linewidth = 2.5, linestyle = "--", color = col1)
-    plt.plot(signal_hypothesis, profile_ll[1, :], linewidth = 2.5, color = col2)
-    plt.plot(signal_hypothesis, profile_ll[0, :], linewidth = 2.5, linestyle = "dashdot", color = col3)
+    fig = plt.figure()
+    ax = fig.add_axes([0.13, 0.13, 0.8, 0.8])
+    ax.plot(signal_hypothesis, profile_ll[2, :], linewidth = 2.5, linestyle = "--", color = col1)
+    ax.plot(signal_hypothesis, profile_ll[1, :], linewidth = 2.5, linestyle = "dashdot", color = col2)
+    ax.plot(signal_hypothesis, profile_ll[0, :], linewidth = 2.5, color = "black")
     
     ax = plt.gca()
     for label in ax.get_xticklabels():
@@ -484,21 +492,21 @@ def create_profile_LL_asimov_plot():
     for label in ax.get_yticklabels():
         label.set_fontproperties(prop_font)
     
-    plt.xlabel(r"$^8$B Hypothesis", fontproperties = prop_font, fontsize = 26)
+    plt.xlabel(r"Expected $^8$B $\nu _e$ - e$^-$ ES  Interactions / Year", fontproperties = prop_font, fontsize = 26)
     plt.ylabel(r"$-2log(\mathcal{L})$", fontproperties = prop_font, fontsize = 26)
 
-    plt.xlim((0, 80))
-    # plt.xlim((0, 150))
+    # plt.xlim((0, 80))
+    plt.xlim((0, 332))
     plt.ylim((0, 10))
-    plt.axhline(1, color = col4, linestyle = "dotted", linewidth = 2.5, alpha = 1)
+    plt.axhline(1, color = "black", linestyle = "dotted", linewidth = 2, alpha = 1)
     # plt.axvline(66.3, color = "orange", linestyle = "dashed", linewidth = 2.5, alpha = 0.5)
 
-    plt.text(0.32, 0.28, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"2.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 18)
+    plt.text(0.03, 0.15, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"2.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 15)
     # plt.legend(handles = [plt.plot([], [], color = "black", linewidth = 2.5)[0], plt.plot([], [], color = "green", linewidth = 2.5)[0], plt.plot([], [], color = "blue", linewidth = 2.5)[0], plt.plot([], [], color = "red", linestyle = "dashed", linewidth = 2.5, alpha = 0.5)[0], plt.plot([], [], color = "orange", linestyle = "dashed", linewidth = 2.5, alpha = 0.5)[0]], labels = [rf"Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$", rf"Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$", rf"Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$", r"1 $\sigma$ Frequentist", "True Signal Counts"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
-    plt.legend(handles = [plt.plot([], [], color = col1, linestyle = "--", linewidth = 2.5)[0], plt.plot([], [], color = col2, linewidth = 2.5)[0], plt.plot([], [], color = col3, linestyle = "dashdot", linewidth = 2.5)[0], plt.plot([], [], color = col4, linestyle = "dotted", linewidth = 2.5, alpha = 1)[0]], labels = [rf"Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$", rf"Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$", rf"Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$", r"1 $\sigma$ Frequentist"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+    plt.legend(handles = [plt.plot([], [], color = col1, linestyle = "--", linewidth = 2.5)[0], plt.plot([], [], color = col2, linestyle = "dashdot", linewidth = 2.5)[0], plt.plot([], [], color = "black", linewidth = 2.5)[0], plt.plot([], [], color = "black", linestyle = "dotted", linewidth = 2, alpha = 1)[0]], labels = [rf"Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$", rf"Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$", rf"Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$", r"1 $\sigma$ Frequentist"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
 
     plt.tight_layout()
-    plt.savefig(f"../plots/plots_for_approval/profile_ll_asimov_{map}_coloured_3p5_5p0.pdf")
+    plt.savefig(f"../plots/plots_for_approval/profile_ll_asimov_{map}_coloured.pdf")
     plt.close()
 
 def create_data_vs_mc_plot():
@@ -510,27 +518,32 @@ def create_data_vs_mc_plot():
     # load the data and mc
     working_dir = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies"
     
-    data_solar = ROOT.TFile.Open(working_dir + "/extracted_data/above_5MeV/solar_data_discriminants/total.root")
-    mc_solar   = ROOT.TFile.Open("/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test/B8_solar_nue/total.root")
-    data_bi214 = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/discriminants_7.0.8_2.5_3.125_PDF/total.root")
+    data_solar = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/reprocessed_solar_multisite_7.0.15_highE_PDF/total.root")
+    mc_solar   = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/solar_mc_multisite_highE_PDF/total.root")
+    data_bi214 = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/reprocessed_bi214_multisite_7.0.15/total.root")
     # data_bi214 = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/reprocessed_7.0.15_discriminants_2.5_3.0_PDF/total.root")
-    mc_bi214   = ROOT.TFile.Open("/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test/Bi214/total.root")
+    mc_bi214   = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/bi214_mc_multisite/total.root")
 
     # grab the above 5MeV TTrees
-    solar_data_tree = data_solar.Get("5p0_plus")
-    solar_mc_tree   = mc_solar.Get("5p0_plus")
+    solar_data_tree = data_solar.Get("above_5MeV")
+    solar_mc_tree   = mc_solar.Get("above_5MeV")
     # bi214_data_tree = data_bi214.Get("1p25_3p0")
     # bi214_data_tree = data_bi214.Get("1p25_3p0")
     bi214_data_tree = data_bi214.Get("bi214")
-    bi214_mc_tree   = mc_bi214.Get("1p25_3p0")
+    bi214_mc_tree   = mc_bi214.Get("bi214")
     
     FV_CUT            = 4500
-    ITR_LOW           = 0.0 # not applied
-    ITR_HIGH          = 1.0  # not applied
+    ITR_LOW           = 0.22
+    ITR_HIGH          = 0.3 
     BI214_E_CUT_LOW   = 1.25
     BI214_E_CUT_HIGH  = 3.0
     SOLAR_E_CUT_LOW   = 6.0
     SOLAR_E_CUT_HIGH  = 15.0
+    SOLAR_ITR_LOW     = 0.21
+    SOLAR_ITR_HIGH    = 0.3
+    SOLAR_HC_RATIO_LOW = 0.7
+    SOLAR_FV_CUT       = 4500
+    
     solar_data_dlogL  = []
     solar_mc_dlogL    = []
     bi214_data_dlogL  = []
@@ -542,18 +555,30 @@ def create_data_vs_mc_plot():
             y = ientry.y
             z = ientry.z
             r = np.sqrt(x**2 + y**2 + z**2)
-            if r > FV_CUT:
+            if r > SOLAR_FV_CUT:
                 continue
-            solar_data_dlogL.append(ientry.itr)
+            if ientry.itr < SOLAR_ITR_LOW or ientry.itr > SOLAR_ITR_HIGH:
+                continue
+            if ientry.dlogL < 1.105:
+                print(f"dlogL: {ientry.dlogL}\nGTID: {ientry.gtid}")
+            if ientry.HC_ratio < SOLAR_HC_RATIO_LOW:
+                continue
+            solar_data_dlogL.append(ientry.dlogL)
+    print("Num solar events: ", len(solar_data_dlogL))
     for ientry in solar_mc_tree:
         if ientry.energy >= SOLAR_E_CUT_LOW and ientry.energy < SOLAR_E_CUT_HIGH:
             x = ientry.x
             y = ientry.y
             z = ientry.z
             r = np.sqrt(x**2 + y**2 + z**2)
-            if r > FV_CUT:
+            if r > SOLAR_FV_CUT:
                 continue
-            solar_mc_dlogL.append(ientry.itr)
+            if ientry.itr < SOLAR_ITR_LOW or ientry.itr > SOLAR_ITR_HIGH:
+                continue
+
+            if ientry.HC_ratio < SOLAR_HC_RATIO_LOW:
+                continue
+            solar_mc_dlogL.append(ientry.dlogL)
 
     for ientry in bi214_data_tree:
         if ientry.energy >= BI214_E_CUT_LOW and ientry.energy < BI214_E_CUT_HIGH:
@@ -577,27 +602,30 @@ def create_data_vs_mc_plot():
             if ientry.itr < ITR_LOW or ientry.itr > ITR_HIGH:
                 continue
             bi214_mc_dlogL.append(ientry.dlogL)       
-    print("Num data events: ", len(bi214_data_dlogL))
+    print("Num Bi214 events: ", len(bi214_data_dlogL))
     #### PLOTS ####
-    # binning_solar = np.linspace(1.096, 1.12, 20)
-    binning_solar = np.linspace(np.min(solar_data_dlogL), np.max(solar_data_dlogL), 25)
+    binning_solar = np.linspace(1.096, 1.12, 20)
+    # binning_solar = np.linspace(-0.121,-0.111, 12)
     solar_mids    = binning_solar[:-1] + np.diff(binning_solar)[0] / 2
     # binning_bi214 = np.linspace(-0.125, -0.11, 20)
     binning_bi214 = np.linspace(-0.125, -0.11, 20)
     # binning_bi214 = np.arange(0.15, 0.30, 0.005)
     # binning_bi214 = np.arange(-1.3531751965639947, -1.2049409232845083, 0.0005)
-    print(np.min(bi214_mc_dlogL), np.max(bi214_mc_dlogL), np.min(bi214_data_dlogL), np.max(bi214_data_dlogL))
+    print(np.min(solar_mc_dlogL), np.max(solar_mc_dlogL), np.min(solar_data_dlogL), np.max(solar_data_dlogL))
     # binning_bi214 = np.linspace(np.min(bi214_data_dlogL), np.max(bi214_data_dlogL), 25)
     bi214_mids    = binning_bi214[:-1] + np.diff(binning_bi214)[0] / 2
 
     # normalise the counts
     solar_counts_data, _ = np.histogram(solar_data_dlogL, bins = binning_solar)
+    # identify zero data counts to remove
+    id_nonzero_solar = np.nonzero(solar_counts_data)
     solar_counts_mc, _   = np.histogram(solar_mc_dlogL,  bins = binning_solar)
     solar_scale          = np.sum(solar_counts_data) / np.sum(solar_counts_mc)
     solar_mc_err         = np.sqrt(solar_counts_mc) * solar_scale
     solar_data_err       = np.sqrt(solar_counts_data)
 
     bi214_counts_data, _ = np.histogram(bi214_data_dlogL, bins = binning_bi214)
+    id_nonzero_bi = np.nonzero(bi214_counts_data)
     bi214_counts_mc, _   = np.histogram(bi214_mc_dlogL,  bins = binning_bi214)
     bi214_scale          = np.sum(bi214_counts_data) / np.sum(bi214_counts_mc)
     print(bi214_scale)
@@ -606,15 +634,16 @@ def create_data_vs_mc_plot():
 
     # individual solar plot #
     fig = plt.figure()
-    
-    solar_counts_mc, _, _  = plt.hist(solar_mc_dlogL, bins = binning_solar, weights = np.full_like(solar_mc_dlogL, solar_scale), alpha = 0.7, linewidth = 2, histtype = "step", color = "red")
+    ax = fig.add_axes([0.1, 0.12, 0.8, 0.8])
+    solar_counts_mc, _, _  = ax.hist(solar_mc_dlogL, bins = binning_solar, weights = np.full_like(solar_mc_dlogL, solar_scale), alpha = 0.7, linewidth = 2, histtype = "step", color = "red")
     # solar_err_mc   = plt.errorbar(solar_mids, solar_counts_mc, yerr = solar_mc_err, linewidth = 2, color = "red", capsize = 1.5)
-    solar_err_data = plt.errorbar(solar_mids, solar_counts_data, yerr = solar_data_err, linestyle = "", marker = "o", color = "black", capsize = 1.5)
+    solar_err_data = ax.errorbar(solar_mids[id_nonzero_solar], solar_counts_data[id_nonzero_solar], yerr = solar_data_err[id_nonzero_solar], linestyle = "", marker = "o", color = "black", capsize = 1.5)
     
     # plt.xlabel("Multisite Discriminant", fontproperties = prop_font, fontsize = 26)
-    plt.xlabel("Multisite", fontproperties = prop_font, fontsize = 26)
+    plt.xlabel(r"$\Delta log(\mathcal{L})$ Multisite Discriminant", fontproperties = prop_font, fontsize = 26)
     plt.ylabel("Counts", fontproperties = prop_font, fontsize = 26)
 
+    plt.yticks(np.arange(0, 41, 2), fontsize = 20)
     ax = plt.gca()
     for label in ax.get_xticklabels():
         label.set_fontproperties(prop_font)
@@ -622,20 +651,21 @@ def create_data_vs_mc_plot():
     for label in ax.get_yticklabels():
         label.set_fontproperties(prop_font)
     plt.xticks(fontsize = 20)
-    plt.yticks(fontsize = 20)
+    
     plt.legend(handles = [solar_err_data, plt.plot([], [], linewidth = 2, alpha = 0.7, color = "red")[0]], labels = ["Data", "MC"],  fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
-    plt.text(0.05, 0.68, "SNO+ Preliminary\n\nFV 4.5 m\n\nSolar Candidates\n\nE " + r"$\geq$ 6 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 15)
+    # plt.text(0.05, 0.48, f"SNO+ Preliminary\n\n{np.sum(solar_counts_data)} Solar Candidates\n\nFV 4.5 m\n\nE " + r"$\geq$ 6 MeV" + "\n\n" + rf"{SOLAR_ITR_LOW} $\leq$ ITR $\leq$ {SOLAR_ITR_HIGH}" + "\n\nHC Ratio " + rf"< {SOLAR_HC_RATIO_LOW}", transform=ax.transAxes, fontproperties = prop_font, fontsize = 16)
+    plt.text(0.05, 0.48, f"SNO+ Preliminary\n\nSolar Candidates ({np.sum(solar_counts_data)})\n\nFV 4.5 m\n\nE " + r"$\geq$ 6 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 16)
     fig.tight_layout()
-    plt.savefig("../plots/plots_for_approval/solar_data_vs_mc.pdf")
+    plt.savefig("../plots/plots_for_approval/solar_data_vs_mc_NEW_highE.pdf")
     plt.close()
 
     # individual bi214 plot #
     fig = plt.figure()
-    
-    bi214_counts_mc, _, _  = plt.hist(bi214_mc_dlogL, bins = binning_bi214, weights = np.full_like(bi214_mc_dlogL, bi214_scale), alpha = 0.7, linewidth = 2, histtype = "step", color = "red")
+    ax = fig.add_axes([0.1, 0.12, 0.8, 0.8])
+    bi214_counts_mc, _, _  = ax.hist(bi214_mc_dlogL, bins = binning_bi214, weights = np.full_like(bi214_mc_dlogL, bi214_scale), alpha = 0.7, linewidth = 2, histtype = "step", color = "red")
     # bi214_counts_mc, _, _  = plt.hist(bi214_mc_dlogL, bins = binning_bi214, density = True, alpha = 0.7, linewidth = 2, histtype = "step", color = "red")
     # solar_err_mc   = plt.errorbar(solar_mids, solar_counts_mc, yerr = solar_mc_err, linewidth = 2, color = "red", capsize = 1.5)
-    bi214_err_data = plt.errorbar(bi214_mids, bi214_counts_data, yerr = bi214_data_err, linestyle = "", marker = "o", color = "black", capsize = 1.5)
+    bi214_err_data = ax.errorbar(bi214_mids[id_nonzero_bi], bi214_counts_data[id_nonzero_bi], yerr = bi214_data_err[id_nonzero_bi], linestyle = "", marker = "o", color = "black", capsize = 1.5)
     
     # plt.xlabel("Multisite Discriminant", fontproperties = prop_font, fontsize = 26)
     plt.xlabel(r"$\Delta log(\mathcal{L})$ Multisite Discriminant", fontproperties = prop_font, fontsize = 26)
@@ -650,9 +680,9 @@ def create_data_vs_mc_plot():
     plt.xticks(fontsize = 20)
     plt.yticks(fontsize = 20)
     plt.legend(handles = [solar_err_data, plt.plot([], [], linewidth = 2, alpha = 0.7, color = "red")[0]], labels = ["Data", "MC"],  fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
-    plt.text(0.05, 0.58, "SNO+ Preliminary\n\nFV 4.5 m\n\nBi214 Candidates\n\n" + rf"{BI214_E_CUT_LOW}$\leq$" " E " + rf"$\leq$ {BI214_E_CUT_HIGH} MeV" + "\n\n" + rf"{ITR_LOW} $\leq$ ITR $\leq$ {ITR_HIGH}", transform=ax.transAxes, fontproperties = prop_font, fontsize = 15)
+    plt.text(0.05, 0.52, f"SNO+ Preliminary\n\n" + r"$^{214}Bi$ Candidates " + f"({np.sum(bi214_counts_data)})\n\nFV {FV_CUT / 1000:.1f} m\n\n" + rf"{BI214_E_CUT_LOW}$\leq$" " E " + rf"$\leq$ {BI214_E_CUT_HIGH} MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 16)
     fig.tight_layout()
-    plt.savefig(f"../plots/plots_for_approval/bi214_data_vs_mc_reprocessed_{BI214_E_CUT_LOW}_{BI214_E_CUT_HIGH}.pdf")
+    plt.savefig(f"../plots/plots_for_approval/bi214_data_vs_mc_reprocessed_{BI214_E_CUT_LOW}_{BI214_E_CUT_HIGH}_NEW.pdf")
     plt.close()
 
     # combined plot #
@@ -855,16 +885,370 @@ def impact_of_reprocessing():
     plt.savefig("../plots/plots_for_approval/reprocessing/bi214_multi_recon_diffs.pdf")
     plt.close()
 
+def data_quality():
+    """
+    Make some 2D histos to find best cut values to apply to Bi214 and Solar
+    data.
+    """
+
+    # load the data and mc
+    working_dir = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies"
+    
+    data_solar = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/reprocessed_solar_multisite_7.0.15_highE_PDF/total.root")
+    mc_solar   = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/solar_mc_multisite_highE_PDF/total.root")
+    data_bi214 = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/reprocessed_bi214_multisite_7.0.15/total.root")
+    mc_bi214   = ROOT.TFile.Open(working_dir + "/extracted_data/better_tagging/bi214_mc_multisite/total.root")
+
+    # grab the above 5MeV TTrees
+    solar_data_tree = data_solar.Get("above_5MeV")
+    solar_mc_tree   = mc_solar.Get("above_5MeV")
+    bi214_data_tree = data_bi214.Get("bi214")
+    bi214_mc_tree   = mc_bi214.Get("bi214")
+
+    # apply FV and energy cuts
+    FV_CUT       = 4500
+    SOLAR_E_LOW  = 6
+    SOLAR_E_HIGH = 15
+    BI_E_LOW     = 1.25
+    BI_E_HIGH    = 3.00
+
+    # keep track of DC variables
+    solar_mc_HC       = []
+    solar_mc_posFOM   = []
+    solar_mc_itr      = []
+    solar_data_HC     = []
+    solar_data_posFOM = []
+    solar_data_itr    = []
+
+    bi214_mc_HC       = []
+    bi214_mc_posFOM   = []
+    bi214_mc_itr      = []
+    bi214_data_HC     = []
+    bi214_data_posFOM = []
+    bi214_data_itr    = []
+
+    ## solar ##
+    for ientry in solar_data_tree:
+        x = ientry.x
+        y = ientry.y
+        z = ientry.z
+        e = ientry.energy
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if r > FV_CUT:
+            continue
+        if e > SOLAR_E_HIGH or e < SOLAR_E_LOW:
+            continue
+
+        hc_ratio = ientry.HC_ratio
+        itr      = ientry.itr
+        posFOM   = ientry.posFOM / ientry.posFOM_hits
+
+        solar_data_HC.append(hc_ratio)
+        solar_data_itr.append(itr)
+        solar_data_posFOM.append(posFOM)
+    for ientry in solar_mc_tree:
+        x = ientry.x
+        y = ientry.y
+        z = ientry.z
+        e = ientry.energy
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if r > FV_CUT:
+            continue
+        if e > SOLAR_E_HIGH or e < SOLAR_E_LOW:
+            continue
+
+        hc_ratio = ientry.HC_ratio
+        itr      = ientry.itr
+        posFOM   = ientry.posFOM / ientry.posFOM_hits
+
+        solar_mc_HC.append(hc_ratio)
+        solar_mc_itr.append(itr)
+        solar_mc_posFOM.append(posFOM)
+
+    ## make some comparison plots ## 
+    fig, axes = plt.subplots(nrows = 3, ncols = 3)
+    bins_itr = np.linspace(0.1, 0.3, 20)
+    bins_HC  = np.linspace(0.5, 1, 40)
+    bins_posFOM = np.linspace(10, 15, 40)
+    axes[0,0].hist(solar_data_itr, bins = bins_itr, density = True, histtype = "step", label = "Data")
+    axes[0,0].hist(solar_mc_itr, bins = bins_itr, density = True, histtype = "step", label = "MC")
+    axes[0,0].set_xlabel("ITR")
+    axes[0,0].legend(frameon = False)
+
+    axes[0,1].hist(solar_data_HC, bins = bins_HC, density = True, histtype = "step", label = "Data")
+    axes[0,1].hist(solar_mc_HC, bins = bins_HC, density = True, histtype = "step", label = "MC")
+    axes[0,1].set_xlabel("HC Ratio")
+    axes[0,1].legend(frameon = False)
+
+    axes[0,2].hist(solar_data_posFOM, bins = bins_posFOM, density = True, histtype = "step", label = "Data")
+    axes[0,2].hist(solar_mc_posFOM, bins = bins_posFOM, density = True, histtype = "step", label = "MC")
+    axes[0,2].set_xlabel("posFOM")
+    axes[0,2].legend(frameon = False)
+
+    axes[1,0].hist2d(solar_data_itr, solar_data_HC, bins = [bins_itr, bins_HC], density = True, cmin = 1e-4)
+    axes[1,0].set_xlabel("ITR")
+    axes[1,0].set_ylabel("HC Ratio")
+    axes[1,0].set_title("Data")
+    
+    axes[1,1].hist2d(solar_data_itr, solar_data_posFOM, bins = [bins_itr, bins_posFOM], density = True, cmin = 1e-4)
+    axes[1,1].set_xlabel("ITR")
+    axes[1,1].set_ylabel("posFOM")
+    axes[1,1].set_title("Data")
+
+    axes[1,2].hist2d(solar_data_posFOM, solar_data_HC, bins = [bins_posFOM, bins_HC], density = True, cmin = 1e-4)
+    axes[1,2].set_xlabel("posFOM")
+    axes[1,2].set_ylabel("HC Ratio")
+    axes[1,2].set_title("Data")
+
+    axes[2,0].hist2d(solar_mc_itr, solar_mc_HC, bins = [bins_itr, bins_HC], density = True, cmin = 1e-4)
+    axes[2,0].set_xlabel("ITR")
+    axes[2,0].set_ylabel("HC Ratio")
+    axes[2,0].set_title("MC")
+    
+    axes[2,1].hist2d(solar_mc_itr, solar_mc_posFOM, bins = [bins_itr, bins_posFOM], density = True, cmin = 1e-4)
+    axes[2,1].set_xlabel("ITR")
+    axes[2,1].set_ylabel("posFOM")
+    axes[2,1].set_title("MC")
+
+    axes[2,2].hist2d(solar_mc_posFOM, solar_mc_HC, bins = [bins_posFOM, bins_HC], density = True, cmin = 1e-4)
+    axes[2,2].set_xlabel("posFOM")
+    axes[2,2].set_ylabel("HC Ratio")
+    axes[2,2].set_title("MC")
+
+    fig.tight_layout()
+    plt.savefig("../plots/plots_for_approval/solar_data_quality.pdf")
+    plt.close()
+
+    ## Bi214 ##
+    for ientry in bi214_data_tree:
+        x = ientry.x
+        y = ientry.y
+        z = ientry.z
+        e = ientry.energy
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if r > FV_CUT:
+            continue
+        if e > BI_E_HIGH or e < BI_E_LOW:
+            continue
+
+        hc_ratio = ientry.HC_ratio
+        itr      = ientry.itr
+        posFOM   = ientry.posFOM / ientry.posFOM_hits
+
+        bi214_data_HC.append(hc_ratio)
+        bi214_data_itr.append(itr)
+        bi214_data_posFOM.append(posFOM)
+    for ientry in bi214_mc_tree:
+        x = ientry.x
+        y = ientry.y
+        z = ientry.z
+        e = ientry.energy
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if r > FV_CUT:
+            continue
+        if e > BI_E_HIGH or e < BI_E_LOW:
+            continue
+
+        hc_ratio = ientry.HC_ratio
+        itr      = ientry.itr
+        posFOM   = ientry.posFOM / ientry.posFOM_hits
+
+        bi214_mc_HC.append(hc_ratio)
+        bi214_mc_itr.append(itr)
+        bi214_mc_posFOM.append(posFOM)
+
+    ## make some comparison plots ## 
+    fig, axes = plt.subplots(nrows = 3, ncols = 3)
+    bins_itr = np.linspace(0.1, 0.3, 20)
+    bins_HC  = np.linspace(0.5, 1, 40)
+    bins_posFOM = np.linspace(10, 15, 40)
+    axes[0,0].hist(bi214_data_itr, bins = bins_itr, density = True, histtype = "step", label = "Data")
+    axes[0,0].hist(bi214_mc_itr, bins = bins_itr, density = True, histtype = "step", label = "MC")
+    axes[0,0].set_xlabel("ITR")
+    axes[0,0].legend(frameon = False)
+
+    axes[0,1].hist(bi214_data_HC, bins = bins_HC, density = True, histtype = "step", label = "Data")
+    axes[0,1].hist(bi214_mc_HC, bins = bins_HC, density = True, histtype = "step", label = "MC")
+    axes[0,1].set_xlabel("HC Ratio")
+    axes[0,1].legend(frameon = False)
+
+    axes[0,2].hist(bi214_data_posFOM, bins = bins_posFOM, density = True, histtype = "step", label = "Data")
+    axes[0,2].hist(bi214_mc_posFOM, bins = bins_posFOM, density = True, histtype = "step", label = "MC")
+    axes[0,2].set_xlabel("posFOM")
+    axes[0,2].legend(frameon = False)
+
+    axes[1,0].hist2d(bi214_data_itr, bi214_data_HC, bins = [bins_itr, bins_HC], density = True, cmin = 1e-4)
+    axes[1,0].set_xlabel("ITR")
+    axes[1,0].set_ylabel("HC Ratio")
+    axes[1,0].set_title("Data")
+    
+    axes[1,1].hist2d(bi214_data_itr, bi214_data_posFOM, bins = [bins_itr, bins_posFOM], density = True, cmin = 1e-4)
+    axes[1,1].set_xlabel("ITR")
+    axes[1,1].set_ylabel("posFOM")
+    axes[1,1].set_title("Data")
+
+    axes[1,2].hist2d(bi214_data_posFOM, bi214_data_HC, bins = [bins_posFOM, bins_HC], density = True, cmin = 1e-4)
+    axes[1,2].set_xlabel("posFOM")
+    axes[1,2].set_ylabel("HC Ratio")
+    axes[1,2].set_title("Data")
+
+    axes[2,0].hist2d(bi214_mc_itr, bi214_mc_HC, bins = [bins_itr, bins_HC], density = True, cmin = 1e-4)
+    axes[2,0].set_xlabel("ITR")
+    axes[2,0].set_ylabel("HC Ratio")
+    axes[2,0].set_title("MC")
+    
+    axes[2,1].hist2d(bi214_mc_itr, bi214_mc_posFOM, bins = [bins_itr, bins_posFOM], density = True, cmin = 1e-4)
+    axes[2,1].set_xlabel("ITR")
+    axes[2,1].set_ylabel("posFOM")
+    axes[2,1].set_title("MC")
+
+    axes[2,2].hist2d(bi214_mc_posFOM, bi214_mc_HC, bins = [bins_posFOM, bins_HC], density = True, cmin = 1e-4)
+    axes[2,2].set_xlabel("posFOM")
+    axes[2,2].set_ylabel("HC Ratio")
+    axes[2,2].set_title("MC")
+
+    fig.tight_layout()
+    plt.savefig("../plots/plots_for_approval/bi214_data_quality.pdf")
+    plt.close()
+
+def bipo_tagging_data_plots():
+    """
+    Function makes the normal energy, DR and fitted dT plots to check the quality
+    of the BiPo tagging performed.
+    """
+
+    data_dir     = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/better_tagging/raw_tagging_output"
+
+    tagging_file = ROOT.TFile.Open(f"{data_dir}/total.root")
+    tree         = tagging_file.Get("tag_info")
+
+    FV_CUT    = 4500
+    energy_bi = []
+    energy_po = []
+    dT        = []
+    dR        = []
+    x_bi      = []
+    y_bi      = []
+    z_bi      = []
+
+    for ientry in tree:
+        x = ientry.x_bi
+        y = ientry.y_bi
+        z = ientry.z_bi
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        if r > FV_CUT:
+            continue
+
+        dT.append(ientry.dT)
+        dR.append(ientry.dR)
+        x_bi.append(x)
+        y_bi.append(y)
+        z_bi.append(z)
+        energy_bi.append(ientry.energy_bi)
+        energy_po.append(ientry.energy_po)
+
+    x_bi  = np.array(x_bi)
+    y_bi  = np.array(y_bi)
+    z_bi  = np.array(z_bi)
+
+    rho2  = x_bi**2 + y_bi**2
+    rho2  = rho2 / 6000**2
+
+    # fit in mu seconds
+    dT = np.array(dT)
+    dT = dT / 1000
+
+    binning_pos = np.arange(-6000, 6020, 50)
+    binning_dr  = np.arange(0, 1050, 50)
+    binning_e   = np.arange(0, 4.1, 0.05)
+    # energy plot #
+    plt.hist(energy_bi, bins = binning_e, histtype = "step", color = "C0")
+    plt.hist(energy_po, bins = binning_e, histtype = "step", color = "C1")
+    plt.legend(handles = [plt.plot([], [], color = "C0")[0], plt.plot([], [], color = "C0")[0]], labels = [r"$^{214}$Bi", r"$^{214}$Po"], frameon = False)
+    plt.xlabel("Reconstructed Energy (MeV)")
+    plt.ylabel("Counts")
+    plt.savefig("../plots/plots_for_approval/bipo_tagging_energy.pdf")
+    plt.close()
+
+    # dR plot #
+    plt.hist(dR, bins = binning_dr, histtype = "step", color = "C0")
+    plt.legend(handles = [plt.plot([], [], color = "C0")[0]], labels = [r"Tagged BiPo214"], frameon = False)
+    plt.xlabel(r"$\Delta r$ (mm)")
+    plt.ylabel("Counts")
+    plt.savefig("../plots/plots_for_approval/bipo_tagging_dR.pdf")
+    plt.close()
+
+    # dT #
+    width = 5
+    binning = np.arange(4, 1000+ width, width)
+    counts, bins = np.histogram(dT, bins = binning)
+    mids = bins[:-1] + np.diff(bins)[0]/2
+    err = plt.errorbar(mids, counts, yerr = np.sqrt(counts), marker = "o", linestyle = "", capsize = 2, color = "black")
+    plt.xlabel(r"$\Delta t$ $[\mu s]$", fontproperties = prop_font, loc = "right")
+    plt.ylabel(f"Counts per {width}" + r" $\mu s$ Bin", fontproperties = prop_font, loc = "top")
+    
+    # ax = plt.gca()
+    # for label in ax.get_xticklabels():
+    #     label.set_fontproperties(prop_font)
+    # for label in ax.get_yticklabels():
+    #     label.set_fontproperties(prop_font)
+    # ax.minorticks_on()
+    # ax.get_xaxis().set_tick_params(which='both',direction='in', width=1)
+    # ax.get_yaxis().set_tick_params(which='both',direction='in', width=1)
+    # ax.xaxis.set_ticks_position('both')
+    # ax.yaxis.set_ticks_position('both')
+    
+    # do the fit ... #
+    def exponential(x, A, B, const):
+        return A*np.exp(-const*x) + B
+    
+    popt, cov = curve_fit(exponential, mids, counts, bounds = ([0, 0, 0], [np.inf, np.inf, 5e-3]))
+    
+    fit_err = np.sqrt(np.diag(cov))
+    X_FIT = np.arange(4, 1000, 1)
+    Y_FIT = exponential(X_FIT, *popt)
+    plt.plot(X_FIT, Y_FIT, color = "red", linewidth = 2)
+    plt.legend(handles = [plt.plot([], [], color = "white")[0], plt.plot([], [], color = "white")[0], err, plt.plot([], linewidth =2, ls="-", color="red")[0], plt.plot([],[], color = "white")[0]], labels = ["SNO+ Preliminary", r"R $\leq$ 4.5 m", "BiPo214 Data", f"Exponential Fit\n" + r"$f(t) = Ae^{-\lambda t} + B$", f"A: {popt[0]:.0f}" + r" $\pm$" + f" {fit_err[0]:.2f}\nB: {popt[1]:.2f}" + r" $\pm$" + f" {fit_err[1]:.2f}\n" + r"$\lambda$" + f" : {popt[2] * 1000:.2f}" + r"$m s^{-1}$" + r" $\pm$" + f" {fit_err[2]*1000:.2f}" + r" $m s^{-1}$"], fancybox=False, numpoints=1,prop=prop_font,fontsize = 20, frameon=False)
+    print(popt)
+    plt.ylim((0, 100))
+    plt.xlim((0, 1000))
+    plt.savefig("../plots/plots_for_approval/bipo_tagging_dt.pdf")
+    plt.close()
+
+    # position #
+    plt.hist2d(rho2, z_bi, bins = [np.arange(0, 1.1, 0.05), binning_pos], cmin = 1e-4)
+    plt.xlabel(r"$\left(\frac{\rho}{\rho_{AV}}\right)^2$")
+    plt.ylabel("Z (mm)")
+    plt.savefig("../plots/plots_for_approval/bipo_tagging_rho2_z.pdf")
+    plt.close()
+
+    # position #
+    plt.hist2d(x_bi, y_bi ,bins = binning_pos, cmin = 1e-4)
+    plt.xlabel("X (mm)")
+    plt.ylabel("Y (mm)")
+    plt.savefig("../plots/plots_for_approval/bipo_tagging_x_y.pdf")
+    plt.close()
+
+
+
+
 signal_hypothesis = np.arange(0, 800, 1)
 plt.rcParams['xtick.major.pad'] = '6' ## change me if the axis labels overlap! ## 
 plt.rcParams['ytick.major.pad'] = '6'
-# create_time_residual_pdfs()
-# create_dlogL_plot()
+create_time_residual_pdfs()
+create_dlogL_plot()
 plt.rcParams['xtick.major.pad'] = '12' ## change me if the axis labels overlap! ## 
 plt.rcParams['ytick.major.pad'] = '12'
-# create_asimov_dataset_graphs()
+create_asimov_dataset_graphs()
 plt.rcParams['xtick.major.pad'] = '6' ## change me if the axis labels overlap! ## 
 plt.rcParams['ytick.major.pad'] = '6'
-# create_profile_LL_asimov_plot()
+create_profile_LL_asimov_plot()
 # create_data_vs_mc_plot()
-impact_of_reprocessing()
+# impact_of_reprocessing()
+# data_quality()
+# bipo_tagging_data_plots()

@@ -17,6 +17,63 @@ The plots generated are:
         b. X-Y
     5. Radius vs Energy histogram
 """
+def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
+        """
+        Extract the energy and multisite PDFs for a given isotope.
+        Only use events that fall within event selection cuts (e.g. FV cut).
+        
+        Inputs:
+            location, str, the path to a folder containing all the ntuple files for 
+                           specific isotope (1 for each run in run_list)
+
+            fv_cut, float, the fv cut to apply in mm
+
+            multisite_bins, array, float bin edges of multisite PDF
+
+            energy_bins, array, float bin edges of energy PDF
+
+            run_list, array, run number of each MC simulation to extract
+
+            energy_range, str, string giving branch name of MC files to load, based
+            on the energy used to generate the multisite / tres PDFs.
+        
+        Output: multisite_counts, array float, normalised bin counts of multisite pdf
+                energy_counts, array float, normalised bin counts of energy pdf
+        """
+
+        energies     = []
+        multisites   = []
+        missing_runs = [] # runs that don't exist / corrupted but included in run list
+        for irun in run_list:
+
+            try:
+                # open the MC ntuple file
+                file   = ROOT.TFile.Open(f"{location}/{irun}.root")
+                ntuple = file.Get(energy_range)
+                ntuple.GetEntries()
+            except:
+                missing_runs.append(irun)
+                continue
+
+            # loop over every event inside file
+            for ientry in ntuple:
+                
+                # check event falls inside FV cut
+                x = ientry.x
+                y = ientry.y
+                z = ientry.z
+                r = np.sqrt(x**2 + y**2 + z**2)
+                if r > fv_cut:
+                    continue
+
+                # event passed FV so add info to PDFs
+                energies.append(ientry.energy)
+                multisites.append(ientry.dlogL)
+        print(f"Found {len(missing_runs)} missing runs:\n{missing_runs}")
+
+        
+
+        return energies, multisites
 
 def plot_pdf_analytics(pdf_energy_string):
 
@@ -39,10 +96,19 @@ def plot_pdf_analytics(pdf_energy_string):
     if pdf_energy_string == "4.5_5.0":
         energy_low = 4.5
         energy_high = 5.0
+    if pdf_energy_string == "2.5_3.75":
+        energy_low = 2.5
+        energy_high = 3.75
+    if pdf_energy_string == "3.75_5.0":
+        energy_low = 3.75
+        energy_high = 5.0
+    if pdf_energy_string == "3.5_5.0":
+        energy_low = 3.5
+        energy_high = 5.0
     
     # load the information
-    pdf_B8_file    = ROOT.TFile.Open("../run_by_run_pdf/full_analysis_B8_solar_nue/total.root")
-    pdf_Tl208_file = ROOT.TFile.Open("../run_by_run_pdf/full_analysis_Tl208/total.root")
+    pdf_B8_file    = ROOT.TFile.Open("../run_by_run_pdf/full_analysis2_B8_solar_nue/total.root")
+    pdf_Tl208_file = ROOT.TFile.Open("../run_by_run_pdf/full_analysis2_Tl208/total.root")
 
     # extract the desired PDF histograms for re-plotting with matplotlib
     multisite_pdf_B8    = pdf_B8_file.Get(f"multi_{pdf_energy_string}")
@@ -130,30 +196,33 @@ def plot_pdf_analytics(pdf_energy_string):
     energy_Tl208 = energy_Tl208[np.nonzero(energy_Tl208)]
     r_Tl208 = r_Tl208[np.nonzero(r_Tl208)]
 
-    fig, axes = plt.subplots(nrows = 3, ncols = 3, figsize = (25, 20))
-    font_s = 25
+    fig, axes = plt.subplots(nrows = 4, ncols = 2)
+    fig.set_size_inches((8.27, 11.69))
+    font_s = 8
     # multisite PDF
-    axes[0,0].step(multi_B8_bins[:-1], multi_B8_counts,  where = 'post', label = r"$^8B$")
-    axes[0,0].step(multi_B8_bins[:-1], multi_Tl208_counts,  where = 'post', label = r"$^{208}Tl$")
+    axes[0,0].step(multi_B8_bins[:-1], multi_B8_counts,  where = 'post', label = r"$^8B$" + f" | Num. Events: {len(energy_B8)}")
+    axes[0,0].step(multi_B8_bins[:-1], multi_Tl208_counts,  where = 'post', label = r"$^{208}Tl$"+ f" | Num. Events: {len(energy_Tl208)}")
     axes[0,0].legend(frameon=False, fontsize = font_s)
     axes[0,0].set_xlabel("Time Residual (ns)", fontsize = font_s)
     axes[0,0].set_ylabel("Normalised Counts per 1 ns Bin", fontsize = font_s)
     axes[0,0].set_xlim((-5, 100))
 
     # directionality PDF
-    axes[0,1].imshow(directionality_pdf.T, origin = 'lower', aspect = 'auto', extent = [x_min, x_max, y_min, y_max])
-    axes[0,1].set_xlabel("Time Residual (ns)", fontsize = font_s)
-    axes[0,1].set_ylabel(r"$cos(\theta _\gamma)$", fontsize = font_s)
-    axes[0,1].set_xlim((-10, 80))
+    # axes[0,1].imshow(directionality_pdf.T, origin = 'lower', aspect = 'auto', extent = [x_min, x_max, y_min, y_max])
+    # axes[0,1].set_xlabel("Time Residual (ns)", fontsize = font_s)
+    # axes[0,1].set_ylabel(r"$cos(\theta _\gamma)$", fontsize = font_s)
+    # axes[0,1].set_xlim((-10, 80))
 
     # energy distribution
     width = 0.05
     energy_bins = np.arange(2.5, 5.0 + width, width)
-    axes[0,2].hist(energy_B8, bins = energy_bins, density = True, histtype = "step", label = r"$^8B$")
-    axes[0,2].hist(energy_Tl208, bins = energy_bins, density = True, histtype = "step", label = r"$^{208}Tl$")
-    axes[0,2].set_xlabel("Reconstructed Energy (MeV)", fontsize = font_s)
-    axes[0,2].set_ylabel(f"Normalised Counter per {width} MeV", fontsize = font_s)
-    axes[0,2].legend(frameon=False, fontsize = 20)
+    axes[0,1].plot([], [], label = r"$^8B$" + f" | Num. Events: {len(energy_B8)}")
+    axes[0,1].plot([], [], label = r"$^{208}Tl$" + f" | Num. Events: {len(energy_Tl208)}")
+    axes[0,1].hist(energy_B8, bins = energy_bins, density = True, color = "C0", histtype = "step")
+    axes[0,1].hist(energy_Tl208, bins = energy_bins, density = True, color = "C1", histtype = "step")
+    axes[0,1].set_xlabel("Reconstructed Energy (MeV)", fontsize = font_s)
+    axes[0,1].set_ylabel(f"Normalised Counter per {width} MeV", fontsize = font_s)
+    axes[0,1].legend(frameon=False, fontsize = font_s)
     
     # energy vs radius
     r_bins = np.linspace(0, 6000, 50)
@@ -172,34 +241,34 @@ def plot_pdf_analytics(pdf_energy_string):
     # rho2_z position distribution
     z_bins    = np.linspace(-6000, 6000, 100)
     rho2_bins = np.linspace(0, 1, 100)
-    axes[1,2].hist2d(rho2_B8, z_B8, bins = [rho2_bins, z_bins], density = False, cmin = 1e-4)
-    axes[1,2].plot([], [], linestyle = "", label = r"$^8B$")
-    axes[1,2].set_xlabel(r"$\left(\frac{\rho}{\rho_{AV}}\right)^2$", fontsize = font_s)
-    axes[1,2].set_ylabel("Reconstructed Z (mm)", fontsize = font_s)
-    axes[1,2].legend(frameon=False, fontsize = font_s)
-
-    axes[2,0].hist2d(rho2_Tl208, z_Tl208, bins = [rho2_bins, z_bins], density = False, cmin = 1e-4)
-    axes[2,0].plot([], [], linestyle = "", label = r"$^{208}Tl$")
+    axes[2,0].hist2d(rho2_B8, z_B8, bins = [rho2_bins, z_bins], density = False, cmin = 1e-4)
+    axes[2,0].plot([], [], linestyle = "", label = r"$^8B$")
     axes[2,0].set_xlabel(r"$\left(\frac{\rho}{\rho_{AV}}\right)^2$", fontsize = font_s)
     axes[2,0].set_ylabel("Reconstructed Z (mm)", fontsize = font_s)
     axes[2,0].legend(frameon=False, fontsize = font_s)
 
-    # X-Y position plot
-    axes[2,1].hist2d(x_B8, y_B8, bins = [z_bins, z_bins], density = False, cmin = 1e-10)
-    axes[2,1].set_xlabel("Reconstructed X (mm)", fontsize = font_s)
-    axes[2,1].set_ylabel("Reconstructed Y (mm)", fontsize = font_s)
-    axes[2,1].plot([], [], linestyle = "", label = r"$^8B$")
-    axes[2,1].legend(frameon = False, fontsize = font_s)
+    axes[2,1].hist2d(rho2_Tl208, z_Tl208, bins = [rho2_bins, z_bins], density = False, cmin = 1e-4)
+    axes[2,1].plot([], [], linestyle = "", label = r"$^{208}Tl$")
+    axes[2,1].set_xlabel(r"$\left(\frac{\rho}{\rho_{AV}}\right)^2$", fontsize = font_s)
+    axes[2,1].set_ylabel("Reconstructed Z (mm)", fontsize = font_s)
+    axes[2,1].legend(frameon=False, fontsize = font_s)
 
-    axes[2,2].hist2d(x_Tl208, y_Tl208, bins = [z_bins, z_bins], density = False, cmin = 1e-10)
-    axes[2,2].set_xlabel("Reconstructed X (mm)", fontsize = font_s)
-    axes[2,2].set_ylabel("Reconstructed Y (mm)", fontsize = font_s)
-    axes[2,2].plot([], [], linestyle = "", label = r"$^{208}Tl$")
-    axes[2,2].legend(frameon = False, fontsize = font_s)
+    # X-Y position plot
+    axes[3,0].hist2d(x_B8, y_B8, bins = [z_bins, z_bins], density = False, cmin = 1e-10)
+    axes[3,0].set_xlabel("Reconstructed X (mm)", fontsize = font_s)
+    axes[3,0].set_ylabel("Reconstructed Y (mm)", fontsize = font_s)
+    axes[3,0].plot([], [], linestyle = "", label = r"$^8B$")
+    axes[3,0].legend(frameon = False, fontsize = font_s)
+
+    axes[3,1].hist2d(x_Tl208, y_Tl208, bins = [z_bins, z_bins], density = False, cmin = 1e-10)
+    axes[3,1].set_xlabel("Reconstructed X (mm)", fontsize = font_s)
+    axes[3,1].set_ylabel("Reconstructed Y (mm)", fontsize = font_s)
+    axes[3,1].plot([], [], linestyle = "", label = r"$^{208}Tl$")
+    axes[3,1].legend(frameon = False, fontsize = font_s)
     
     fig.tight_layout()
-    plt.subplots_adjust(top=0.93)
-    plt.suptitle(f"PDF Information: {pdf_energy_string} MeV | B8 Evs: {len(x_B8)} | Tl208 Evs: {len(x_Tl208)}", fontsize = 30)
+    # plt.subplots_adjust(top=0.93)
+    # plt.suptitle(f"PDF Information: {pdf_energy_string} MeV | B8 Evs: {len(x_B8)} | Tl208 Evs: {len(x_Tl208)}", fontsize = 12)
     plt.savefig(f"../plots/pdf_analytics/{pdf_energy_string}.pdf")
     
 def plot_pdf_energy_bins():
@@ -252,18 +321,114 @@ def plot_pdf_energy_bins():
     print(f"{counts_tl208[0]/tot_tl}, {counts_tl208[1]/tot_tl}, {counts_tl208[2]/tot_tl}, {counts_tl208[3]/tot_tl}")
     print("\n")
     
+def plot_multisite_energy_pdfs():
+    """
+    Create a nice 2 plot subplot showing normalised multisite and energy PDFs
+    for each isotope used in the energy + multisite fits.
+    """
+    pdf_runlist    = np.loadtxt("../runlists/full_test.txt", dtype = int)
+    energy_bins    = np.arange(2.5, 5.05, 0.05)
+    multisite_bins = np.arange(-1.36, -1.325, 0.0005)
+    energy_string  = "2p5_5p0"
+    path           = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
     
-        
+    # load the information
+    b8_energies, b8_multisites           = obtain_pdf(f"{path}/full_analysis_B8_solar_nue", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    tl208_energies, tl208_multisites     = obtain_pdf(f"{path}/full_analysis_Tl208", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    tl210_energies, tl210_multisites     = obtain_pdf(f"{path}/full_analysis_Tl210", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    bipo214_energies, bipo214_multisites = obtain_pdf(f"{path}/full_analysis_BiPo214", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    bipo212_energies, bipo212_multisites = obtain_pdf(f"{path}/full_analysis_BiPo212", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
     
+    # create the plots of the pdfs
+    fig, axes = plt.subplots(nrows = 1, ncols = 2)
+    fig.set_size_inches((8.27, 11.69*0.3))
+    axes[0].hist(b8_energies,      bins = energy_bins, histtype = "step", density = True)
+    axes[0].hist(tl208_energies,   bins = energy_bins, histtype = "step", density = True)
+    axes[0].hist(tl210_energies,   bins = energy_bins, histtype = "step", density = True)
+    axes[0].hist(bipo214_energies, bins = energy_bins, histtype = "step", density = True)
+    axes[0].hist(bipo212_energies, bins = energy_bins, histtype = "step", density = True)
+    axes[0].set_xlabel("Reconstructed Energy (MeV)", fontsize = 8)
+    axes[0].plot([], [], color = "C0", label = r"$^8$B $\nu _e$" + f" | Num. Events: {len(b8_energies)}")
+    axes[0].plot([], [], color = "C1", label = r"$^{208}$Tl" + f" | Num. Events: {len(tl208_energies)}")
+    axes[0].plot([], [], color = "C2", label = r"$^{210}$Tl" + f" | Num. Events: {len(tl210_energies)}")
+    axes[0].plot([], [], color = "C3", label = r"BiPo214" + f" | Num. Events: {len(bipo214_energies)}")
+    axes[0].plot([], [], color = "C4", label = r"BiPo212" + f" | Num. Events: {len(bipo212_energies)}")
+    axes[0].legend(fontsize = 6, frameon = False)
+    axes[0].tick_params(axis='both', labelrotation=0, labelsize = 8)
+    
+
+    axes[1].hist(b8_multisites,      bins = multisite_bins, histtype = "step", density = True)
+    axes[1].hist(tl208_multisites,   bins = multisite_bins, histtype = "step", density = True)
+    axes[1].hist(tl210_multisites,   bins = multisite_bins, histtype = "step", density = True)
+    axes[1].hist(bipo214_multisites, bins = multisite_bins, histtype = "step", density = True)
+    axes[1].hist(bipo212_multisites, bins = multisite_bins, histtype = "step", density = True)
+    axes[1].set_xlabel(r"$\Delta log(\mathcal{L})$", fontsize = 8)
+    axes[1].plot([], [], color = "C0", label = r"$^8$B $\nu _e$" + f" | Num. Events: {len(b8_multisites)}")
+    axes[1].plot([], [], color = "C1", label = r"$^{208}$Tl" + f" | Num. Events: {len(tl208_multisites)}")
+    axes[1].plot([], [], color = "C2", label = r"$^{210}$Tl" + f" | Num. Events: {len(tl210_multisites)}")
+    axes[1].plot([], [], color = "C3", label = r"BiPo214" + f" | Num. Events: {len(bipo214_multisites)}")
+    axes[1].plot([], [], color = "C4", label = r"BiPo212" + f" | Num. Events: {len(bipo212_multisites)}")
+    axes[1].legend(fontsize = 6, frameon = False)
+    axes[1].tick_params(axis='both', labelrotation=0, labelsize = 8)
+
+    fig.tight_layout()
+    plt.savefig(f"../plots/pdf_analytics/energy_multisites_{energy_string}.pdf")
+
+    print(len(b8_energies), len(b8_multisites))
+
+def plot_multisite_solo_pdfs():
+    """
+    Plot the multisite PDFs for Tl208 and B8 scaled to the total counts in the
+    dataset. This demonstrates that the multisite fits pretty well with Tl208
+    alone, and gives a reason why the B8 fit is poor.
+    """
+
+    binning = np.arange(-1.375, -1.325, 0.0005)
+    mids    = binning[:-1] + np.diff(binning)[0] / 2
+    data    = np.load("multisite_dataset_real_2p5_5p0.npy")
+    pdfs    = np.load("multisite_pdf_array_2p5_5p0.npy")
+
+    tl208_pdf = pdfs[1, :] * np.sum(data)
+    b8_pdf    = pdfs[0, :] * np.sum(data)
+
+    fig, axes = plt.subplots(nrows = 1, ncols = 2)
+
+    axes[1].errorbar(mids, data, yerr = np.sqrt(data), color = "black", capsize = 2, linestyle = "", marker = "^", markersize = 4, label = "Data")
+    axes[1].step(binning, b8_pdf.tolist() + [0], where = "post", linewidth = 2, color = "C0", label = r"$^{8}$B")
+    axes[1].legend(frameon = False, fontsize = 5)
+    axes[1].tick_params(axis = "both", labelsize = 5)
+    axes[1].set_xlabel("Multisite Discriminant", fontsize = 5)
+    axes[1].set_ylabel("Counts", fontsize = 5)
+    axes[1].set_ylim((0, 90))
+
+    axes[0].errorbar(mids, data, yerr = np.sqrt(data), color = "black", capsize = 2, linestyle = "", marker = "^", markersize = 4, label = "Data")
+    axes[0].step(binning, tl208_pdf.tolist() + [0], where = "post", linewidth = 2, color = "red", label = r"$^{208}$Tl")
+    axes[0].legend(frameon = False, fontsize = 5)
+    axes[0].tick_params(axis = "both", labelsize = 5)
+    axes[0].set_xlabel("Multisite Discriminant", fontsize = 5)
+    axes[0].set_ylabel("Counts", fontsize = 5)
+    axes[0].set_ylim((0, 90))
+    fig.set_size_inches(((8.27, 11.69 *0.3)))
+    fig.tight_layout()
+
+    plt.savefig("../plots/asimov_study/real_mc/advanced/diff_bins/tl208_b8_multisite_only.pdf")
+
+
+plot_multisite_solo_pdfs()
 # plot_pdf_energy_bins()
     
-plot_pdf_analytics("2.5_5.0")
-plot_pdf_analytics("2.5_3.0")
-plot_pdf_analytics("3.0_3.5")
-plot_pdf_analytics("3.5_4.0")
-plot_pdf_analytics("4.0_4.5")
-plot_pdf_analytics("4.5_5.0")
+# plot_pdf_analytics("2.5_5.0")
+# plot_pdf_analytics("2.5_3.0")
+# plot_pdf_analytics("3.0_3.5")
+# plot_pdf_analytics("3.5_4.0")
+# plot_pdf_analytics("4.0_4.5")
+# plot_pdf_analytics("4.5_5.0")
+# plot_pdf_analytics("2.5_3.75")
+# plot_pdf_analytics("3.75_5.0")
+# plot_pdf_analytics("3.5_5.0")
 # plot_pdf_analytics("2.5_3.125")
 # plot_pdf_analytics("3.125_3.75")
 # plot_pdf_analytics("3.75_4.375")
 # plot_pdf_analytics("4.375_5.0")
+
+# plot_multisite_energy_pdfs()
