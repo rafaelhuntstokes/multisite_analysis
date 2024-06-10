@@ -458,7 +458,33 @@ def copy_extracted_files_containing_events():
         else:
             shutil.copyfile(ifile, f"{targer_loc}/{ifile[-14:]}")
 
+def check_dag_extraction_runs():
+    """
+    Function loops over each run in a run list submitted as a node in a DAG to extract
+    the multisite information. Checks for the existence of the output .txt file that
+    is made if the job completes sucessfully. Returns the runs that have no such file
+    for resubmission.
+    """
 
+    runlist = np.loadtxt("../runlists/quiet_period.txt", dtype = int)
+
+    failed_runs = []
+
+    condone_list = [305589, 305590, 305592, 305593, 305594, 305596, 308741]
+    for irun in runlist:
+        try:
+            flag = np.loadtxt(f"../extracted_data/full_analysis3/job_completed_flag/{irun}.txt")
+        except:
+            # flag doesn't exist
+            if irun not in condone_list:
+                failed_runs.append(irun)
+            continue
+
+    for irun in failed_runs:
+        print(irun)
+    print(f"{len(failed_runs)} runs failed.")
+
+check_dag_extraction_runs()
 # data_dir   = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/above_5MeV/solar_run_by_run_ntuples/livetimes"
 # data_dir = "/data/snoplus3/hunt-stokes/clean_multisite/bipo_212_cleanSelec3/completed"
 # run_list = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/runlists/contains_solar_candidates.txt"
@@ -470,5 +496,5 @@ def copy_extracted_files_containing_events():
 # check_analysis_success()
 # delete_full_ratds()
 
-copy_extracted_files_containing_events()
-count_extracted_events()
+# copy_extracted_files_containing_events()
+# count_extracted_events()
