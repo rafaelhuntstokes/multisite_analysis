@@ -34,7 +34,7 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     std::string input_fname = input_fpath + "/simulation" + isotope + "_" + std::to_string(run_number) + "*.root";
 
     // create the output file
-    std::string output_path = output_fpath + "/full_analysis2_" + isotope + "/" + std::to_string(run_number) + ".root";
+    std::string output_path = output_fpath + "/full_analysis2_3960_FV_" + isotope + "/" + std::to_string(run_number) + ".root";
     TFile *output           = new TFile(output_path.c_str(), "RECREATE");
 
     // populate the output file with a TTree and branches to save relevant information
@@ -121,18 +121,16 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
 
     // setup time residual calculator
     RAT::DU::TimeResidualCalculator timeResCalc = RAT::DU::Utility::Get()->GetTimeResidualCalculator();                                                             
-    
     // point3D use now ENFORCED
     size_t fPSUPSystemId = RAT::DU::Point3D::GetSystemId("innerPMT");
     size_t av_system_id  = RAT::DU::Point3D::GetSystemId("av");
     
     // Get PMT info (positions etc)
     const RAT::DU::PMTInfo& pmt_info = RAT::DU::Utility::Get()->GetPMTInfo();
-
     for (int ientry = 0; ientry < num_entries; ientry++){
         
         const RAT::DS::Entry& rDS = dsReader.GetEntry(ientry);
-
+        // std::cout << "Getting entry" << std::endl;
         // check event triggered detector
         if (rDS.GetEVCount() == 0){
             // did not trigger!
@@ -279,7 +277,6 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
             multi_pdf_vec.at(idx_to_fill_pdf)->Fill(tres_recon);
         }
     }
-
     // now write the histograms and TTree to the file
     dir_pdf_vec.at(0)->Write();
     dir_pdf_2p5_3p0->Write();
@@ -290,7 +287,6 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     dir_pdf_2p5_3p75->Write();
     dir_pdf_3p75_5p0->Write();
     dir_pdf_3p5_5p0->Write();
-
     multi_pdf_2p5_5p0->Write();
     multi_pdf_2p5_3p0->Write();
     multi_pdf_3p0_3p5->Write();
@@ -300,9 +296,9 @@ void create_pdf(std::string isotope, int run_number, float fv_cut, float z_cut, 
     multi_pdf_2p5_3p75->Write();
     multi_pdf_3p75_5p0->Write();
     multi_pdf_3p5_5p0->Write();
-
     hit_level->Write();
     event_level->Write();
+    output->Close();
 }
 
 int main(int argc, char *argv[]){
