@@ -6,6 +6,9 @@ import scipy.optimize
 import ROOT
 
 """
+
+NOTE: everything this script does can be done with simple_profile_likelihood.cpp
+and by changing to real_data = False option !!!
 This code is written to perform a likelihood fit from an Asimov dataset, using real MC.
 
 The full background model in 4.5 m in ROI 2.5 --> 5.0 MeV is used as the Asimov 
@@ -52,6 +55,12 @@ class Ahab():
         events_per_bin    : int array, [N_bins], the data counts binned according to the same schema as the PDFs used  
         """
         
+        # evaluating the model constraints term
+        # 1. find difference between model expectation and current normalisations
+        constraint     = (normalisations - model_expectations)**2 / (2 * model_uncertainty**2) # element wise operation
+        # print(f"Norms: {normalisations} | Constraint: {constraint}")
+        sum_constraint = np.sum(constraint) 
+
         # we allow the total normalisation to float so see what it is
         norm_sum = np.sum(normalisations)
 
@@ -74,7 +83,7 @@ class Ahab():
         # multiply each element by the number of data events in each PDF bin and sum all the terms
         scaled_log     = np.sum(events_per_bin * log)
 
-        return 2 * (norm_sum - scaled_log) # convert to -2 x log(L)
+        return 2 * (norm_sum - scaled_log) #+ sum_constraint) # convert to -2 x log(L)
         # return -scaled_log
     
     def combined_loglikelihood(self, normalisations, energy_pdfs, multisite_pdfs, model_expectations, model_uncertainty, counts_energy, counts_multisite):
@@ -88,6 +97,10 @@ class Ahab():
         """
         For the full derivation of this FULLY OPTIMIZED method, see fancy journal dated 3rd April 2024.
         """
+
+        # evaluating the model constraints term
+        constraint     = (normalisations - model_expectations)**2 / (2 * model_uncertainty**2) # element wise operation
+        sum_constraint = np.sum(constraint)
 
         # have to do this inside the function for scipy.optimize.minimize doesn't
         # respect the reshaping being done outside its own calls ... 
@@ -112,7 +125,7 @@ class Ahab():
         multisite_component   = 2 * (norm_sum - multisite_scaled_log)
 
         # combine the information
-        full_loglikelihood    = energy_component + multisite_component
+        full_loglikelihood    = energy_component + multisite_component #+ 2*sum_constraint
         return full_loglikelihood
     
     def obtain_pdf(self, location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
@@ -196,7 +209,7 @@ class Ahab():
         axes[1].set_ylabel(f"Counts per {round(np.diff(multisite_bins)[0], 2)} MeV Bin")
         axes[1].set_title(f"Multisite PDF for {plot_name}")
         fig.tight_layout()
-        plt.savefig(f"../plots/asimov_study/real_mc/advanced/pdf_{plot_name}.png")
+        plt.savefig(f"../plots/asimov_study/real_mc/advanced/pdf_{plot_name}_DATA.png")
         plt.close()
 
         return energy_counts, multisite_counts 
@@ -219,6 +232,8 @@ class Ahab():
         # copy the normalisation array to avoid updating the main array
         normalisations = normalisations.copy()
 
+        print(normalisations)
+
         # 2D arrays to keep hold of LL calculated at each point
         ll_multisite = np.zeros((len(hypothesis_sig), len(hypothesis_backg)))
         ll_energy    = np.zeros((len(hypothesis_sig), len(hypothesis_backg)))
@@ -231,9 +246,20 @@ class Ahab():
                 # update the normalisations at the backg_idx and signal_idx (rest kept constant)
                 normalisations[0]         = hypothesis_sig[isig]
                 normalisations[backg_idx] = hypothesis_backg[ibackg]
-
-                multi  = self.evaluate_loglikelihood(normalisations, multisite_pdf_array, 0, 0, dataset_multisite)
-                energy = self.evaluate_loglikelihood(normalisations, energy_pdf_array, 0, 0, dataset_energy) 
+                
+                # plt.figure()
+                
+                # model = normalisations[:,None] * energy_pdf_array
+                # model = np.sum(model, axis = 0) # remove the rows
+                # mids = np.arange(2.5, 5.1, 0.1)[:-1] + 0.05
+                # print(model.shape, mids.shape)
+                # plt.scatter(mids, dataset_energy, color = "black", marker = "o")
+                # plt.scatter(mids, model, color = "red", marker = "s")
+                # plt.savefig(f"../plots/asimov_study/real_mc/advanced/grid_search_models/{isig}_{ibackg}.png")
+                # plt.close()
+                
+                multi  = self.evaluate_loglikelihood(normalisations, multisite_pdf_array, constraint_expectation, constraint_uncertainty, dataset_multisite)
+                energy = self.evaluate_loglikelihood(normalisations, energy_pdf_array, constraint_expectation, constraint_uncertainty, dataset_energy) 
                 full   = multi + energy
 
                 # save result for this signal hypothesis
@@ -260,14 +286,14 @@ class Ahab():
 
         # first run optimisation using energy PDFs - returns OptimizeResult object containing best fit norms
         print("Performing minimisation using energy PDF information ...")
-        energy_result    = scipy.optimize.minimize(self.evaluate_loglikelihood, x0 = normalisations, method = "BFGS", tol = 1e-4, args = (energy_pdfs, 0, 0, dataset_energy,))
+        energy_result    = scipy.optimize.minimize(self.evaluate_loglikelihood, bounds = [(0, np.inf)] * len(normalisations), x0 = normalisations, method = "L-BFGS-B", tol = 1e-4, args = (energy_pdfs, constraint_expectation, constraint_uncertainty, dataset_energy,))
         
         print("Performing minimisation using multisite PDF information ...")
-        multisite_result = scipy.optimize.minimize(self.evaluate_loglikelihood, x0 = normalisations, method = "BFGS", tol = 1e-4, args = (multisite_pdfs, 0, 0, dataset_multisite,))
+        multisite_result = scipy.optimize.minimize(self.evaluate_loglikelihood, bounds = [(0, np.inf)] * len(normalisations), x0 = normalisations, method = "L-BFGS-B", tol = 1e-4, args = (multisite_pdfs, constraint_expectation, constraint_uncertainty, dataset_multisite,))
         
         # run minimisation using combination of energy and multisite PDFs
         print("Performing minimisation using multisite + energy PDF information ...")
-        combined_result  = scipy.optimize.minimize(self.combined_loglikelihood, x0 = normalisations, method = "BFGS", tol = 1e-4, args = (energy_pdfs, multisite_pdfs, 0, 0, dataset_energy, dataset_multisite,))
+        combined_result  = scipy.optimize.minimize(self.combined_loglikelihood, bounds = [(0, np.inf)] * len(normalisations), x0 = normalisations, method = "L-BFGS-B", tol = 1e-4, args = (energy_pdfs, multisite_pdfs, constraint_expectation, constraint_uncertainty, dataset_energy, dataset_multisite,))
 
         return energy_result, multisite_result, combined_result
     
@@ -288,7 +314,7 @@ class Ahab():
             norms = [sig_norm] + other_norms.tolist()
             norms = np.array(norms)
 
-            return self.combined_loglikelihood(norms, energy_pdfs, multisite_pdfs, 0, 0, dataset_energy, dataset_multisite)
+            return self.combined_loglikelihood(norms, energy_pdfs, multisite_pdfs, constraint_expectation, constraint_uncertainty, dataset_energy, dataset_multisite)
         
         def wrapped_multisite(other_norms, sig_norm, multisite_pdfs, dataset_multisite):
             """
@@ -299,7 +325,7 @@ class Ahab():
             norms = [sig_norm] + other_norms.tolist()
             norms = np.array(norms)
 
-            return self.evaluate_loglikelihood(norms, multisite_pdfs, 0, 0, dataset_multisite)
+            return self.evaluate_loglikelihood(norms, multisite_pdfs, constraint_expectation, constraint_uncertainty, dataset_multisite)
 
         def wrapped_energy(other_norms, sig_norm, energy_pdfs, dataset_energy):
             """
@@ -310,7 +336,7 @@ class Ahab():
             norms = [sig_norm] + other_norms.tolist()
             norms = np.array(norms)
 
-            return self.evaluate_loglikelihood(norms, energy_pdfs, 0, 0, dataset_energy)
+            return self.evaluate_loglikelihood(norms, energy_pdfs, constraint_expectation, constraint_uncertainty, dataset_energy)
         
         norms = normalisations.copy() # don't update / mess with the input normalisations
         
@@ -405,10 +431,10 @@ class Ahab():
         axes[2].legend()
 
         fig.tight_layout()
-        plt.savefig(f"../plots/asimov_study/real_mc/advanced/test_2d_{name}.png")
+        plt.savefig(f"../plots/asimov_study/real_mc/advanced/test_2d_{name}_DATA.png")
         plt.close()
 
-    def run_analysis(self, expected_signal, expected_backg, analyse_real_data, data_path = "", fv_cut = 4500.0, energy_range = "2p5_5p0"):
+    def run_analysis(self, expected_signal, expected_backg, analyse_real_data, data_path = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/processed_dataset/total.root", fv_cut = 4500.0, energy_range = "2p5_5p0"):
         """
         Function that actually calls all the other functions and gets
         the analysis done.
@@ -461,7 +487,7 @@ class Ahab():
         print("Found ", num_norms, " backgrounds to include in the fit.")
 
         # binning for the energy and multisite discriminant PDFs
-        energy_bins    = np.arange(2.5, 5.1, 0.1)
+        energy_bins    = np.arange(2.5, 5.1, 0.05)
         multisite_bins = np.arange(-1.375, -1.325, 0.0005)
 
         """
@@ -517,15 +543,18 @@ class Ahab():
         normalisations_stretched = normalisations[:, None]
 
         # decide whether to create an Asimov dataset out of the signal + background PDFs, or load in real data
+        labels = ["B8"] + backg_names
+        mids_energy = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
+        mids_multi = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
         if analyse_real_data == False:
             
             print("Creating Asimov dataset from normalisation-scaled PDFs.")
             dataset_energy    = normalisations_stretched * energy_pdf_array    # multiply every bin by corresponding normalisation
             
             # plot Asimov dataset as a stacked histogram
-            labels = ["B8"] + backg_names
-            mids_energy = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
-            mids_multi = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
+            # labels = ["B8"] + backg_names
+            # mids_energy = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
+            # mids_multi = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
             fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 8))
             color_cycle = iter(plt.rcParams['axes.prop_cycle'].by_key()['color'])
             for i in range(dataset_energy.shape[0]):
@@ -534,6 +563,10 @@ class Ahab():
             
             # sum 
             dataset_energy    = np.sum(dataset_energy, axis = 0)     # remove the rows so axis = 0
+
+            ## add poisson fluctuation to the asimov result ##
+            dataset_energy = np.random.poisson(dataset_energy)
+
             axes[0].step(energy_bins, dataset_energy.tolist() + [0], where = 'post', color="black", label = f"Sum: {round(np.sum(dataset_energy), 2)}")
             axes[0].legend(frameon=False)
             axes[0].set_xlabel("Reconstructed Energy (MeV)")
@@ -548,7 +581,10 @@ class Ahab():
             for i in range(dataset_multisite.shape[0]):
                 col = next(color_cycle)
                 axes[1].step(multisite_bins, dataset_multisite[i,:].tolist() + [0], where = 'post', color=col, label = f"{labels[i]}| Num: {round(np.sum(dataset_multisite[i,:]), 2)}")
+            
             dataset_multisite = np.sum(dataset_multisite, axis = 0)
+            dataset_multisite = np.random.poisson(dataset_multisite)
+            
             axes[1].step(multisite_bins, dataset_multisite.tolist() + [0], where = 'post', color="black", label = f"Sum: {round(np.sum(dataset_multisite), 2)}")
             axes[1].legend(frameon=False)
             axes[1].set_xlabel("Multisite Discriminant")
@@ -557,38 +593,53 @@ class Ahab():
             axes[1].set_xlim((-1.355, -1.335))
             axes[1].set_ylim((0, 65))
             fig.tight_layout()
-            plt.savefig("../plots/asimov_study/real_mc/advanced/asimov_dataset_energy.png")
+            plt.savefig("../plots/asimov_study/real_mc/advanced/asimov_dataset_energy_DATA.png")
             plt.close()
             
         else:
 
             # open the dataset --> saved as a single hadded TTree containing ITR,
             # multisite, position and energy of each extracted event
-            datafile = ROOT.TFile.Open(data_path)
+            # datafile = ROOT.TFile.Open(data_path)
 
             # extract the correct energy range dataset --> load the correct tree
-            datatree = datafile.Get(energy_range)
+            # datatree = datafile.Get(energy_range)
 
             # get number of entries in tree to setup numpy dataset arrays
-            num_entries       = datatree.GetEntries()
-            dataset_energy    = np.zeros(num_entries)
-            dataset_multisite = np.zeros(num_entries)
+            # num_entries       = datatree.GetEntries()
+            # print(num_entries)
+            # dataset_energy    = []#np.zeros(num_entries, dtype = np.float32)
+            # dataset_multisite = []#np.zeros(num_entries, dtype = np.float32)
             
             # fill the dataset arrays
-            entry_count = 0
-            for ientry in datatree:
+            # entry_count = 0
+            # for ientry in datatree:
                 
                 # apply the fv cut
-                x = ientry.x
-                y = ientry.y
-                z = ientry.z
+                # x = ientry.x
+                # y = ientry.y
+                # z = ientry.z
+                
+                # r = np.sqrt(x**2 + y**2 + z**2)
+                # if r > fv_cut:
+                    # continue
+                
+                # dataset_energy[entry_count]    = ientry.energy
+                # dataset_multisite[entry_count] = ientry.dlogL
+                # dataset_energy.append(ientry.energy)
+                # dataset_multisite.append(ientry.dlogL)
+                # entry_count += 1 
+            dataset_energy    = energy_vals
+            dataset_multisite = multi_vals
 
-                r = np.sqrt(x**2 + y**2 + z**2)
-                if r > fv_cut:
-                    continue
-
-                dataset_energy[entry_count]    = ientry.energy
-                dataset_multisite[entry_count] = ientry.dlogL
+            # a plot
+            fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (12, 8))
+            axes[0].hist(dataset_energy, bins  = energy_bins, histtype = "step")
+            axes[0].set_title("Real Data: Energy")
+            axes[1].hist(dataset_multisite, bins= multisite_bins, histtype = "step")
+            axes[1].set_title("Real Data: Multisite")
+            plt.tight_layout()
+            plt.savefig("../plots/asimov_study/real_mc/advanced/real_dataset.png")
 
             # now we need to create the binned dataset --> just counts in each bin
             dataset_energy, _    = np.histogram(dataset_energy, bins = energy_bins)
@@ -611,8 +662,8 @@ class Ahab():
                 print("Grid search for backg ", norm_idx, expected_backg[iname])
                 # include this normalisation and perform 2 D scan
                 # signal and backg hypothesis are expected val +- 50 %
-                signal_range = expected_signal       * 0.5
-                backg_range  = expected_backg[iname] * 0.5 
+                signal_range = expected_signal       * 1.0
+                backg_range  = expected_backg[iname] * 1.0
 
                 # sig_hypothesis   = np.arange(expected_signal - signal_range, expected_signal + signal_range + 1, 1)
                 # backg_hypothesis = np.arange(expected_backg[iname] - backg_range, expected_backg[iname] + backg_range + 1, 1)
@@ -639,9 +690,9 @@ class Ahab():
 
         # calculate the uncertainty by taking inverse of hessian --> covariance matrix and finding sqrt
         # of the diagonal elements
-        err_energy    = np.sqrt(np.diag((res_energy.hess_inv)))
-        err_multisite = np.sqrt(np.diag((res_multisite.hess_inv)))
-        err_combined  = np.sqrt(np.diag((res_combined.hess_inv)))
+        err_energy    = np.sqrt(np.diag((res_energy.hess_inv.todense())))
+        err_multisite = np.sqrt(np.diag((res_multisite.hess_inv.todense())))
+        err_combined  = np.sqrt(np.diag((res_combined.hess_inv.todense())))
 
         print("Best Fit Results:")
         print(f"Energy: {res_energy.x} | Error: {err_energy}\nTerminate status {res_energy.success} | Terminate reason: {res_energy.message}\n")
@@ -705,9 +756,9 @@ class Ahab():
         plt.ylabel(r"$-2log(\mathcal{L})$")
         plt.title("Profile Log-Likelihood Scan")
         plt.ylim((0, 3))
-        plt.axvline(x = expected_signal, color = "red", label = f"True Signal Number: {expected_signal}")
+        # plt.axvline(x = expected_signal, color = "red", label = f"True Signal Number: {expected_signal}")
         plt.legend(loc = "upper right", fontsize = 11)
-        plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll.png")
+        plt.savefig("../plots/asimov_study/real_mc/advanced/profile_ll_DATA.png")
         print("All complete!")
 
         # create output 'fitted model' plot in terms of energy and multisite with profile likelihood result
@@ -823,13 +874,32 @@ class Ahab():
         axes[1,1].legend(frameon = False, fontsize = 11)
 
         fig.tight_layout()
-        plt.savefig("../plots/asimov_study/real_mc/advanced/fitted_background_model.png")
+        plt.savefig("../plots/asimov_study/real_mc/advanced/fitted_background_model_DATA.png")
         plt.close()
 
 
+def obtain_dataset():
 
+    run_list = np.loadtxt("../../data_studies/runlists/quiet_period.txt", dtype = int)
 
-expected_signal = 101.2
+    energy_vals = []
+    multi_vals  = []
+    for irun in run_list:
+
+        file = ROOT.TFile.Open(f"../../data_studies/extracted_data/full_analysis/processed_dataset/{irun}.root")
+        ntuple = file.Get("2p5_5p0")
+
+        for ientry in ntuple:
+            energy_vals.append(ientry.energy)
+            multi_vals.append(ientry.dlogL)
+
+    return energy_vals, multi_vals
+        
+energy_vals, multi_vals = obtain_dataset()
+expected_signal = 35#101.2
 expected_backg  = [495.3, 0.93, 65.3, 38.5]
+
+constraint_expectation     = np.array([101.2, 495.3, 0.93, 65.3, 38.5])
+constraint_uncertainty     = np.array([np.sqrt(expected_signal), 42.2, 0.0138, 0.569, 5.29]) # see logbook entry 16th April 2024
 # expected_backg  = [495.3, None, None, None]
-Ahab().run_analysis(expected_signal, expected_backg, False)
+Ahab().run_analysis(expected_signal, expected_backg, True)
