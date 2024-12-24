@@ -4,6 +4,79 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import scipy.optimize
 import time
+import matplotlib.font_manager as fm
+
+path2 = '/data/snoplus3/hunt-stokes/nuPhysPoster/scripts/Times_New_Roman_Normal.ttf'
+prop_font = fm.FontProperties(fname=path2, size = 12)
+
+plt.rcParams['mathtext.default'] = 'regular'
+plt.rcParams.update({'axes.unicode_minus' : False})
+
+# set position of axis labels
+plt.rcParams["xaxis.labellocation"] = 'right'
+plt.rcParams["yaxis.labellocation"] = 'top'
+
+# set global parameters with rcParams -- copy whole block below before plotting code to set plotting template globally
+
+# set height and width of big markings on axis x
+plt.rcParams['xtick.major.size'] = 6
+plt.rcParams['xtick.major.width'] = 1.6
+# set height and width of small markings on axis x
+plt.rcParams['xtick.minor.size'] = 3
+plt.rcParams['xtick.minor.width'] = 1.6
+# set height and width of big markings on axis y
+plt.rcParams['ytick.major.size'] = 6
+plt.rcParams['ytick.major.width'] = 1.6
+# set height and width of small markings on axis y
+plt.rcParams['ytick.minor.size'] = 3
+plt.rcParams['ytick.minor.width'] = 1.6
+# set thickness of axes
+plt.rcParams['axes.linewidth'] = 1.6
+# set plot background color
+plt.rcParams['figure.facecolor'] = 'white'
+# set plot aspect ratio -- change according to needs
+plt.rcParams['figure.figsize'] = (8.5, 6.5)
+# set padding (between ticks and axis label)
+plt.rcParams['xtick.major.pad'] = '12' ## change me if the axis labels overlap! ## 
+plt.rcParams['ytick.major.pad'] = '12'
+# set padding (between plot and title)
+plt.rcParams['axes.titlepad'] = 12
+# set markings on axis to show on the inside of the plot, can change if needed
+plt.rcParams['xtick.direction'] = 'in'
+plt.rcParams['ytick.direction'] = 'in'
+
+# set ticks on both sides of x and y axes
+plt.rcParams['xtick.top'] = True
+plt.rcParams['xtick.bottom'] = True
+plt.rcParams['ytick.left'] = True
+plt.rcParams['ytick.right'] = True
+plt.rcParams['xtick.minor.visible'] = True
+plt.rcParams['ytick.minor.visible'] = True
+
+histogram_style = {
+    'histtype': 'step', 
+    'color': 'blue',
+    'alpha': 0.7,
+    'linewidth': 2
+}
+
+scatter_style = {
+    'marker': 's',
+    'color': 'black',
+    's': 25
+}
+
+errorbar_style = {
+    'linestyle': 'None',
+    'color': 'black',
+    'capsize': 1.5
+}
+
+line_plot_style = {
+    'linestyle': '-',
+    'color': 'black',
+    'linewidth': 2.5
+}
 """
 Script is used to evaluate the bias and pull distributions of the fitted B8
 signal. Bias is the percentage change between the fit result and the expected
@@ -170,6 +243,7 @@ def evaluate_loglikelihood_vectorised_grid_search(normalisations, dataset_energy
 
     # multiply by the counts in the dataset and sum each Tl208 norm
     scaled_log_energy    = np.sum(dataset_energy * log_energy, axis = 1) # result is (N_tl208, ) 1D
+    # print(dataset_multisite.shape, log_multisite.shape)
     scaled_log_multisite = np.sum(dataset_multisite * log_multisite, axis = 1)
     
     # convert to a -2log(L) value for each Tl208 norm
@@ -346,25 +420,26 @@ def generate_dataset():
     # plt.close()
 
     return dataset_energy, dataset_multisite
+
 signal_fractions = np.linspace(0.01, 1.00, 20)
-input_signal     = 66.3
-total_backg      = 495.3 + 0.93 + 65.3 + 38.5
-backg_ratios     = np.array([495.3, 0.93, 65.3, 38.5]) / total_backg
+input_signal     = 66.3#166.084
+total_backg      = 1174.61, 2.27, 148.38, 96.52
+backg_ratios     = np.array([1174.61, 2.27, 148.38, 96.52]) / total_backg
 print("Background fractions: ", backg_ratios)
-for frac in signal_fractions:
+for frac in [1]:#signal_fractions:
     print("Signal Fraction: ", frac)
     # work out how many signal events there are in this dataset
     backg               = 66.3 / frac
     print("Input background counts: ", backg)
 
     # define the background model expectations for each isotope
-    model_expectations  = np.array([input_signal, backg_ratios[0] * backg, backg_ratios[1] * backg, backg_ratios[2] * backg, backg_ratios[3] * backg])
+    model_expectations  = np.array([input_signal, 468.9, 0.9, 38.5, 58.2])#np.array([input_signal, backg_ratios[0] * backg, backg_ratios[1] * backg, backg_ratios[2] * backg, backg_ratios[3] * backg])
     print("Total backgrounds inputted to dataset: ", np.sum(model_expectations[1:]))
 
     isotope_names       = ["B8", "Tl208", "Tl210", "Bi212", "Bi214"]
-    num_datasets        = 1000 # how many fake datasets to create?
+    num_datasets        = 5000 # how many fake datasets to create?
     signal_hypothesis   = np.arange(0, 200, 1)
-    background_hypothesis = np.arange(0, backg + 100, 1)
+    background_hypothesis = np.arange(1, 800, 1)
 
     bias_bins           = np.arange(-1, +1, 0.05)
     pull_bins           = np.arange(-10, +10, 0.25)
@@ -372,13 +447,15 @@ for frac in signal_fractions:
     pulls               = np.zeros((3, num_datasets))
 
     # load the binned pdfs in energy and multisite
-    energy_bins         = np.arange(2.5, 5.05, 0.05)         # need to use the same binning as the pdfs were saved with
+    energy_bins         = np.arange(2.5, 5.05, 0.1)#np.arange(2.5, 5.05, 0.05)         # need to use the same binning as the pdfs were saved with
     energy_mids         = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
-    multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
+    multisite_bins      = 100#np.linspace(-1.22, -1.2, 50)# np.linspace(-2.12, -2.06, 100)#np.arange(-1.375, -1.325, 0.0005)
     multisite_mids      = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
-    pdf_array_energy    = np.load("./energy_pdf_array.npy")
-    pdf_array_multisite = np.load("./multisite_pdf_array.npy")
-
+    pdf_array_energy    = np.load("./energy_pdf_array_2p5_5p0.npy")
+    pdf_array_multisite = np.load("./multisite_dataset_asimov.npy")
+#np.load("./multisite_pdf_array_2p5_5p0.npy")
+    print(np.min(pdf_array_multisite), np.max(pdf_array_multisite))
+    # print(pdf_array_multisite.shape)
     # run analysis for each fake dataset
     start = time.time()
     for idataset in range(num_datasets):
@@ -421,55 +498,61 @@ for frac in signal_fractions:
 
         if idataset < 10:
             # create a plot for a few of these
-            fig, axes = plt.subplots(nrows = 1, ncols = 3, figsize = (18, 8))
-            axes[0].set_title("Profile Log-Likelihood Scan")
-            axes[0].axvline(np.sum(dataset_energy[0, :]), color = "red", linestyle = "dotted", label = f"True Signal Counts: {np.sum(dataset_energy[0, :])}")
-            axes[0].plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$")
-            axes[0].plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$")
-            axes[0].plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$")
-            axes[0].axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
-            axes[0].legend(frameon = False, loc = "upper left")
-            axes[0].set_xlabel("Signal Hypothesis")
-            axes[0].set_ylabel(r"$-2log(\mathcal{L})$")
-            axes[0].set_ylim((0, 3))
+            fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (18, 8))
+            # axes[0].set_title("Profile Log-Likelihood Scan")
+            # axes[0].axvline(np.sum(dataset_energy[0, :]), color = "red", linestyle = "dotted", label = f"True Signal Counts: {np.sum(dataset_energy[0, :])}")
+            # axes[0].plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$")
+            # axes[0].plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$")
+            # axes[0].plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$")
+            # axes[0].axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
+            # axes[0].legend(frameon = False, loc = "upper left")
+            # axes[0].set_xlabel("Signal Hypothesis")
+            # axes[0].set_ylabel(r"$-2log(\mathcal{L})$")
+            # axes[0].set_ylim((0, 3))
 
             for i in range(5):
 
                 # plot the 'true' underlying sampled data for each isotope
-                axes[1].step(energy_bins, dataset_energy[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_energy[i, :])} Counts")
-                axes[2].step(multisite_bins, dataset_multisite[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_multisite[i, :])} Counts")
+                axes[0].step(energy_bins, dataset_energy[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_energy[i, :])} Counts")
+                axes[1].step(multisite_bins, dataset_multisite[i, :].tolist() + [0], where = 'post', linestyle = "--", alpha = 0.5, linewidth = 2, label = f"{isotope_names[i]}: {np.sum(dataset_multisite[i, :])} Counts")
             
             # plot the total datasets (what the detector would see in real life)
-            axes[1].errorbar(energy_mids, np.sum(dataset_energy, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_energy, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_energy)}")
-            axes[2].errorbar(multisite_mids, np.sum(dataset_multisite, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_multisite, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_multisite)}")
+            axes[0].errorbar(energy_mids, np.sum(dataset_energy, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_energy, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_energy)}")
+            axes[1].errorbar(multisite_mids, np.sum(dataset_multisite, axis = 0), marker = "^", linestyle = "", yerr = np.sqrt(np.sum(dataset_multisite, axis = 0)), capsize = 2, color = "black", label = f"Total Dataset: {np.sum(dataset_multisite)}")
             
             # plot the fitted model for energy, multisite and combined together
-            axes[1].step(energy_bins, np.sum(energy_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Energy Fit: {np.sum(energy_result):.3g} Counts")
-            axes[1].step(energy_bins, np.sum(combined_energy_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_energy_result):.3g} Counts")
-            axes[2].step(multisite_bins, np.sum(multisite_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Multisite Fit: {np.sum(multisite_result):.3g} Counts")
-            axes[2].step(multisite_bins, np.sum(combined_multisite_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_multisite_result):.3g} Counts")
+            axes[0].step(energy_bins, np.sum(energy_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Energy Fit: {np.sum(energy_result):.3g} Counts")
+            axes[0].step(energy_bins, np.sum(combined_energy_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_energy_result):.3g} Counts")
+            axes[1].step(multisite_bins, np.sum(multisite_result, axis = 0).tolist() + [0], color = "red", where = 'post', linewidth = 2, label = f"Multisite Fit: {np.sum(multisite_result):.3g} Counts")
+            axes[1].step(multisite_bins, np.sum(combined_multisite_result, axis = 0).tolist() + [0], color = "#8B0000", where = 'post', linewidth = 2, label = f"Combined Fit: {np.sum(combined_multisite_result):.3g} Counts")
 
 
-            axes[1].set_xlabel("Reconstructed Energy (MeV)")
-            axes[2].set_xlabel("Multisite Discriminant")
-            axes[1].set_ylabel("Counts")
-            axes[2].set_ylabel("Counts")
-            axes[1].set_title("Fake Dataset: Energy")
-            axes[2].set_title("Fake Dataset: Multisite")
-            axes[2].set_xlim((-1.355, -1.334))
-            axes[1].legend(frameon = False, loc = "upper left")
-            axes[2].legend(frameon = False, loc = "upper left")
-            axes[1].set_ylim((0, 75))
-            axes[2].set_ylim((0, 75))
+            axes[0].set_xlabel("Reconstructed Energy (MeV)", fontproperties = prop_font, fontsize = 16)
+            axes[1].set_xlabel("Multisite Discriminant", fontproperties = prop_font, fontsize = 16)
+            axes[0].set_ylabel("Counts", fontproperties = prop_font, fontsize = 16)
+            axes[1].set_ylabel("Counts", fontproperties = prop_font, fontsize = 16)
+            # axes[0].set_title("Fake Dataset: Energy")
+            # axes[1].set_title("Fake Dataset: Multisite")
+            axes[1].set_xlim((-1.355, -1.335))
+            axes[0].set_xlim((2.5, 5.0))
+            axes[0].legend(frameon = False,  prop=fm.FontProperties(fname=path2, size = 14), loc = "upper right")
+            axes[1].legend(frameon = False, prop=fm.FontProperties(fname=path2, size = 14), loc = "upper right")
+            axes[0].set_ylim((0, axes[0].get_ylim()[1]))
+            axes[1].set_ylim((0, axes[1].get_ylim()[1]))
+            for label in axes[0].get_xticklabels():
+                label.set_fontproperties(prop_font)
+
+            for label in axes[1].get_yticklabels():
+                label.set_fontproperties(prop_font)
             fig.tight_layout()
-            plt.savefig(f"../plots/asimov_study/real_mc/advanced/fluctuated_datasets/scan_{idataset}_{round(frac, 3)}.png")
+            plt.savefig(f"../plots/asimov_study/real_mc/advanced/fluctuated_datasets/scan_{idataset}_{round(frac, 3)}.pdf")
             plt.close()
 
         # calculate the bias and pull using each fit method
         biases[0, idataset] = (norms_energy[0]   - model_expectations[0]) / model_expectations[0]
         biases[1, idataset] = (norms_multi[0]    - model_expectations[0]) / model_expectations[0]
         biases[2, idataset] = (norms_combined[0] - model_expectations[0]) / model_expectations[0]
-
+        print(norms_multi[0], model_expectations[0], biases[1, idataset])
         if norms_energy[0] <= model_expectations[0]:
             pulls[0, idataset] = ( model_expectations[0] - norms_energy[0] ) / energy_error[1]
         else:
@@ -487,49 +570,61 @@ for frac in signal_fractions:
 
     np.save(f"./bias_and_pull_arrays/bias_{round(frac, 3)}.npy", biases)
     np.save(f"./bias_and_pull_arrays/pull_{round(frac, 3)}.npy", pulls)
+bias_bins           = np.arange(-1, +1, 0.05)
+pull_bins           = np.arange(-10, +10, 0.25)
+biases = np.load("./bias_and_pull_arrays/bias_1.npy")
+print(len(biases[np.isinf(biases)]))
+biases[np.isinf(biases)] = -999
 
-# biases = np.load("./bias.npy")
-# print(len(biases[np.isinf(biases)]))
-# biases[np.isinf(biases)] = -999
+pulls  = np.load("./bias_and_pull_arrays/pull_1.npy")
+print(len(pulls[np.isinf(pulls)]))
+pulls[np.isinf(pulls)] = -999
 
-# pulls  = np.load("./pull.npy")
-# print(len(pulls[np.isinf(pulls)]))
-# pulls[np.isinf(pulls)] = -999
+# create a mask to calculate the mean of the distributions without including these bad values
+bias_mask  = (biases != -999)
+pulls_mask = (pulls != -999)
+print(bias_mask.shape)
+bias_means = np.ma.masked_array(biases, ~bias_mask).mean(axis = 1)
+print(bias_means)
+bias_std   = np.ma.masked_array(biases, ~bias_mask).std(axis = 1)
+pulls_means = np.ma.masked_array(pulls, ~pulls_mask).mean(axis = 1)
+pulls_std   = np.ma.masked_array(pulls, ~pulls_mask).std(axis = 1)
 
-# # create a mask to calculate the mean of the distributions without including these bad values
-# bias_mask  = (biases != -999)
-# pulls_mask = (pulls != -999)
-# print(bias_mask.shape)
-# bias_means = np.ma.masked_array(biases, ~bias_mask).mean(axis = 1)
-# print(bias_means)
-# bias_std   = np.ma.masked_array(biases, ~bias_mask).std(axis = 1)
-# pulls_means = np.ma.masked_array(pulls, ~pulls_mask).mean(axis = 1)
-# pulls_std   = np.ma.masked_array(pulls, ~pulls_mask).std(axis = 1)
+# make a plot of bias
+fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (10, 6))
 
-# # make a plot of bias
-# fig, axes = plt.subplots(nrows = 1, ncols = 2, figsize = (10, 6))
+axes[0].hist(biases[0,:], bins = bias_bins, histtype = "step", color = "orange")
+axes[0].hist(biases[1,:], bins = bias_bins, histtype = "step", color = "green")
+axes[0].hist(biases[2,:], bins = bias_bins, histtype = "step", color = "black")
+axes[0].plot([], [], color = "orange", label = rf"Energy | $\mu$: {bias_means[0]:.2f}, $\sigma$: {bias_std[0]:.2f}")
+axes[0].plot([], [], color = "green", label = rf"Multisite | $\mu$: {bias_means[1]:.2f}, $\sigma$: {bias_std[1]:.2f}")
+axes[0].plot([], [], color = "black", label = rf"Combined | $\mu$: {bias_means[2]:.2f}, $\sigma$: {bias_std[2]:.2f}")
 
-# axes[0].hist(biases[0,:], bins = bias_bins, histtype = "step", color = "orange")
-# axes[0].hist(biases[1,:], bins = bias_bins, histtype = "step", color = "green")
-# axes[0].hist(biases[2,:], bins = bias_bins, histtype = "step", color = "black")
-# axes[0].plot([], [], color = "orange", label = rf"Energy | $\mu$: {bias_means[0]:.2g}, $\sigma$: {bias_std[0]:.2g}")
-# axes[0].plot([], [], color = "green", label = rf"Multisite | $\mu$: {bias_means[1]:.2g}, $\sigma$: {bias_std[1]:.2g}")
-# axes[0].plot([], [], color = "black", label = rf"Combined | $\mu$: {bias_means[2]:.2g}, $\sigma$: {bias_std[2]:.2g}")
+axes[0].set_xlabel("Bias", fontproperties = prop_font)
+axes[0].set_ylabel("Counts", fontproperties = prop_font)
+axes[0].legend(frameon = False, loc = "upper right", prop=fm.FontProperties(fname=path2, size = 12))
+axes[0].set_ylim((0, axes[0].get_ylim()[1]+95))
+axes[1].hist(pulls[0,:], bins = pull_bins, histtype = "step", color = "orange")
+axes[1].hist(pulls[1,:], bins = pull_bins, histtype = "step", color = "green")
+axes[1].hist(pulls[2,:], bins = pull_bins, histtype = "step", color = "black")
+axes[1].plot([], [], color = "orange", label = rf"Energy | $\mu$: {pulls_means[0]:.2f}, $\sigma$: {pulls_std[0]:.2f}")
+axes[1].plot([], [], color = "green", label = rf"Multisite | $\mu$: {pulls_means[1]:.2f}, $\sigma$: {pulls_std[1]:.2f}")
+axes[1].plot([], [], color = "black", label = rf"Combined | $\mu$: {pulls_means[2]:.2f}, $\sigma$: {pulls_std[2]:.2f}")
 
-# axes[0].set_xlabel("Bias")
-# axes[0].set_ylabel("Counts")
-# axes[0].legend(frameon = False, loc = "upper left")
+axes[1].set_xlabel("Pull", fontproperties = prop_font)
+axes[1].set_ylabel("Counts", fontproperties = prop_font)
+axes[1].set_ylim((0, axes[1].get_ylim()[1]+75))
+axes[1].legend(frameon = False, loc = "upper right", prop=fm.FontProperties(fname=path2, size = 12))
+for label in axes[0].get_xticklabels():
+    label.set_fontproperties(prop_font)
 
-# axes[1].hist(pulls[0,:], bins = pull_bins, histtype = "step", color = "orange")
-# axes[1].hist(pulls[1,:], bins = pull_bins, histtype = "step", color = "green")
-# axes[1].hist(pulls[2,:], bins = pull_bins, histtype = "step", color = "black")
-# axes[1].plot([], [], color = "orange", label = rf"Energy | $\mu$: {pulls_means[0]:.2g}, $\sigma$: {pulls_std[0]:.2g}")
-# axes[1].plot([], [], color = "green", label = rf"Multisite | $\mu$: {pulls_means[1]:.2g}, $\sigma$: {pulls_std[1]:.2g}")
-# axes[1].plot([], [], color = "black", label = rf"Combined | $\mu$: {pulls_means[2]:.2g}, $\sigma$: {pulls_std[2]:.2g}")
+for label in axes[0].get_yticklabels():
+    label.set_fontproperties(prop_font)
+for label in axes[1].get_xticklabels():
+    label.set_fontproperties(prop_font)
 
-# axes[1].set_xlabel("Pull")
-# axes[1].set_ylabel("Counts")
-# axes[1].legend(frameon = False, loc = "upper left")
-# fig.tight_layout()
-# plt.savefig("../plots/asimov_study/real_mc/advanced/bias_fake_data.png")
-# plt.close()
+for label in axes[1].get_yticklabels():
+    label.set_fontproperties(prop_font)
+fig.tight_layout()
+plt.savefig("../plots/asimov_study/real_mc/advanced/bias_fake_data.pdf")
+plt.close()
