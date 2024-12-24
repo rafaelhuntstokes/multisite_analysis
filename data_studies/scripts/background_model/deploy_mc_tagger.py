@@ -5,7 +5,7 @@ import string
 num = "bipo"
 isotope = 1
 
-tag_list = np.loadtxt("simulated_list.txt", dtype=int)
+tag_list = np.loadtxt("../../runlists/simulated_list.txt", dtype=int)
 # tag_list = np.loadtxt("missing_runs.txt", dtype = int)
 for irun in tag_list:
 
