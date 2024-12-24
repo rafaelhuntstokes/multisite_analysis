@@ -41,13 +41,13 @@ double bipo_tagger_full(std::vector<std::string> filelist, std::string outdir, d
 
   // ANALYSIS CUTS 
   BI_LOWER   = 1.25; // energy cuts MeV
-  BI_UPPER   = 3.0; 
+  BI_UPPER   = 3.0;
   PO_LOWER   = 0.7;
   PO_UPPER   = 1.1; 
   dR_cut     = 1000; // mm  
   dT_low     = 3690; // ns
   dT_high    = 1000000; // ns
-  FV_CUT     = 6000; // mm 
+  FV_CUT     = 6000; // mm
   
   // variables which handle the muon and high energy vetos
   ULong64_t cut_trig_time = 0;        // the event time according to 50 MHz clock that starts muon veto
