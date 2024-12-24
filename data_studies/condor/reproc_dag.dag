@@ -1,0 +1,149 @@
+JOB BATCH_0 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_0.sub
+JOB BATCH_1 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_1.sub
+PARENT BATCH_0 CHILD BATCH_1
+JOB BATCH_2 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_2.sub
+PARENT BATCH_1 CHILD BATCH_2
+JOB BATCH_3 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_3.sub
+PARENT BATCH_2 CHILD BATCH_3
+JOB BATCH_4 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_4.sub
+PARENT BATCH_3 CHILD BATCH_4
+JOB BATCH_5 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_5.sub
+PARENT BATCH_4 CHILD BATCH_5
+JOB BATCH_6 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_6.sub
+PARENT BATCH_5 CHILD BATCH_6
+JOB BATCH_7 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_7.sub
+PARENT BATCH_6 CHILD BATCH_7
+JOB BATCH_8 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_8.sub
+PARENT BATCH_7 CHILD BATCH_8
+JOB BATCH_9 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_9.sub
+PARENT BATCH_8 CHILD BATCH_9
+JOB BATCH_10 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_10.sub
+PARENT BATCH_9 CHILD BATCH_10
+JOB BATCH_11 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_11.sub
+PARENT BATCH_10 CHILD BATCH_11
+JOB BATCH_12 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_12.sub
+PARENT BATCH_11 CHILD BATCH_12
+JOB BATCH_13 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_13.sub
+PARENT BATCH_12 CHILD BATCH_13
+JOB BATCH_14 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_14.sub
+PARENT BATCH_13 CHILD BATCH_14
+JOB BATCH_15 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_15.sub
+PARENT BATCH_14 CHILD BATCH_15
+JOB BATCH_16 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_16.sub
+PARENT BATCH_15 CHILD BATCH_16
+JOB BATCH_17 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_17.sub
+PARENT BATCH_16 CHILD BATCH_17
+JOB BATCH_18 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_18.sub
+PARENT BATCH_17 CHILD BATCH_18
+JOB BATCH_19 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_19.sub
+PARENT BATCH_18 CHILD BATCH_19
+JOB BATCH_20 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_20.sub
+PARENT BATCH_19 CHILD BATCH_20
+JOB BATCH_21 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_21.sub
+PARENT BATCH_20 CHILD BATCH_21
+JOB BATCH_22 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_22.sub
+PARENT BATCH_21 CHILD BATCH_22
+JOB BATCH_23 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_23.sub
+PARENT BATCH_22 CHILD BATCH_23
+JOB BATCH_24 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_24.sub
+PARENT BATCH_23 CHILD BATCH_24
+JOB BATCH_25 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_25.sub
+PARENT BATCH_24 CHILD BATCH_25
+JOB BATCH_26 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_26.sub
+PARENT BATCH_25 CHILD BATCH_26
+JOB BATCH_27 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_27.sub
+PARENT BATCH_26 CHILD BATCH_27
+JOB BATCH_28 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_28.sub
+PARENT BATCH_27 CHILD BATCH_28
+JOB BATCH_29 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_29.sub
+PARENT BATCH_28 CHILD BATCH_29
+JOB BATCH_30 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_30.sub
+PARENT BATCH_29 CHILD BATCH_30
+JOB BATCH_31 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_31.sub
+PARENT BATCH_30 CHILD BATCH_31
+JOB BATCH_32 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_32.sub
+PARENT BATCH_31 CHILD BATCH_32
+JOB BATCH_33 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_33.sub
+PARENT BATCH_32 CHILD BATCH_33
+JOB BATCH_34 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_34.sub
+PARENT BATCH_33 CHILD BATCH_34
+JOB BATCH_35 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_35.sub
+PARENT BATCH_34 CHILD BATCH_35
+JOB BATCH_36 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_36.sub
+PARENT BATCH_35 CHILD BATCH_36
+JOB BATCH_37 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_37.sub
+PARENT BATCH_36 CHILD BATCH_37
+JOB BATCH_38 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_38.sub
+PARENT BATCH_37 CHILD BATCH_38
+JOB BATCH_39 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_39.sub
+PARENT BATCH_38 CHILD BATCH_39
+JOB BATCH_40 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_40.sub
+PARENT BATCH_39 CHILD BATCH_40
+JOB BATCH_41 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_41.sub
+PARENT BATCH_40 CHILD BATCH_41
+JOB BATCH_42 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_42.sub
+PARENT BATCH_41 CHILD BATCH_42
+JOB BATCH_43 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_43.sub
+PARENT BATCH_42 CHILD BATCH_43
+JOB BATCH_44 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_44.sub
+PARENT BATCH_43 CHILD BATCH_44
+JOB BATCH_45 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_45.sub
+PARENT BATCH_44 CHILD BATCH_45
+JOB BATCH_46 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_46.sub
+PARENT BATCH_45 CHILD BATCH_46
+JOB BATCH_47 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_47.sub
+PARENT BATCH_46 CHILD BATCH_47
+JOB BATCH_48 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_48.sub
+PARENT BATCH_47 CHILD BATCH_48
+JOB BATCH_49 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_49.sub
+PARENT BATCH_48 CHILD BATCH_49
+JOB BATCH_50 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_50.sub
+PARENT BATCH_49 CHILD BATCH_50
+JOB BATCH_51 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_51.sub
+PARENT BATCH_50 CHILD BATCH_51
+JOB BATCH_52 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_52.sub
+PARENT BATCH_51 CHILD BATCH_52
+JOB BATCH_53 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_53.sub
+PARENT BATCH_52 CHILD BATCH_53
+JOB BATCH_54 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_54.sub
+PARENT BATCH_53 CHILD BATCH_54
+JOB BATCH_55 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_55.sub
+PARENT BATCH_54 CHILD BATCH_55
+JOB BATCH_56 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_56.sub
+PARENT BATCH_55 CHILD BATCH_56
+JOB BATCH_57 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_57.sub
+PARENT BATCH_56 CHILD BATCH_57
+JOB BATCH_58 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_58.sub
+PARENT BATCH_57 CHILD BATCH_58
+JOB BATCH_59 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_59.sub
+PARENT BATCH_58 CHILD BATCH_59
+JOB BATCH_60 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_60.sub
+PARENT BATCH_59 CHILD BATCH_60
+JOB BATCH_61 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_61.sub
+PARENT BATCH_60 CHILD BATCH_61
+JOB BATCH_62 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_62.sub
+PARENT BATCH_61 CHILD BATCH_62
+JOB BATCH_63 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_63.sub
+PARENT BATCH_62 CHILD BATCH_63
+JOB BATCH_64 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_64.sub
+PARENT BATCH_63 CHILD BATCH_64
+JOB BATCH_65 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_65.sub
+PARENT BATCH_64 CHILD BATCH_65
+JOB BATCH_66 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_66.sub
+PARENT BATCH_65 CHILD BATCH_66
+JOB BATCH_67 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_67.sub
+PARENT BATCH_66 CHILD BATCH_67
+JOB BATCH_68 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_68.sub
+PARENT BATCH_67 CHILD BATCH_68
+JOB BATCH_69 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_69.sub
+PARENT BATCH_68 CHILD BATCH_69
+JOB BATCH_70 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_70.sub
+PARENT BATCH_69 CHILD BATCH_70
+JOB BATCH_71 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_71.sub
+PARENT BATCH_70 CHILD BATCH_71
+JOB BATCH_72 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_72.sub
+PARENT BATCH_71 CHILD BATCH_72
+JOB BATCH_73 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_73.sub
+PARENT BATCH_72 CHILD BATCH_73
+JOB BATCH_74 /data/snoplus3/hunt-stokes/multisite_clean/data_studies/condor/dag_submit_reproc/layer_74.sub
+PARENT BATCH_73 CHILD BATCH_74
