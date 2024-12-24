@@ -8,7 +8,79 @@ from flux_conversion import *
 from prettytable import PrettyTable
 import time
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.font_manager as fm
 
+path2 = '/data/snoplus3/hunt-stokes/nuPhysPoster/scripts/Times_New_Roman_Normal.ttf'
+prop_font = fm.FontProperties(fname=path2, size = 12)
+
+plt.rcParams['mathtext.default'] = 'regular'
+plt.rcParams.update({'axes.unicode_minus' : False})
+
+# set position of axis labels
+plt.rcParams["xaxis.labellocation"] = 'right'
+plt.rcParams["yaxis.labellocation"] = 'top'
+
+# set global parameters with rcParams -- copy whole block below before plotting code to set plotting template globally
+
+# set height and width of big markings on axis x
+plt.rcParams['xtick.major.size'] = 6
+plt.rcParams['xtick.major.width'] = 1.6
+# set height and width of small markings on axis x
+plt.rcParams['xtick.minor.size'] = 3
+plt.rcParams['xtick.minor.width'] = 1.6
+# set height and width of big markings on axis y
+plt.rcParams['ytick.major.size'] = 6
+plt.rcParams['ytick.major.width'] = 1.6
+# set height and width of small markings on axis y
+plt.rcParams['ytick.minor.size'] = 3
+plt.rcParams['ytick.minor.width'] = 1.6
+# set thickness of axes
+plt.rcParams['axes.linewidth'] = 1.6
+# set plot background color
+plt.rcParams['figure.facecolor'] = 'white'
+# set plot aspect ratio -- change according to needs
+plt.rcParams['figure.figsize'] = (8.5, 6.5)
+# set padding (between ticks and axis label)
+plt.rcParams['xtick.major.pad'] = '12' ## change me if the axis labels overlap! ## 
+plt.rcParams['ytick.major.pad'] = '12'
+# set padding (between plot and title)
+plt.rcParams['axes.titlepad'] = 12
+# set markings on axis to show on the inside of the plot, can change if needed
+plt.rcParams['xtick.direction'] = 'in'
+plt.rcParams['ytick.direction'] = 'in'
+
+# set ticks on both sides of x and y axes
+plt.rcParams['xtick.top'] = True
+plt.rcParams['xtick.bottom'] = True
+plt.rcParams['ytick.left'] = True
+plt.rcParams['ytick.right'] = True
+plt.rcParams['xtick.minor.visible'] = True
+plt.rcParams['ytick.minor.visible'] = True
+
+histogram_style = {
+    'histtype': 'step', 
+    'color': 'blue',
+    'alpha': 0.7,
+    'linewidth': 2
+}
+
+scatter_style = {
+    'marker': 's',
+    'color': 'black',
+    's': 25
+}
+
+errorbar_style = {
+    'linestyle': 'None',
+    'color': 'black',
+    'capsize': 1.5
+}
+
+line_plot_style = {
+    'linestyle': '-',
+    'color': 'black',
+    'linewidth': 2.5
+}
 """
 Simple profile likelihood fitter using unconstrained Tl208 number, and fixed
 normalisations for the backgrounds Bi214, Bi212 and Tl210.
@@ -117,8 +189,9 @@ def evaluate_loglikelihood(variable_background, fixed_backgrounds, signal_number
     """
 
     # create array of total normalisations --> [B8 norm, Tl208 Norm, Tl210 norm, Bi212 Norm, Bi214 norm]
+    normalisations   = np.array([signal_number] + [variable_background] + fixed_backgrounds)
+    
     # normalisations   = np.array([signal_number] + [variable_background] + fixed_backgrounds)
-    normalisations = np.array([signal_number] + [variable_background] + fixed_backgrounds)
     # we allow the total normalisation to float
     norm_sum         = np.sum(normalisations)   # sum the normalisations as the first term in eqn
 
@@ -135,7 +208,6 @@ def evaluate_loglikelihood(variable_background, fixed_backgrounds, signal_number
 
     # sum each column to get the inside of each log term contributing to outer sum over bins
     inner_log        = np.sum(pdf_norm, axis = 0) # remove the rows so axis = 0
-
     log              = np.log(inner_log)          # 1D array of where each element is log(Nj Pj) for every bin in PDF
 
     # multiply each element by the number of data events in each PDF bin and sum all the terms
@@ -143,7 +215,8 @@ def evaluate_loglikelihood(variable_background, fixed_backgrounds, signal_number
     # expected_backg_conv   = np.array([66.3] + expected_backg)
     # constraint       = (normalisations - expected_backg_conv)**2 / (2 * np.array(expected_uncertainty)**2)
     # convert to 2 * -log(L)
-    loglikelihood    = 2 * (norm_sum - scaled_log)     # element wise operation
+    # loglikelihood    = 2 * (norm_sum - scaled_log + ( (normalisations[1] - expected_backg[0])**2/(2*tl208_uncert**2) ) )
+    loglikelihood    = 2 * (norm_sum - scaled_log)       # element wise operation
     # print(f"B8: {signal_number}, Tl208: {variable_background}, LL: {loglikelihood}")
     # print(f"\nnorm sum: {norm_sum} | log: {log.shape} | normalisations: {normalisations} | | dataset shape: {dataset.shape} | pdf_shape: {pdfs.shape} | pdf_norms_shape: {pdf_norm.shape}\n")
     return loglikelihood
@@ -168,13 +241,14 @@ def evaluate_combined_loglikelihood(variable_background, fixed_backgrounds, sign
     """
 
     # multiply the counts of each PDF by the appropriate normalisation factor
+    # print(normalisations)
     energy_pdf_norm         = normalisations * energy_pdfs   # elementwise multiplication results in (N_pdfs, N_bins)
     multisite_pdf_norm      = normalisations * multisite_pdfs
 
     # sum each column to get the inside of each log term contributing to outer sum over bins
     energy_inner_log        = np.sum(energy_pdf_norm, axis = 0) # remove the rows so axis = 0
     multisite_inner_log     = np.sum(multisite_pdf_norm, axis = 0)
-
+    # print(energy_inner_log)
     energy_log              = np.log(energy_inner_log)          # 1D array of where each element is log(Nj Pj) for every bin in PDF
     multisite_log           = np.log(multisite_inner_log)
 
@@ -183,6 +257,8 @@ def evaluate_combined_loglikelihood(variable_background, fixed_backgrounds, sign
     multisite_scaled_log    = np.sum(multisite_dataset * multisite_log)
 
     # convert to 2 * -log(L)
+    # energy_loglikelihood    = 2 * (norm_sum - energy_scaled_log + ( (normalisations[1] - expected_backg[0])**2/(2*tl208_uncert**2) ))
+    # multisite_loglikelihood = 2 * (norm_sum - multisite_scaled_log + ( (normalisations[1] - expected_backg[0])**2/(2*tl208_uncert**2) ))
     energy_loglikelihood    = 2 * (norm_sum - energy_scaled_log)
     multisite_loglikelihood = 2 * (norm_sum - multisite_scaled_log)
 
@@ -194,10 +270,7 @@ def profile_likelihood_scan(fixed_backgrounds, initial_guess, energy_dataset, mu
     """
     Function performs a profile likelihood scan, calling the loglikelihood functions
     defined above via the scipy minimizer.
-    """
-
-    # the fixed number of B8 solar neutrinos assumed for each minimisation
-    
+    """    
 
     # arrays store the loglikelihood value for each assumed B8 number
     loglikelihood_array = np.zeros((3, len(signal_hypothesis)))
@@ -264,14 +337,27 @@ def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, mult
     l_space_multisite = rescale_ll(l_space_multisite)
     l_space_combined  = rescale_ll(l_space_combined)
 
+    np.save("./l_space_energy.npy", l_space_energy)
+    np.save("./l_space_multisite.npy", l_space_multisite)
+    np.save("./l_space_combined.npy", l_space_combined)
     # find minimum of each
     idx_energy = np.argwhere(l_space_energy == np.min(l_space_energy))
     idx_multisite = np.argwhere(l_space_multisite == np.min(l_space_multisite))
     idx_combined = np.argwhere(l_space_combined == np.min(l_space_combined))
     print(idx_energy, idx_multisite, idx_combined)
 
-    fig, axes = plt.subplots(nrows = 3, ncols = 1)
-    fig.set_size_inches(((8.27, 11.69)))
+    # find the minimum for the Tl208 profiles
+    # find the minimum LL for each value of Tl208 norm (the cols)
+    tl208_energy_profile = np.min(l_space_energy, axis = 0)
+    tl208_multi_profile  = np.min(l_space_multisite, axis = 0)
+    tl208_combi_profile  = np.min(l_space_combined, axis = 0)
+
+    np.save(f"./tl208_profile_energy_THESIS.npy", tl208_energy_profile)
+    np.save(f"./tl208_profile_multi_THESIS.npy", tl208_multi_profile)
+    np.save(f"./tl208_profile_combi_THESIS.npy", tl208_combi_profile)
+
+    fig, axes = plt.subplots(nrows = 3, ncols = 1, figsize = (8,11))
+    # fig.set_size_inches(((8.27, 11.69)))
     # im = axes.imshow(np.log(l_space_energy), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     # # im = axes[0].imshow(l_space_energy, cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     # axes.scatter(background_hypothesis[idx_energy[:, 1]], signal_hypothesis[idx_energy[:, 0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_energy[0,0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_energy[0,1]]:.3g}")
@@ -287,34 +373,52 @@ def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, mult
     # axes.set_xlim((0,800))
     # axes.legend(fontsize = 12)
 
-    im = axes[0].imshow(np.log(l_space_energy), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    im = axes[0].imshow(np.log(l_space_energy), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]], aspect = 'auto')
     # im = axes[0].imshow(l_space_energy, cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     axes[0].scatter(background_hypothesis[idx_energy[:, 1]], signal_hypothesis[idx_energy[:, 0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_energy[0,0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_energy[0,1]]:.3g}")
-    axes[0].scatter(expected_backg[0], expected_signal, color = "blue", label = f"Expected (B8, Tl208): ({expected_signal:.3g}, {expected_backg[0]:.3g})")
+    axes[0].scatter(expected_backg[0], expected_signal, alpha = 0.5, color = "blue", label = f"Expected (B8, Tl208): ({expected_signal:.3g}, {expected_backg[0]:.3g})")
     divider = make_axes_locatable(axes[0])
     cax = divider.append_axes("right", size="5%", pad=0.05)
     fig.colorbar(im, cax = cax)
-    axes[0].set_title("Energy")
-    axes[0].set_xlabel("Tl208 Normalisation")
-    axes[0].set_ylabel("B8 Normalisation")
-    axes[0].set_aspect("equal")
-    axes[0].set_ylim((800, 0))
-    axes[0].set_xlim((0,800))
-    axes[0].legend()
+    # axes[0].set_title("Energy")
+    axes[0].set_xlabel("Tl208 Normalisation", fontproperties = prop_font)
+    axes[0].set_ylabel("B8 Normalisation", fontproperties = prop_font)
+    axes[0].set_aspect("equal", adjustable = 'box')
 
-    im = axes[1].imshow(np.log(l_space_multisite), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    maxLL = np.max(np.log(l_space_energy))
+    dchi2 = 2 * (maxLL - np.log(l_space_energy))
+    # axes[0].contour(dchi2, levels = [2.3], colors = 'white', extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    # axes[0].set_ylim((800, 0))
+    # axes[0].set_xlim((0,800))
+    # axes[0].set_ylim((background_hypothesis[0], background_hypothesis[-1]))
+    # axes[0].set_xlim((signal_hypothesis[0], signal_hypothesis[-1]))
+    for label in axes[0].get_xticklabels():
+            label.set_fontproperties(prop_font)
+
+    for label in axes[0].get_yticklabels():
+        label.set_fontproperties(prop_font)
+    axes[0].legend(frameon = True, prop=fm.FontProperties(fname=path2, size = 14))
+    im = axes[1].imshow(np.log(l_space_multisite), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]], aspect = 'auto')
     # im = axes[1].imshow(l_space_multisite, cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     axes[1].scatter(background_hypothesis[idx_multisite[:, 1]], signal_hypothesis[idx_multisite[:, 0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_multisite[0,0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_multisite[0,1]]:.3g}")
-    axes[1].scatter(expected_backg[0], expected_signal, color = "blue", label = f"Expected (B8, Tl208): ({expected_signal:.3g}, {expected_backg[0]:.3g})")
+    axes[1].scatter(expected_backg[0], expected_signal, color = "blue", alpha = 0.5, label = f"Expected (B8, Tl208): ({expected_signal:.3g}, {expected_backg[0]:.3g})")
     divider = make_axes_locatable(axes[1])
     cax = divider.append_axes("right", size="5%", pad=0.05)
     fig.colorbar(im, cax = cax)
-    axes[1].set_title("Multisite")
-    axes[1].set_xlabel("Tl208 Normalisation")
-    axes[1].set_ylabel("B8 Normalisation")
+    # axes[1].set_title("Multisite")
+    axes[1].set_aspect("equal", adjustable = 'box')
+    axes[1].set_xlabel("Tl208 Normalisation", fontproperties = prop_font)
+    axes[1].set_ylabel("B8 Normalisation", fontproperties = prop_font)
     axes[1].set_ylim(axes[0].get_ylim())
-    axes[1].legend()
+    axes[1].legend(frameon = True, prop=fm.FontProperties(fname=path2, size = 14))
+    for label in axes[1].get_xticklabels():
+            label.set_fontproperties(prop_font)
 
+    for label in axes[1].get_yticklabels():
+        label.set_fontproperties(prop_font)
+    maxLL = np.max(np.log(l_space_multisite))
+    dchi2 = 2 * (maxLL - np.log(l_space_multisite))
+    # axes[1].contour(dchi2, levels = [2.3], colors = 'white', extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     # im = axes.imshow(np.log(l_space_multisite), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     # # im = axes[1].imshow(l_space_multisite, cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     # axes.scatter(background_hypothesis[idx_multisite[:, 1]], signal_hypothesis[idx_multisite[:, 0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_multisite[0,0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_multisite[0,1]]:.3g}")
@@ -330,19 +434,27 @@ def likelihood_gridsearch(fixed_backgrounds, initial_guess, energy_dataset, mult
     # axes.legend(fontsize = 12)
     # axes.legend()
 
-    im = axes[2].imshow(np.log(l_space_combined), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
+    im = axes[2].imshow(np.log(l_space_combined), cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]], aspect = 'auto')
     # im = axes[2].imshow(l_space_combined, cmap = "BuGn", extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     axes[2].scatter(background_hypothesis[idx_combined[:, 1]], signal_hypothesis[idx_combined[:, 0]], color = "red", label = f"Minimum B8: {signal_hypothesis[idx_combined[0,0]]:.3g}\nMinimum Tl208: {background_hypothesis[idx_combined[0, 1]]:.3g}")
-    axes[2].scatter(expected_backg[0], expected_signal, color = "blue", label = f"Expected (B8, Tl208): ({expected_signal:.3g}, {expected_backg[0]:.3g})")
+    axes[2].scatter(expected_backg[0], expected_signal, alpha = 0.5, color = "blue", label = f"Expected (B8, Tl208): ({expected_signal:.3g}, {expected_backg[0]:.3g})")
     divider = make_axes_locatable(axes[2])
     cax = divider.append_axes("right", size="5%", pad=0.05)
     fig.colorbar(im, cax = cax)
-    axes[2].set_title("Combined")
-    axes[2].set_xlabel("Tl208 Normalisation")
-    axes[2].set_ylabel("B8 Normalisation")
-    axes[2].set_aspect("equal")
-    axes[2].legend()
-    
+    # axes[2].set_title("Combined")
+    axes[2].set_xlabel("Tl208 Normalisation", fontproperties = prop_font)
+    axes[2].set_ylabel("B8 Normalisation", fontproperties = prop_font)
+    axes[2].set_aspect("equal", adjustable = 'box')
+    axes[2].legend(frameon = True, prop=fm.FontProperties(fname=path2, size = 14))
+
+    for label in axes[2].get_xticklabels():
+            label.set_fontproperties(prop_font)
+
+    for label in axes[2].get_yticklabels():
+        label.set_fontproperties(prop_font)
+    maxLL = np.max(np.log(l_space_combined))
+    dchi2 = 2 * (maxLL - np.log(l_space_combined))
+    # axes[2].contour(dchi2, levels = [2.3], colors = 'white', extent = [background_hypothesis[0], background_hypothesis[-1], signal_hypothesis[-1], signal_hypothesis[0]])
     fig.tight_layout()
     # plt.savefig(f"../plots/asimov_study/real_mc/advanced/diff_bins/heatmap_{energy_string}_{num_bins}.png")
     plt.savefig(f"../plots/asimov_study/real_mc/advanced/heatmap_{energy_string}_{plot_name}.pdf")
@@ -381,6 +493,7 @@ def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_r
 
             try:
                 # open the MC ntuple file
+                # print(f"{location}/{irun}.root")
                 file   = ROOT.TFile.Open(f"{location}/{irun}.root")
                 ntuple = file.Get(energy_range)
                 ntuple.GetEntries()
@@ -396,14 +509,20 @@ def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_r
                 y = ientry.y
                 z = ientry.z
                 r = np.sqrt(x**2 + y**2 + z**2)
+                itr = ientry.itr
+                # posFOM = ientry.posFOM / ientry.posFOM_hits
                 if r > fv_cut:
                     continue
-
+                # if itr < 0.22 or itr > 0.3:
+                #     continue
+                # if posFOM < 13.7:
+                #     continue
+                # print("dlogL: ", ientry.dlogL)
                 # event passed FV so add info to PDFs
                 energies.append(ientry.energy)
                 multisites.append(ientry.dlogL)
         print(f"Found {len(missing_runs)} missing runs:\n{missing_runs}")
-
+        # print("min - max: ", np.min(multisites), np.max(multisites))
         # bin extracted data to create unnormalised PDFs
         energy_counts,    _ = np.histogram(energies, bins = energy_bins)
         multisite_counts, _ = np.histogram(multisites, bins = multisite_bins)
@@ -438,19 +557,34 @@ def obtain_dataset(energy_range):
     multi_vals  = []
     count = 0
     for irun in run_list:
-        if energy_string == "2p5_3p75" or energy_string == "3p75_5p0" or energy_string == "3p5_5p0":
-            file = ROOT.TFile.Open(f"../../data_studies/extracted_data/full_analysis2/processed_dataset/{irun}.root")
-        else:
-            file = ROOT.TFile.Open(f"../../data_studies/extracted_data/full_analysis/processed_dataset/{irun}.root")
+        # if energy_string == "2p5_3p75" or energy_string == "3p75_5p0" or energy_string == "3p5_5p0":
+        try:
+            file = ROOT.TFile.Open(f"../../data_studies/extracted_data/full_analysis3/reprocessed_dataset_7.0.15/{irun}.root")
+        except:
+            continue
+        # else:
+            # file = ROOT.TFile.Open(f"../../data_studies/extracted_data/full_analysis/processed_dataset/{irun}.root")
         ntuple = file.Get(f"{energy_range}")
 
         for ientry in ntuple:
+            x = ientry.x
+            y = ientry.y
+            z = ientry.z
+            r = np.sqrt(x**2 + y**2 + z**2)
+            if r > FV_CUT:
+                continue
+            # itr = ientry.itr
+            # if itr < 0.22 or itr > 0.3:
+            #     continue
+            # posFOM = ientry.posFOM / ientry.posFOM_hits
+            # if posFOM < 13.7:
+            #     continue
             energy_vals.append(ientry.energy)
             multi_vals.append(ientry.dlogL)
-            print(ientry.dlogL)
+            # print(ientry.dlogL)
 
         count += 1
-        print(count)
+        # print(count)
 
     return energy_vals, multi_vals
 
@@ -463,11 +597,11 @@ def create_pdfs_and_datasets(analyse_real_data, energy_string):
     pdf_runlist    = np.loadtxt("../runlists/full_test.txt", dtype = int)
     mc_path        = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
     if energy_string == "2p5_3p75" or energy_string == "3p75_5p0" or energy_string == "3p5_5p0":
-        sig_mc_path = f"{mc_path}/full_analysis2_B8_solar_nue"
-        backg_path  = "full_analysis2"
+        sig_mc_path = f"{mc_path}/full_analysis3_B8_solar_nue"
+        backg_path  = "full_analysis3"
     else:
-        sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue" # signal path is always the same
-        backg_path = "full_analysis"
+        sig_mc_path    = f"{mc_path}/full_analysis_B8_solar_nue"#normed_pdfs_4p5m_B8_solar_nue" # signal path is always the same
+        backg_path = "full_analysis"#normed_pdfs_4p5m"
     # loop over the included normalisations
 
     # create array containing the signal and background pdfs for multisite and energy
@@ -476,7 +610,7 @@ def create_pdfs_and_datasets(analyse_real_data, energy_string):
 
     # obtain the signal PDF
     print("Obtaining signal PDF.")
-    sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue")
+    sig_energy_pdf, sig_multi_pdf = obtain_pdf(sig_mc_path, FV_CUT, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue")
     print(sig_energy_pdf)
     # add the signal pdfs as the first row in the pdfs arrays
     multisite_pdf_array[0, :] = sig_multi_pdf
@@ -490,11 +624,12 @@ def create_pdfs_and_datasets(analyse_real_data, energy_string):
 
         # we have an expected rate and want to include this normalisation in the Asimov dataset
         backg_mc_path  = f"{mc_path}/{backg_path}_{backg_names[iname]}"
-
+        print(backg_mc_path)
         # obtain the normalised PDFs for this background and add to the respective arrays
-        backg_energy_pdf, backg_multi_pdf   = obtain_pdf(backg_mc_path, 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, backg_names[iname])
+        backg_energy_pdf, backg_multi_pdf   = obtain_pdf(backg_mc_path, FV_CUT, multisite_bins, energy_bins, pdf_runlist, energy_string, backg_names[iname])
         multisite_pdf_array[idx_counter, :] = backg_multi_pdf
         energy_pdf_array[idx_counter, :]    = backg_energy_pdf
+        print(multisite_pdf_array)
 
         # incremement idx counter ... not the same idx as the number of backg names!
         idx_counter += 1
@@ -541,7 +676,7 @@ def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, 
 
         if col == '#d62728':
             col = next(color_cycle)
-        ax.step(fit_bins, fit_result[i, :].tolist() + [0], where = 'post', linewidth = 2, color=col, label = f"{labels[i]}| Num: {round(np.sum(fit_result[i,:]), 2)}")
+        ax.step(fit_bins, fit_result[i, :].tolist() + [0], where = 'post', linewidth = 2, color=col, label = f"{labels[i]} Num: {round(np.sum(fit_result[i,:]), 2)}")
 
     # plot the sum of the model
     sum_fit_model = np.sum(fit_result, axis = 0)
@@ -554,28 +689,33 @@ def create_fit_model_subplot(ax, font_s, fit_result, data, fit_bins, data_mids, 
     # idx_include = np.where(sum_fit_model >= 1)
     # NDF  = len(data) - 1 # number of bins - number of pdfs (1)
     # print(NDF)
-    ax.plot([], [], linestyle = "", label = r"$\delta _{^{208}Tl} \pm$" + f" {fit_error}")
-    ax.plot([], [], linestyle = "", label = f"Num in Dataset: {sum(data)}")
+    # ax.plot([], [], linestyle = "", label = r"$\delta _{^{208}Tl} \pm$" + f" {fit_error}")
+    ax.plot([], [], linestyle = "", label = f"Num in Dataset: {sum(data):.1f}")
 
     # ax.set_title(words[0], fontsize = font_s)
-    ax.set_xlabel(words[1], fontsize = font_s)
-    ax.set_ylabel("Counts", fontsize = font_s)
+    ax.set_xlabel(words[1], fontsize = font_s, fontproperties = prop_font)
+    ax.set_ylabel("Counts", fontsize = font_s, fontproperties = prop_font)
     # ax.set_ylim((0, 65))
     ax.set_xlim(xlims)
 
     # plot the dataset and error bars
     ax.errorbar(data_mids, data, yerr = np.sqrt(data), color = "black", marker = "^", capsize = 2, linestyle = "", label = "Data", markersize = 4)
-    ax.legend(frameon = False, fontsize = font_s)
+    ax.legend(frameon = False, fontsize = font_s, prop=fm.FontProperties(fname=path2, size = 14))
     # ax.legend(frameon = False, fontsize = 11)
     ax.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, labelsize=font_s)  # Hide x-axis ticks and labels
     
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(prop_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(prop_font)
     # Plot residuals
     residuals   = data - sum_fit_model
     residual_ax = ax.inset_axes([0, -0.2, 1, 0.2])
     residual_ax.axhline(y = 0, color = "black", linewidth = 1, linestyle = "dotted")
     residual_ax.scatter(data_mids, residuals, marker='o', s = 5, color='black')
-    residual_ax.set_xlabel(words[1], fontsize = font_s)
-    residual_ax.set_ylabel(r"Data - Model", fontsize = font_s)
+    residual_ax.set_xlabel(words[1], fontsize = font_s, fontproperties = prop_font)
+    residual_ax.set_ylabel(r"Data - Model", fontsize = font_s, fontproperties = prop_font)
     residual_ax.set_xlim(xlims)
     residual_ax.set_ylim((-15, 15))
     residual_ax.tick_params(axis = "both", labelsize = font_s)
@@ -749,7 +889,7 @@ def convert_fitted_tl_to_thorium(fitted_tl208):
     concentration in the scintillator.
     """
     
-    efficiency_4p5m = 0.43 * fixed_backg_weights[0] # (2.5 --> 5.0 MeV + 4.5 m Efficiency) x fraction of events in full ROI present in whatever smaller ROI used
+    efficiency_4p5m = 0.1509 # (2.5 --> 5.0 MeV + 4.5 m Efficiency) x fraction of events in full ROI present in whatever smaller ROI used
     mass_av         = 7.84e8                # g
     Na              = 6.02e23               # avogadro number per mole
     mr_th232        = 232                   # molar mass Th232, g per mole
@@ -814,10 +954,15 @@ def energy_bin_plots():
     plt.savefig(f"../plots/asimov_study/real_mc/advanced/diff_bins/combined_plot_{num_bins}.pdf")
 
 # binning for the energy and multisite discriminant PDFs
-energy_string     = "3p5_5p0"
-num_bins          = 10
+energy_string     = "2p5_5p0"
+mfactor = 1.25#2.5
+uncert = 0.1
+FV_CUT = 4500
+# extra_name        = f"{FV_CUT}_unconstrained"
+extra_name        = f"{FV_CUT}_constrained"
+num_bins          = 1
 
-energy_bins       = np.arange(2.5, 5.05, 0.05)
+energy_bins       = np.arange(2.5, 5.05, 0.1)
 # energy_bins = np.linspace(2.5, 5.0, num_bins+1)
 
 if energy_string == "2p5_3p75":
@@ -825,7 +970,10 @@ if energy_string == "2p5_3p75":
     fixed_backg_weights = [0.611, 0.554, 1, 1]
     signal_weight = 0.549
 if energy_string == "3p5_5p0":
-    multisite_bins = np.arange(-1.309, -1.26, 0.0005)
+    if FV_CUT == 4500:
+        multisite_bins = np.arange(-1.309, -1.26, 0.0005*mfactor)
+    if FV_CUT == 5000:
+        multisite_bins = np.arange(-1.180, -1.15, 0.0005*mfactor)
     signal_weight = 0.551
     fixed_backg_weights = [0.634, 0.620, 0, 0]
 if energy_string == "3p75_5p0":
@@ -834,7 +982,7 @@ if energy_string == "3p75_5p0":
     signal_weight = 0.451
     fixed_backg_weights = [0.389, 0.445, 0, 0]
 if energy_string == "2p5_5p0":
-    multisite_bins      = np.arange(-1.375, -1.325, 0.0005)
+    multisite_bins      = np.linspace(-1.355, -1.335, 50)# np.linspace(-2.12, -2.06, 100)#np.arange(-2.12, -2.06, 0.0005)#np.arange(-1.375, -1.325, 0.0005)
     fixed_backg_weights = [1, 1, 1, 1] # Tl208, Tl210, BiPo212, BiPo214
     signal_weight = 1
 elif energy_string == "2p5_3p0":
@@ -857,22 +1005,37 @@ backg_names       = ["Tl208", "Tl210", "BiPo212", "BiPo214"]
 labels            = ["B8"] + backg_names
 mids_energy       = energy_bins[:-1] + np.diff(energy_bins)[0] / 2
 mids_multi        = multisite_bins[:-1] + np.diff(multisite_bins)[0] / 2
-signal_hypothesis = np.arange(0, 800, 1)
-background_hypothesis = np.arange(0, 800, 1)
-analyse_real_data = True
+signal_hypothesis = np.arange(0, 400, 1)
+background_hypothesis = np.arange(974, 2374, 1)#np.arange(1, 500, 1)
+analyse_real_data = False
 generate_datasets = True
 eval_bias         = True
-expected_signal   = 66.3 * signal_weight#101.2
-expected_backg    = [468.9 * fixed_backg_weights[0], 0.9081 * fixed_backg_weights[1], 59.227 * fixed_backg_weights[2], 38.528 * fixed_backg_weights[3]] # Tl208, Tl210, BiPo212, BiPo214
+expected_signal   = 91.8 * 365/145.7# signal_weight#66.3 * signal_weight#101.2
+
+# expected_backg    = [169, 0 * fixed_backg_weights[1], 59.227 * fixed_backg_weights[2], 38.528 * fixed_backg_weights[3]] # Tl208, Tl210, BiPo212, BiPo214
+# expected_backg    = [468.9 * fixed_backg_weights[0], 0 * fixed_backg_weights[1], 59.227 * fixed_backg_weights[2], 38.528 * fixed_backg_weights[3]] # Tl208, Tl210, BiPo212, BiPo214
+# expected_backg    = [250.481 * fixed_backg_weights[0], 0 * fixed_backg_weights[1], 0 * fixed_backg_weights[2], 0 * fixed_backg_weights[3]] # Tl208, Tl210, BiPo212, BiPo214] 
+expected_backg = [1174.61, 2.27, 148.38, 96.52]#[277.9, 0, 0, 0]
+tl208_uncert   = 0.089 * expected_backg[0]#14.6#15.0#482.5 * fixed_backg_weights[0] * 0.089 # 8.9 % error
+
+# 1 yr scaled livetime [166.084, 1174.61, 2.27, 148.38, 96.52]
+# expected_signal = 166.084 * signal_weight
+# expected_backg = np.array([1174.61, 2.27, 148.38, 96.52]) * np.array(fixed_backg_weights)
+# expected_backg = expected_backg.tolist()
 # expected_uncertainty = [10.15, 50.65, 1, 32.65, 19.25]
 normalisations    = np.array([expected_signal] + expected_backg)
-
+print("expected signal: ", expected_signal)
+print("expected tl: ", expected_backg[0])
 # can we load a pre-made pdf and data array or need to create from MC and ROOT files?
 if generate_datasets == True:
     print("Generating PDFs and datasets.")
     dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array = create_pdfs_and_datasets(analyse_real_data, energy_string)
+    print(dataset_multisite.shape)
+    for i in range(multisite_pdf_array.shape[0]):
+        print(f"Min: {np.min(multisite_pdf_array[i, :])} | Max: {np.max(multisite_pdf_array[i, :])}")
+    
     if analyse_real_data == True:
-        plot_name = f"real_{energy_string}"
+        plot_name = f"real_{energy_string}_{extra_name}"
     else:
         plot_name = f"asimov_{energy_string}"
 else:
@@ -888,7 +1051,7 @@ else:
         print("loading real datasets")
         dataset_energy    = np.load(f"./energy_dataset_real_{energy_string}.npy")
         dataset_multisite = np.load(f"./multisite_dataset_real_{energy_string}.npy")
-        plot_name         = f"real_{energy_string}"
+        plot_name         = f"real_{energy_string}_{extra_name}"
 
 # blank out everything except from the Tl208 multisite PDF
 # multisite_pdf_array[1:, :]  = 1e-12
@@ -901,24 +1064,37 @@ profile_ll[1, :] = rescale_ll(profile_ll[1, :])
 profile_ll[2, :] = rescale_ll(profile_ll[2, :])
 # profile_ll = np.sqrt(profile_ll)
 
+# save the profile LL
+# np.save("./profileLL_constrained.npy", profile_ll)
+
 # find 1 sigma frequentist confidence interval #
 combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
-
+# np.save("./error_constrained.npy", [combined_error, multisite_error, energy_error])
 # create a plot of these
-plt.title("Profile Log-Likelihood Scan")
+# plt.title("Profile Log-Likelihood Scan")
 plt.plot(signal_hypothesis, profile_ll[2,:], color = "orange", label = "Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$")
 plt.plot(signal_hypothesis, profile_ll[1, :], color = "green", label = "Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$")
 plt.plot(signal_hypothesis, profile_ll[0, :], color = "black", label = "Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$")
 plt.axhline(1.0, color = "red", linestyle = "dotted", label = r"1 $\sigma$ frequentist")
-plt.legend()
-plt.xlabel("Signal Hypothesis")
-plt.ylabel(r"$-2log(\mathcal{L})$")
+plt.axhline(4.0, color = "blue", linestyle = "dotted", label = r"2 $\sigma$ frequentist")
+plt.axhline(9.0, color = "green", linestyle = "dotted", label = r"3 $\sigma$ frequentist")
+# plt.axvline(expected_signal, color = "grey", marker = "^", markersize = 1, linestyle = "dashdot", label = rf"$^8$B Expectation: {expected_signal}")
+plt.legend(frameon = False, prop=fm.FontProperties(fname=path2, size = 14))
+plt.xlabel("Signal Hypothesis", fontproperties = prop_font)
+plt.ylabel(r"$-2log(\mathcal{L})$", fontproperties = prop_font)
 plt.ylim((0, 10))
-plt.xlim((0,200))
+plt.xlim((0,150))
+ax = plt.gca()
+for label in ax.get_xticklabels():
+    label.set_fontproperties(prop_font)
+
+for label in ax.get_yticklabels():
+    label.set_fontproperties(prop_font)
 # plt.savefig(f"../plots/asimov_study/real_mc/advanced/diff_bins/unconstrained_profileLL_{plot_name}_{num_bins}.pdf")
-plt.savefig(f"../plots/asimov_study/real_mc/advanced/unconstrained_profileLL_{plot_name}.pdf")
+plt.savefig(f"../plots/asimov_study/real_mc/advanced/profileLL_{plot_name}.pdf")
 plt.close()
 
+# np.save("profile_ll_asimov_1yr_fullROI_2.npy", profile_ll)
 # create a plot of the 3 fitted background + signal models vs data
 
 # find the norms corresponding to the minimum LL value for each LL function
@@ -965,7 +1141,7 @@ for i in range(2):
             data      = dataset_multisite
             fit_bins  = multisite_bins
             data_mids = mids_multi
-            xlims     = (multisite_bins[0], multisite_bins[-1]) 
+            xlims     =(multisite_bins[0], multisite_bins[-1]) #(-2.09, -2.07)#(multisite_bins[0], multisite_bins[-1])  #(-1.29, multisite_bins[-1])#(multisite_bins[0], multisite_bins[-1]) 
             
             if i == 0:
                 fit_result = combined_multisite_result
@@ -985,17 +1161,17 @@ plt.savefig(f"../plots/asimov_study/real_mc/advanced/fitted_background_model_{pl
 plt.close()
 
 # convert the fitted B8 number to a flux
-energy_flux, energy_positive_err, energy_negative_err          = extract_flux(norms_energy[0], energy_error[1], energy_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138 * signal_weight)
-multisite_flux, multisite_positive_err, multisite_negative_err = extract_flux(norms_multi[0], multisite_error[1], multisite_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138 * signal_weight)
-combined_flux, combined_positive_err, combined_negative_err    = extract_flux(norms_combined[0], combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138 * signal_weight)
+energy_flux, energy_positive_err, energy_negative_err          = extract_flux(norms_energy[0], energy_error[1], energy_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.0641)
+multisite_flux, multisite_positive_err, multisite_negative_err = extract_flux(norms_multi[0], multisite_error[1], multisite_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.0641)
+combined_flux, combined_positive_err, combined_negative_err    = extract_flux(norms_combined[0], combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.0641)
 
 # extract the fitted Th322 g/g for each method
 th232_conc_energy    = convert_fitted_tl_to_thorium(norms_energy[1]) 
 th232_conc_multisite = convert_fitted_tl_to_thorium(norms_multi[1]) 
 th232_conc_combined  = convert_fitted_tl_to_thorium(norms_combined[1])
-
-print(f"Th232 From Background Model Counts: {convert_fitted_tl_to_thorium(468.9*fixed_backg_weights[0]):.3g} g/g")
-print(f"B8 flux From Background Model Counts: {extract_flux(66.3*signal_weight, combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.138*signal_weight)[0]:.3g} g/g")
+bm_flux, bm_positive_err, bm_negative_err = extract_flux(30.7, combined_error[1], combined_error[2], livetime = 145.7, neutrino_detection_efficiency = 0.0641)
+print(f"Th232 From Background Model Counts: {convert_fitted_tl_to_thorium(169.1):.3g} g/g")
+print(f"B8 flux From Background Model Counts: {bm_flux:.3g} + {bm_positive_err:.3g} - {bm_negative_err:.3g}")
 # background_model_LL_energy    = evaluate_loglikelihood(495.3, expected_backg[1:], 66.3, dataset_energy, energy_pdf_array)
 # background_model_LL_multisite = evaluate_loglikelihood(495.3, expected_backg[1:], 66.3, dataset_multisite, multisite_pdf_array)
 # background_model_LL_combined  = evaluate_loglikelihood(495.3, expected_backg[1:], 66.3, dataset_energy, dataset_multisite, energy_pdf_array, multisite_pdf_array)
