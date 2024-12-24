@@ -1,0 +1,10 @@
+executable              = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/sh/${SHNAME}.sh
+universe                = vanilla
+notification            = never
+priority                = 5
+getenv                  = False
+output                  = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/outputs/${SHNAME}.output
+error                   = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/errors/${SHNAME}.error
+log                     = /data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor/logs/${SHNAME}.log
+request_cpus            = 4
+queue 1
