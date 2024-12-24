@@ -14,8 +14,8 @@ from scipy.optimize import curve_fit
 """
 USE env_poster in nuPhysPoster!
 """
-path = '/data/snoplus3/hunt-stokes/nuPhysPoster/scripts/Times_New_Roman_Normal.ttf'
-prop_font = fm.FontProperties(fname=path, size = 24)
+path2 = '/data/snoplus3/hunt-stokes/nuPhysPoster/scripts/Times_New_Roman_Normal.ttf'
+prop_font = fm.FontProperties(fname=path2, size = 12)
 
 plt.rcParams['mathtext.default'] = 'regular'
 plt.rcParams.update({'axes.unicode_minus' : False})
@@ -254,7 +254,7 @@ def create_asimov_dataset_graphs():
 
     # define the normalisations of each - from background model and livetime
     # normalisations = np.array([66.3, 468.9, 0.9081, 59.227, 38.528]) # 145.7 days livetime (what I have in dataset)
-    normalisations = np.array([166.084, 1174.61, 2.27, 148.38, 96.52]) # 1 yr scaled livetime
+    normalisations = np.array([230.0, 1174.61, 2.27, 148.38, 96.52]) # 1 yr scaled livetime
     weights        = np.array([0.551, 0.634, 0.620, 0, 0])
     weights        = np.array([1, 1, 1, 1, 1])
     normalisations = normalisations * weights
@@ -266,8 +266,8 @@ def create_asimov_dataset_graphs():
     scaled_energy    = normalisations[:, None] * pdfs_energy
     scaled_multisite = normalisations[:, None] * pdfs_multisite
 
-    energy_bins            = np.arange(2.5, 5.05, 0.05)
-    multisite_bins         = np.arange(-1.375, -1.325, 0.0005)
+    energy_bins            = np.arange(2.5, 5.05, 0.1)
+    multisite_bins         = np.linspace(-1.355, -1.335, 50)#np.arange(-1.375, -1.325, 0.0005)
     multisite_bins_3p5_5p0 = np.arange(-1.309, -1.26, 0.0005)
     energy_bins_3p5_5p0    = np.arange(2.5, 5.05, 0.05)
     # create the individual plots
@@ -308,14 +308,14 @@ def create_asimov_dataset_graphs():
     plt.yticks(fontsize = 20)
     plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], color = col2, linewidth = 2, linestyle = "dashdot")[0],  \
                           plt.plot([], [], color = col5, linewidth = 2, dashes = [5, 2])[0],\
-                          plt.plot([], [], color = col4, linewidth = 2, dashes = [10, 2])[0], plt.plot([], [], color = col3, linestyle = "dotted", linewidth = 2)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$", "BiPo212 (pileup)", "$^{214}$Bi", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+                          plt.plot([], [], color = col4, linewidth = 2, dashes = [10, 2])[0], plt.plot([], [], color = col3, linestyle = "dotted", linewidth = 2)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$", "BiPo212 (pileup)", "$^{214}$Bi", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path2, size = 16),frameon=False)
     # plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], color = col2, linewidth = 2, linestyle = "dashdot")[0],  \
     #                       plt.plot([], [], color = col3, linewidth = 2, linestyle = "dotted")[0]], labels = [r"${^8}$B", r"$^{208}$Tl", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
 
     # ax.text(0.66, 0.42, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m", transform=ax.transAxes, fontproperties = prop_font, fontsize = 20)
     ax.text(0.06, 0.72, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m", transform=ax.transAxes, fontproperties = prop_font, fontsize = 18)
     fig.tight_layout()
-    plt.savefig(f"../plots/plots_for_approval/asimov_energy_seaborn_{map}_coloured_2p5_5p0.pdf")
+    plt.savefig(f"../plots/plots_for_approval/asimov_energy_seaborn_{map}_coloured_2p5_5p0_2.pdf")
     plt.close()
 
     ### multisite plot ###
@@ -351,13 +351,13 @@ def create_asimov_dataset_graphs():
     plt.xticks(fontsize = 20)
     plt.yticks(fontsize = 20)
     plt.legend(handles = [plt.plot([], [], color = col1, linewidth = 2)[0], plt.plot([], [], linestyle = "dashdot", linewidth = 2, color = col2)[0],  \
-                          plt.plot([], [], color = col5, dashes = [5, 2], linewidth = 2)[0], plt.plot([], [], linewidth = 2, dashes = [10, 2], color = col4)[0], plt.plot([], [], linewidth = 2, linestyle = "dotted", color = col3)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$", "BiPo212 (pileup)", "$^{214}$Bi", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+                          plt.plot([], [], color = col5, dashes = [5, 2], linewidth = 2)[0], plt.plot([], [], linewidth = 2, dashes = [10, 2], color = col4)[0], plt.plot([], [], linewidth = 2, linestyle = "dotted", color = col3)[0]], labels = [r"${^8}$B $\nu _e$ - e$^-$ES", r"$^{208}$Tl - $\beta \gamma$", "BiPo212 (pileup)", "$^{214}$Bi", "Total Model"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path2, size = 16),frameon=False)
 
     ax = plt.gca()
     # ax.text(0.05, 0.55, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"3.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 20)
     ax.text(0.06, 0.25, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"2.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 18)
     fig.tight_layout()
-    plt.savefig(f"../plots/plots_for_approval/asimov_multisite_searborn_{map}_coloured_2p5_5p0.pdf")
+    plt.savefig(f"../plots/plots_for_approval/asimov_multisite_searborn_{map}_coloured_2p5_5p0_2.pdf")
     plt.close()
 
     ### combined subplot style ###
@@ -461,9 +461,9 @@ def create_profile_LL_asimov_plot():
     # load the profile LL curves
     # profile_ll = np.load("profile_ll_asimov_3p5_5p0.npy")
     # profile_ll = np.load("profile_ll_asimov.npy")
-    profile_ll = np.load('profile_ll_asimov_1yr_fullROI.npy')
+    profile_ll = np.load('profile_ll_asimov_1yr_fullROI_2.npy')
     combined_error, multisite_error, energy_error = calculate_uncertainty(profile_ll)
-    signal_hypothesis = np.arange(0, 800, 1)
+    signal_hypothesis = np.arange(0, 400, 1)
     
     ## create plot ##
     # cmap = plt.get_cmap("inferno")
@@ -496,17 +496,17 @@ def create_profile_LL_asimov_plot():
     plt.ylabel(r"$-2log(\mathcal{L})$", fontproperties = prop_font, fontsize = 26)
 
     # plt.xlim((0, 80))
-    plt.xlim((0, 332))
+    plt.xlim((0, 460))
     plt.ylim((0, 10))
     plt.axhline(1, color = "black", linestyle = "dotted", linewidth = 2, alpha = 1)
     # plt.axvline(66.3, color = "orange", linestyle = "dashed", linewidth = 2.5, alpha = 0.5)
 
     plt.text(0.03, 0.15, "SNO+ Preliminary\n\nMC Only\n\nFV 4.5 m\n\n" + r"2.5 $\leq$ E $\leq$ 5.0 MeV", transform=ax.transAxes, fontproperties = prop_font, fontsize = 15)
     # plt.legend(handles = [plt.plot([], [], color = "black", linewidth = 2.5)[0], plt.plot([], [], color = "green", linewidth = 2.5)[0], plt.plot([], [], color = "blue", linewidth = 2.5)[0], plt.plot([], [], color = "red", linestyle = "dashed", linewidth = 2.5, alpha = 0.5)[0], plt.plot([], [], color = "orange", linestyle = "dashed", linewidth = 2.5, alpha = 0.5)[0]], labels = [rf"Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$", rf"Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$", rf"Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$", r"1 $\sigma$ Frequentist", "True Signal Counts"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
-    plt.legend(handles = [plt.plot([], [], color = col1, linestyle = "--", linewidth = 2.5)[0], plt.plot([], [], color = col2, linestyle = "dashdot", linewidth = 2.5)[0], plt.plot([], [], color = "black", linewidth = 2.5)[0], plt.plot([], [], color = "black", linestyle = "dotted", linewidth = 2, alpha = 1)[0]], labels = [rf"Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$", rf"Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$", rf"Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$", r"1 $\sigma$ Frequentist"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path, size = 16),frameon=False)
+    plt.legend(handles = [plt.plot([], [], color = col1, linestyle = "--", linewidth = 2.5)[0], plt.plot([], [], color = col2, linestyle = "dashdot", linewidth = 2.5)[0], plt.plot([], [], color = "black", linewidth = 2.5)[0], plt.plot([], [], color = "black", linestyle = "dotted", linewidth = 2, alpha = 1)[0]], labels = [rf"Energy | " + rf"${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$", rf"Multisite | " + rf"${multisite_error[0]:.3g}^{{+{multisite_error[1]:.3g}}}_{{-{multisite_error[2]:.3g}}}$", rf"Combined | " + rf"${combined_error[0]:.3g}^{{+{combined_error[1]:.3g}}}_{{-{combined_error[2]:.3g}}}$", r"1 $\sigma$ Frequentist"], fancybox=False, numpoints=1,prop=fm.FontProperties(fname=path2, size = 16),frameon=False)
 
     plt.tight_layout()
-    plt.savefig(f"../plots/plots_for_approval/profile_ll_asimov_{map}_coloured.pdf")
+    plt.savefig(f"../plots/plots_for_approval/profile_ll_asimov_{map}_coloured_2.pdf")
     plt.close()
 
 def create_data_vs_mc_plot():
@@ -1115,6 +1115,22 @@ def data_quality():
     plt.savefig("../plots/plots_for_approval/bi214_data_quality.pdf")
     plt.close()
 
+    plt.figure()
+    plt.hist(bi214_mc_itr, bins = bins_itr, density = True, histtype = "step", color = "red", linestyle = "dotted")
+    plt.hist(bi214_data_itr, bins = bins_itr, density = True, histtype = "step", color = "black")
+    plt.legend(handles = [plt.plot([], [], color = "red", linestyle = "dotted")[0], plt.plot([], [], color = "black")[0]], labels = ["MC", "Data"], frameon = False, prop = fm.FontProperties(fname=path2, size = 16))
+    plt.xlabel("ITR", fontproperties = prop_font, fontsize = 14)
+    plt.ylabel("Counts", fontproperties = prop_font, fontsize = 14)
+
+    ax = plt.gca()
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(prop_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(prop_font)
+    plt.savefig("../plots/plots_for_approval/itr_mc_vs_data.pdf")
+    plt.close()
+
 def bipo_tagging_data_plots():
     """
     Function makes the normal energy, DR and fitted dT plots to check the quality
@@ -1234,21 +1250,254 @@ def bipo_tagging_data_plots():
     plt.savefig("../plots/plots_for_approval/bipo_tagging_x_y.pdf")
     plt.close()
 
+# def calculate_uncertainty(profile_ll, signal_hypothesis):
+#     """
+#     Function returns the 1 sigma confidence intervals on the minimum of profile LL
+#     fit.
+#     """
+    
+#     # find idx of point on every log-likelihood curve closes in value to 1
+#     distance_to_interval = np.abs(profile_ll - 1) # absolute value of the difference
+#     closest_to_interval  = np.argmin(distance_to_interval, axis = 1) # find first intercept with 1 sigma level
+
+#     # create a masked array and remove the first intercept
+#     masked_1sig_full = np.ma.masked_array(distance_to_interval, mask = False)
+
+#     # mask out the closest interval in each row
+#     masked_1sig_full.mask[0, closest_to_interval[0]] = True
+#     masked_1sig_full.mask[1, closest_to_interval[1]] = True
+#     masked_1sig_full.mask[2, closest_to_interval[2]] = True
+
+#     # find second intercept
+#     second_closest = np.argmin(masked_1sig_full, axis = 1)
+
+#     # find minimum LL values as variables to save typing
+#     combined_min   = signal_hypothesis[np.argmin(profile_ll[0,:])]
+#     combined_upper = abs(combined_min - signal_hypothesis[second_closest[0]]) 
+#     combined_lower = abs(combined_min - signal_hypothesis[closest_to_interval[0]])
+#     multi_min      = signal_hypothesis[np.argmin(profile_ll[1,:])]
+#     multi_upper    = abs(multi_min - signal_hypothesis[second_closest[1]]) 
+#     multi_lower    = abs(multi_min - signal_hypothesis[closest_to_interval[1]])
+#     energy_min     = signal_hypothesis[np.argmin(profile_ll[2,:])]
+#     energy_upper   = abs(energy_min - signal_hypothesis[second_closest[2]]) 
+#     energy_lower   = abs(energy_min - signal_hypothesis[closest_to_interval[2]])
+
+#     return [combined_min, combined_upper, combined_lower], [multi_min, multi_upper, multi_lower], [energy_min, energy_upper, energy_lower]
+
+def constrained_unconstrained_ll():
+    """
+    profileLL curves with constrained and unconstrained curves.
+    """
+
+    constrained       = np.load("./profileLL_constrained.npy")
+    err_constrained   = np.load("./error_constrained.npy") 
+    unconstrained     = np.load("./profileLL_unconstrained.npy")
+    err_unconstrained = np.load("./error_unconstrained.npy")
+    print(err_constrained)
+    # Energy 2 multisite 1 combined 0
+    signal_hypothesis = np.arange(0, 400, 1)
+                                                                               # ${energy_error[0]}^{{+{energy_error[1]:.3g}}}_{{-{energy_error[2]:.3g}}}$"
+    plt.plot(constrained[2,:], color = "orange", label = rf"Energy Constrained: ${err_constrained[2, 0]}^{{+{err_constrained[2, 1]}}}_{{-{err_constrained[2,2]}}}$")
+    plt.plot(unconstrained[2,:], color = "orange", linestyle = "dotted", label = rf"Energy Unconstrained: ${err_unconstrained[2, 0]}^{{+{err_unconstrained[2, 1]}}}_{{-{err_unconstrained[2,2]}}}$")
+
+    plt.plot(constrained[1,:], color = "green", label = rf"Multisite Constrained: ${err_constrained[1, 0]}^{{+{err_constrained[1, 1]}}}_{{-{err_constrained[1,2]}}}$")
+    plt.plot(unconstrained[1,:], color = "green", linestyle = "dotted", label = rf"Multisite Unconstrained: ${err_unconstrained[1, 0]}^{{+{err_unconstrained[1, 1]}}}_{{-{err_unconstrained[1,2]}}}$")
+
+    plt.plot(constrained[0,:], color = "black", label = rf"Combined Constrained: ${err_constrained[0, 0]}^{{+{err_constrained[0, 1]}}}_{{-{err_constrained[0,2]}}}$")
+    plt.plot(unconstrained[0,:], color = "black", linestyle = "dotted", label = rf"Combined Unconstrained: ${err_unconstrained[0, 0]}^{{+{err_unconstrained[0, 1]}}}_{{-{err_unconstrained[0,2]}}}$")
+
+    
+
+    plt.xlim((0, 50))
+    plt.ylim((0, 10))
+
+    plt.axhline(1, color = '#5e5e5e', linestyle = "dashed", label = r"1 $\sigma$")
+    plt.axhline(4, color = '#959595', linestyle = "dashed", label = r"2 $\sigma$")
+    plt.axhline(9, color = '#cecece', linestyle = "dashed", label = r"3 $\sigma$")
+    plt.axvline(30.7, color = "red", label = r"$^8 B $ Predicted Value: 30.7")
+    plt.legend(frameon = True, loc = "upper left")
+    plt.savefig("../plots/constrained_unconstrained.pdf")
+
+def tl208_profiles():
+    
+    back_hypothesis = np.arange(1, 400, 1)
+    energy_curve = np.load("./tl208_profile_energy_constrained.npy")
+    multi_curve  = np.load("./tl208_profile_multi_constrained.npy")
+    combi_curve  = np.load("./tl208_profile_combi_constrained.npy")
+
+    profile = np.zeros((3, len(back_hypothesis)))
+    profile[0, :] = energy_curve
+    profile[1, :] = multi_curve
+    profile[2, :] = combi_curve
+
+    energy, multi, combi = calculate_uncertainty(profile, back_hypothesis)
+    print(energy)
+    print(multi)
+    print(combi)
+
+    plt.plot(energy_curve, color = "orange", label = rf"Energy: ${energy[0]}^{{+{energy[1]}}}_{{-{energy[2]}}}$")
+    plt.plot(multi_curve, color = "green", label = rf"Multisite: ${multi[0]}^{{+{multi[1]}}}_{{-{multi[2]}}}$")
+    plt.plot(combi_curve, color = "black", label = rf"Combined: ${combi[0]}^{{+{combi[1]}}}_{{-{combi[2]}}}$")
+    plt.ylim((0, 10))
+    plt.xlim((100, 300))
+    plt.xlabel("Tl208 Normalisation")
+    plt.legend()
+    plt.savefig("../plots/tl208_profile_constrained.pdf")
+def obtain_pdf(location, fv_cut, multisite_bins, energy_bins, run_list, energy_range, plot_name):
+        """
+        Extract the energy and multisite PDFs for a given isotope.
+        Only use events that fall within event selection cuts (e.g. FV cut).
+        
+        Inputs:
+            location, str, the path to a folder containing all the ntuple files for 
+                           specific isotope (1 for each run in run_list)
+
+            fv_cut, float, the fv cut to apply in mm
+
+            multisite_bins, array, float bin edges of multisite PDF
+
+            energy_bins, array, float bin edges of energy PDF
+
+            run_list, array, run number of each MC simulation to extract
+
+            energy_range, str, string giving branch name of MC files to load, based
+            on the energy used to generate the multisite / tres PDFs.
+        
+        Output: multisite_counts, array float, normalised bin counts of multisite pdf
+                energy_counts, array float, normalised bin counts of energy pdf
+        """
+
+        energies     = []
+        multisites   = []
+        missing_runs = [] # runs that don't exist / corrupted but included in run list
+        for irun in run_list:
+
+            try:
+                # open the MC ntuple file
+                file   = ROOT.TFile.Open(f"{location}/{irun}.root")
+                ntuple = file.Get(energy_range)
+                ntuple.GetEntries()
+            except:
+                missing_runs.append(irun)
+                continue
+
+            # loop over every event inside file
+            for ientry in ntuple:
+                
+                # check event falls inside FV cut
+                x = ientry.x
+                y = ientry.y
+                z = ientry.z
+                r = np.sqrt(x**2 + y**2 + z**2)
+                if r > fv_cut:
+                    continue
+
+                # event passed FV so add info to PDFs
+                energies.append(ientry.energy)
+                multisites.append(ientry.dlogL)
+        print(f"Found {len(missing_runs)} missing runs:\n{missing_runs}")
+
+        
+
+        return energies, multisites
+def plot_multisite_energy_pdfs():
+    """
+    Create a nice 2 plot subplot showing normalised multisite and energy PDFs
+    for each isotope used in the energy + multisite fits.
+    """
+    pdf_runlist    = np.loadtxt("../runlists/full_test.txt", dtype = int)
+    energy_bins    = np.arange(2.5, 5.05, 0.05)
+    multisite_bins = np.arange(-1.36, -1.325, 0.0005)
+    energy_string  = "2p5_5p0"
+    path           = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test"
+    
+    # load the information
+    b8_energies, b8_multisites           = obtain_pdf(f"{path}/full_analysis_B8_solar_nue", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    tl208_energies, tl208_multisites     = obtain_pdf(f"{path}/full_analysis_Tl208", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    tl210_energies, tl210_multisites     = obtain_pdf(f"{path}/full_analysis_Tl210", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    bipo214_energies, bipo214_multisites = obtain_pdf(f"{path}/full_analysis_BiPo214", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    bipo212_energies, bipo212_multisites = obtain_pdf(f"{path}/full_analysis_BiPo212", 4500.0, multisite_bins, energy_bins, pdf_runlist, energy_string, "B8_nue") 
+    
+    # create the plots of the pdfs
+    fig, axes = plt.subplots(nrows = 1, ncols = 2)
+    fig.set_size_inches((8.27 , 11.69 * 0.3 ))
+    axes[0].hist(b8_energies,      bins = energy_bins, linewidth = 2, histtype = "step", density = True)
+    axes[0].hist(tl208_energies,   bins = energy_bins, linewidth = 2, histtype = "step", density = True)
+    axes[0].hist(tl210_energies,   bins = energy_bins, linewidth = 2, histtype = "step", density = True)
+    axes[0].hist(bipo214_energies, bins = energy_bins, linewidth = 2, histtype = "step", density = True)
+    axes[0].hist(bipo212_energies, bins = energy_bins, linewidth = 2, histtype = "step", density = True)
+    axes[0].set_xlabel("Reconstructed Energy (MeV)", fontproperties = prop_font, fontsize = 15)
+    axes[0].plot([], [], color = "C0", label = r"$^8$B $\nu _e$" )
+    axes[0].plot([], [], color = "C1", label = r"$^{208}$Tl" )
+    axes[0].plot([], [], color = "C2", label = r"$^{210}$Tl" )
+    axes[0].plot([], [], color = "C3", label = r"BiPo214" )
+    axes[0].plot([], [], color = "C4", label = r"BiPo212" )
+    axes[0].legend(fontsize = 6, frameon = False, prop=fm.FontProperties(fname=path2, size = 12))
+    axes[0].tick_params(axis='both', labelrotation=0, labelsize = 8)
+    
+    ax = axes[0]
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(prop_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(prop_font)
+
+    axes[1].hist(b8_multisites,      bins = multisite_bins, linewidth = 2, histtype = "step", density = True)
+    axes[1].hist(tl208_multisites,   bins = multisite_bins, linewidth = 2, histtype = "step", density = True)
+    axes[1].hist(tl210_multisites,   bins = multisite_bins, linewidth = 2, histtype = "step", density = True)
+    axes[1].hist(bipo214_multisites, bins = multisite_bins, linewidth = 2, histtype = "step", density = True)
+    axes[1].hist(bipo212_multisites, bins = multisite_bins, linewidth = 2, histtype = "step", density = True)
+    axes[1].set_xlabel(r"$\Delta log(\mathcal{L})$", fontproperties = prop_font, fontsize = 15)
+    axes[1].plot([], [], color = "C0", label = r"$^8$B $\nu _e$" )
+    axes[1].plot([], [], color = "C1", label = r"$^{208}$Tl" )
+    axes[1].plot([], [], color = "C2", label = r"$^{210}$Tl" )
+    axes[1].plot([], [], color = "C3", label = r"BiPo214" )
+    axes[1].plot([], [], color = "C4", label = r"BiPo212" )
+    axes[1].legend(fontsize = 6, frameon = False, prop=fm.FontProperties(fname=path2, size = 12))
+    axes[1].tick_params(axis='both', labelrotation=0, labelsize = 8)
+
+    ax = plt.gca()
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(prop_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(prop_font)
+    
+    fig.tight_layout()
+    plt.savefig(f"../plots/pdf_analytics/energy_multisites_{energy_string}.pdf")
+
+    print(len(b8_energies), len(b8_multisites))
+
+def marginalisation_profileLL():
+
+    profile = np.load('profile_ll_asimov_1yr_fullROI_2.npy')
+
+    multisite_ll = profile[0,:]
+    combined     = profile[1,:]
+    energy       = profile[2,:]
+
+    print(multisite_ll.shape)
+
+
 
 
 
 signal_hypothesis = np.arange(0, 800, 1)
 plt.rcParams['xtick.major.pad'] = '6' ## change me if the axis labels overlap! ## 
 plt.rcParams['ytick.major.pad'] = '6'
-create_time_residual_pdfs()
-create_dlogL_plot()
-plt.rcParams['xtick.major.pad'] = '12' ## change me if the axis labels overlap! ## 
-plt.rcParams['ytick.major.pad'] = '12'
-create_asimov_dataset_graphs()
-plt.rcParams['xtick.major.pad'] = '6' ## change me if the axis labels overlap! ## 
-plt.rcParams['ytick.major.pad'] = '6'
-create_profile_LL_asimov_plot()
+# create_time_residual_pdfs()
+# constrained_unconstrained_ll()
+# tl208_profiles()
+# plot_multisite_energy_pdfs()
+# create_dlogL_plot()
+# plt.rcParams['xtick.major.pad'] = '12' ## change me if the axis labels overlap! ## 
+# plt.rcParams['ytick.major.pad'] = '12'
+# create_asimov_dataset_graphs()
+# plt.rcParams['xtick.major.pad'] = '6' ## change me if the axis labels overlap! ## 
+# plt.rcParams['ytick.major.pad'] = '6'
+# create_profile_LL_asimov_plot()
 # create_data_vs_mc_plot()
 # impact_of_reprocessing()
 # data_quality()
 # bipo_tagging_data_plots()
+marginalisation_profileLL()

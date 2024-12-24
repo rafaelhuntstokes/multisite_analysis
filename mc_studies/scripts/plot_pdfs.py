@@ -122,6 +122,10 @@ def plot_pdf_analytics(pdf_energy_string):
     multi_Tl208_bins   = [multisite_pdf_Tl208.GetBinLowEdge(i) for i in range(1, multisite_pdf_Tl208.GetNbinsX() + 2)]
     multi_Tl208_counts = [multisite_pdf_Tl208.GetBinContent(i) / multisite_pdf_Tl208.Integral() for i in range(1, multisite_pdf_Tl208.GetNbinsX()+1)]
 
+    np.save(f"/home/hunt-stokes/Tl208_tRes_normed_4p5mFV_{pdf_energy_string}.npy", multi_Tl208_counts)
+    np.save(f"/home/hunt-stokes/B8_tRes_normed_4p5mFV_{pdf_energy_string}.npy", multi_B8_counts)
+    np.save(f"/home/hunt-stokes/binning_4p5mFV_{pdf_energy_string}.npy", multi_B8_bins)
+
     # create numpy arrays to save the directionality 2D PDF bins
     directionality_pdf = np.zeros((dir_pdf_B8.GetNbinsX(), dir_pdf_B8.GetNbinsY()))
     for i in range(1, dir_pdf_B8.GetNbinsX() + 1):
@@ -385,34 +389,39 @@ def plot_multisite_solo_pdfs():
 
     binning = np.arange(-1.375, -1.325, 0.0005)
     mids    = binning[:-1] + np.diff(binning)[0] / 2
-    data    = np.load("multisite_dataset_real_2p5_5p0.npy")
-    pdfs    = np.load("multisite_pdf_array_2p5_5p0.npy")
+    data    = np.load("multisite_dataset_real_2p5_3p0.npy")
+    energies = ["2p5_3p0", "3p0_3p5", "3p5_4p0", "4p0_4p5"]
+    pdfs    = np.load("multisite_pdf_array_2p5_3p0.npy")
 
     tl208_pdf = pdfs[1, :] * np.sum(data)
     b8_pdf    = pdfs[0, :] * np.sum(data)
 
     fig, axes = plt.subplots(nrows = 1, ncols = 2)
+    for energy in energies:
+        print(energy)
+        pdfs    = np.load(f"multisite_pdf_array_{energy}.npy")
+        tl208_pdf = pdfs[1, :] * np.sum(data)
+        b8_pdf    = pdfs[0, :] * np.sum(data)
+        # axes[1].errorbar(mids, data, yerr = np.sqrt(data), color = "black", capsize = 2, linestyle = "", marker = "^", markersize = 4, label = "Data")
+        axes[1].step(binning[:-1], b8_pdf.tolist() + [0], where = "post", linewidth = 2, color = "C0", label = r"$^{8}$B")
+        axes[1].legend(frameon = False, fontsize = 5)
+        axes[1].tick_params(axis = "both", labelsize = 5)
+        axes[1].set_xlabel("Multisite Discriminant", fontsize = 5)
+        axes[1].set_ylabel("Counts", fontsize = 5)
+        # axes[1].set_ylim((0, 90))
 
-    axes[1].errorbar(mids, data, yerr = np.sqrt(data), color = "black", capsize = 2, linestyle = "", marker = "^", markersize = 4, label = "Data")
-    axes[1].step(binning, b8_pdf.tolist() + [0], where = "post", linewidth = 2, color = "C0", label = r"$^{8}$B")
-    axes[1].legend(frameon = False, fontsize = 5)
-    axes[1].tick_params(axis = "both", labelsize = 5)
-    axes[1].set_xlabel("Multisite Discriminant", fontsize = 5)
-    axes[1].set_ylabel("Counts", fontsize = 5)
-    axes[1].set_ylim((0, 90))
-
-    axes[0].errorbar(mids, data, yerr = np.sqrt(data), color = "black", capsize = 2, linestyle = "", marker = "^", markersize = 4, label = "Data")
-    axes[0].step(binning, tl208_pdf.tolist() + [0], where = "post", linewidth = 2, color = "red", label = r"$^{208}$Tl")
-    axes[0].legend(frameon = False, fontsize = 5)
-    axes[0].tick_params(axis = "both", labelsize = 5)
-    axes[0].set_xlabel("Multisite Discriminant", fontsize = 5)
-    axes[0].set_ylabel("Counts", fontsize = 5)
-    axes[0].set_ylim((0, 90))
+        # axes[0].errorbar(mids, data, yerr = np.sqrt(data), color = "black", capsize = 2, linestyle = "", marker = "^", markersize = 4, label = "Data")
+        axes[0].step(binning[:-1], tl208_pdf.tolist() + [0], where = "post", linewidth = 2, color = "red", label = r"$^{208}$Tl")
+        axes[0].legend(frameon = False, fontsize = 5)
+        axes[0].tick_params(axis = "both", labelsize = 5)
+        axes[0].set_xlabel("Multisite Discriminant", fontsize = 5)
+        axes[0].set_ylabel("Counts", fontsize = 5)
+        # axes[0].set_ylim((0, 90))
     fig.set_size_inches(((8.27, 11.69 *0.3)))
     fig.tight_layout()
 
-    plt.savefig("../plots/asimov_study/real_mc/advanced/diff_bins/tl208_b8_multisite_only.pdf")
-
+    # plt.savefig("../plots/asimov_study/real_mc/advanced/diff_bins/tl208_b8_multisite_only.pdf")
+    plt.savefig("test.pdf")
 
 plot_multisite_solo_pdfs()
 # plot_pdf_energy_bins()
