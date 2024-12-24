@@ -256,7 +256,9 @@ def extract_flux(fitted_b8, positive_error, negative_error, livetime, neutrino_d
 
   # the calculated flux
   flux           = (fitted_b8 / neutrino_detection_efficiency) * (1/( livetime * 24 * 60 * 60 * integral * n_target ))
-  
+  print(integral)
+  expected_rate  = 5.12e6 *  n_target * integral 
+  print("Expected rate for theory flux: ", expected_rate)
   # the +- error on the flux
   perc_pos_error = positive_error / fitted_b8
   perc_neg_error = negative_error / fitted_b8
@@ -264,3 +266,5 @@ def extract_flux(fitted_b8, positive_error, negative_error, livetime, neutrino_d
   negative_error = flux - ( fitted_b8 * (1.0 - perc_neg_error) ) / ( neutrino_detection_efficiency * livetime * 24 * 60 * 60 * integral * n_target )
 
   return flux, positive_error, negative_error
+
+extract_flux(10, 1, 2, 1, 1)
