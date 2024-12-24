@@ -8,9 +8,9 @@ on number of events in PDFS/MC.
 """
 
 run_list     = np.loadtxt("../runlists/full_test.txt", dtype = int)
-isotope      = "BiPo212"
+isotope      = "Tl208"
 fv_cut       = 4500
-mc_path      = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test/full_analysis_"
+mc_path      = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/run_by_run_test/full_analysis3_"
 energies     = []
 multisites   = []
 missing_runs = [] # runs that don't exist / corrupted but included in run list
@@ -36,7 +36,12 @@ for irun in run_list:
         r = np.sqrt(x**2 + y**2 + z**2)
         if r > fv_cut:
             continue
-
+        itr = ientry.itr
+        if itr < 0.22 or itr > 0.3:
+            continue
+        posFOM = ientry.posFOM / ientry.posFOM_hits
+        if posFOM < 13.7:
+            continue
         # event passed FV so add info to PDFs
         energies.append(ientry.energy)
         multisites.append(ientry.dlogL)
