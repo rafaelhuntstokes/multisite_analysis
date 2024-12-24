@@ -92,7 +92,7 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
   bool cut_status         = false;    // flag which says whether or not to skip event from consideration
 
   // std::string output_name = "/data/snoplus3/hunt-stokes/clean_multisite/true_rate_efficiency_tag_output/output_" + std::to_string(isotope) + "_" + std::to_string(run_num) + ".root";
-  std::string output_name = "/data/snoplus3/hunt-stokes/clean_multisite/bipo_" + std::to_string(isotope) + "_cleanSelec3/output_" + std::to_string(isotope) + "_" + std::to_string(run_num) + ".root";
+  std::string output_name = "/data/snoplus3/hunt-stokes/clean_multisite/bipo_" + std::to_string(isotope) + "_cleanSelec2/output_" + std::to_string(isotope) + "_" + std::to_string(run_num) + ".root";
   // std::string output_name = "/data/snoplus3/hunt-stokes/clean_multisite/bipo212_mc/output_" + std::to_string(run_num) + ".root";
   // std::string output_name = "/data/snoplus3/hunt-stokes/clean_bipo/tagged_ntuples/bisMSB_BHT_runs" + std::to_string(isotope) + "/output_bisMSB_" + std::to_string(bisMSB) + "_" + std::to_string(run_num) + ".root";
   // std::string output_name = "/data/snoplus3/hunt-stokes/clean_bipo/tagged_ntuples/bht_check_runs214/output_" + std::to_string(run_num) + ".root";
@@ -301,18 +301,25 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
   bool lone_follower_flag = false;
   double loneFollowerTime = 0;
   double pileupTime       = 0;
+  bool track_flag = false;
   // int num_vetos           = 0;
   ULong64_t veto_start_time, lone_start_time;
 
   for (int iEntry = 0; iEntry < chain->GetEntries(); iEntry++){
     chain->GetEntry(iEntry);
-
-    // if (gtid == 13282390){
-    //   std::cout << "\nPo-Wei's Event: " << gtid << std::endl;
-    //   std::cout << "NhitsCleaned: " << Nhits << std::endl;
-    //   std::cout << "Muon Flag: " << ((DCflagged&0x80)!=0x80) << std::endl;
-    //   std::cout << "Veto Flag Status: " << veto_flag << std::endl;
-    // }
+    if (track_flag == true){
+      std::cout << "GTID: " << gtid << std::endl;
+    }
+    if (gtid == 6314256 or gtid == 8331014){
+      std::cout << "\n### SELECTED GTID: " << gtid << std::endl;
+      std::cout << "NhitsCleaned: " << Nhits << std::endl;
+      std::cout << "Muon Flag: " << ((DCflagged&0x80)!=0x80) << std::endl;
+      std::cout << "Veto Flag Status: " << veto_flag << std::endl;
+      std::cout << "Fit Valid and Scint Fit: " << fitValid << " " << fit << std::endl;
+      std::cout << "Energy: " << energy1 << std::endl;
+      track_flag = true;
+      std::cout << track_flag << std::endl;
+    }
     // check if event is high energy or tagged as a muon by DC
     if (Nhits > 5000 or ((DCflagged&0x80) != 0x80)){
         std::cout << "\nDeadtime Triggered - GTID: " << gtid << std::endl;
@@ -365,6 +372,7 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
     // check if we have a lone muon follower (i.e. muon at end of previous run)
     // this can only trigger if there was a muon at the end of the previous run
     if ((DCflagged&0x4000)!=0x4000){
+        std::cout << "Event tagged as lone follower!" << std::endl;
         if (lone_follower_flag == false){
           lone_follower_flag = true;
           lone_start_time = clock50;
@@ -389,9 +397,12 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
       failedFit += 1;
       continue;
     }
-
+    if (track_flag == true){
+      std::cout << "Passed Reconstruction cuts." << std::endl;
+    }
     // looping backwards in time so skip first entry
     if (iEntry == 0){
+      std::cout << "iEntry == 0 so skipping." << std::endl;
       continue;
     }      
 
@@ -406,9 +417,19 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
     ULong64_t flagged1; 
     flagged1 = DCflagged;
     energy1 = energy;
-    
-    if (((DCapplied & 0x2100000042C2) & DCflagged ) != (DCapplied & 0x2100000042C2)) continue;
+    if (track_flag == true){
+      std::cout << "Exited veto code and applying DC cuts etc." << std::endl;
+    }
+    if (((DCapplied & 0x2100000042C2) & DCflagged ) != (DCapplied & 0x2100000042C2)){
+      if (track_flag == true){
+        std::cout << "Failed DC Cuts!" << std::endl;
+        track_flag = false;
+        continue;
+      }
+    }
 
+  
+    
     x1 = posX;
     y1 = posY;
     z1 = posZ - zOff;  // account for AV offset
@@ -417,13 +438,24 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
 
     // check event is inside the FV
     if (r1 > FV_CUT){
-      continue;
+      if (track_flag == true){
+        track_flag = false;
+        std::cout << "Failed FV cut with R: " << r1 << std::endl;
+        continue;
+      }
+      
     }
 
     // energy cuts
     if (energy1 < PO_LOWER || energy1 > PO_UPPER){
-      failedEnergy++;
-      continue;
+       if (track_flag == true){
+        failedEnergy++;
+        std::cout << "Failed energy cut with E: " << energy1 << std::endl;
+        track_flag = false;
+        continue;
+      }
+      
+      
     }
     
     // check hit cleaning cleanliness cut
@@ -434,7 +466,10 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
     //   continue;
     // }
     ULong64_t clock1 = clock50;
-    
+    if (track_flag == true){
+      std::cout << "Entering Bi candidate search loop..." << std::endl;
+      track_flag = false;
+    }
     // all cuts passed and we've got a Po candidate; loop backwards to find Bi
     for (int jEntry = iEntry - 1; jEntry >= 0; jEntry--){
         chain->GetEntry(jEntry);
@@ -520,6 +555,9 @@ double bipo_tagger_full(std::vector<std::string> filelist, double zOff, int run_
       //   continue;
       // }
       // all cuts passed and should be a unique BiPo214 pair
+      if (track_flag == true){
+        std::cout << "Paired up event." << std::endl;
+      }
       paired.push_back(iEntry);
       paired.push_back(jEntry);
 
@@ -678,10 +716,10 @@ int main(int argc, char* argv[]){
     // std::cout << "Adjusted Livetime: " << adjusted_livetime * pow(10, -9) << " s" << std::endl;
     
     // create output txt file containing the livetime
-    std::ofstream livetime;
-    livetime.open("/data/snoplus3/hunt-stokes/clean_multisite/bipo_214_cleanSelec3/completed/" + runNum + ".txt");
-    livetime << "1";
-    livetime.close();
+    // std::ofstream livetime;
+    // livetime.open("/data/snoplus3/hunt-stokes/clean_multisite/bipo_214_cleanSelec3/completed/" + runNum + ".txt");
+    // livetime << "1";
+    // livetime.close();
     
     return 0;
   }
