@@ -176,8 +176,8 @@ void evaluate_discriminants(int run_number, float fv_cut, float z_cut, std::vect
     */
 
     // define input and output paths
-    std::string input_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis/extracted_ratds/" + std::to_string(run_number) + "*.root";    
-    std::string output_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/processed_dataset/" + std::to_string(run_number) + ".root";
+    std::string input_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/reprocessed_ratds_7.0.15/" + std::to_string(run_number) + "*.root";    
+    std::string output_fname = "/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/reprocessed_dataset_7.0.15/" + std::to_string(run_number) + ".root";
     
     // load the PDF files for each isotope
     std::string working_directory = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies";
@@ -722,27 +722,40 @@ int main(int argc, char* argv[]){
     std::cout << "Run ID = " << run_number << std::endl;
     
     // check for and record retrigger events in this run
-    int retrig_return;
+    // int retrig_return;
     std::vector<int> flagged_ignore_evs;
-    retrig_return = record_retriggers(run_number, flagged_ignore_evs);
-    if (retrig_return == 1){
-        // no ntuple files for this run, or no GTIDs found within ROI, so skip this job
-        std::cout << "No files or GTIDs so terminating job." << std::endl;
-        return 0;
-    }
+    // retrig_return = record_retriggers(run_number, flagged_ignore_evs);
+    // if (retrig_return == 1){
+    //     // no ntuple files for this run, or no GTIDs found within ROI, so skip this job
+    //     std::cout << "No files or GTIDs so terminating job." << std::endl;
+    //     return 0;
+    // }
 
+    // load up the retrigger GTIDs for this run
+    std::ifstream retrigger_log_file("/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/retrigger_logs/" + std::to_string(run_number) + ".txt");
+
+    // check the file opened correctly and if so load the gtids into the vector
+    if (retrigger_log_file.is_open()){
+        std::string line;
+        while (std::getline(retrigger_log_file, line)){
+            int gtid = std::stoi(line);
+            flagged_ignore_evs.push_back(gtid);
+        }
+    }
+    retrigger_log_file.close();
+    std::cout << "Found " << flagged_ignore_evs.size() << " retrigger events to ignore." << std::endl;
     // run the analysis!
     evaluate_discriminants(run_number, fv_cut, z_cut, flagged_ignore_evs);
 
     // create the job completed flag output
-    std::ofstream completed("/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/job_completed_flag/" + std::to_string(run_number) + ".txt");
+    std::ofstream completed("/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/job_completed_flag_reproc/" + std::to_string(run_number) + ".txt");
     completed << "1";
     completed.close();
 
     // keep a log of events tagged as retriggers
-    std::ofstream retriggers("/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/retrigger_logs/" + std::to_string(run_number) + ".txt");
-    for (int retrig : flagged_ignore_evs){
-        retriggers << retrig << std::endl;
-    }
-    retriggers.close();
+    // std::ofstream retriggers("/data/snoplus3/hunt-stokes/multisite_clean/data_studies/extracted_data/full_analysis3/retrigger_logs/" + std::to_string(run_number) + ".txt");
+    // for (int retrig : flagged_ignore_evs){
+    //     retriggers << retrig << std::endl;
+    // }
+    // retriggers.close();
 }
