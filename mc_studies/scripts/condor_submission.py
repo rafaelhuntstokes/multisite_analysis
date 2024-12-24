@@ -1,7 +1,7 @@
 import os
 import string
 import numpy as np
-
+import time
 """
 Submission scripts handle submitting analysis and pdf making scripts to condor.
 """
@@ -30,7 +30,7 @@ def submit_analysis(isotope, fv_cut, z_cut):
     condor_path = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies/condor"
     
     # load up the test run list
-    run_list = np.loadtxt("../runlists/test_runlist.txt", dtype = int)
+    run_list = np.loadtxt("../runlists/full_test.txt", dtype = int)
 
     # load up the templates
     with open("../condor/analysis_template.sh", "r") as infile:
@@ -56,6 +56,7 @@ def submit_analysis(isotope, fv_cut, z_cut):
         # submit this pdf extraction
         command = f"condor_submit -b analysis_{isotope} {condor_path}/submit/{name}.submit"
         os.system(command)
+        time.sleep(1)
 
 def submit_pdf_maker(isotope, fv_cut, z_cut):
     """
@@ -98,8 +99,15 @@ def submit_pdf_maker(isotope, fv_cut, z_cut):
         command = f"condor_submit -b pdf_maker_{isotope} {condor_path}/submit/{name}.submit"
         os.system(command)
 
-# submit_pdf_maker("Tl208", 4500.0, -6000.0)
-# submit_pdf_maker("B8_solar_nue", 4500.0, -6000.0)
-submit_analysis("B8_solar_nue", 4500.0, -6000.0)
-submit_analysis("Tl208", 4500.0, -6000.0)
-# submit_analysis("Bi214", 5250.0, -6000.0)
+# submit_pdf_maker("Tl208", 3960.0, -6000.0)
+# submit_pdf_maker("B8_solar_nue", 3960.0, -6000.0)
+# submit_pdf_maker("Tl208", 5000.0, -6000.0)
+# submit_pdf_maker("B8_solar_nue", 5000.0, -6000.0)
+# submit_analysis("Tl208", 4500.0, -6000.0)
+submit_analysis("Tl210", 4500.0, -6000.0)
+submit_analysis("BiPo214", 4500.0, -6000.0)
+submit_analysis("BiPo212", 4500.0, -6000.0)
+# submit_analysis("BiPo214", 4500.0, -6000.0)
+# submit_analysis("BiPo212", 4500.0, -6000.0)
+# submit_analysis("Tl210", 4500.0, -6000.0)
+# submit_analysis("BiPo214", 4500.0, -6000.0)
