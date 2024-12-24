@@ -46,3 +46,16 @@ mc_studies/scripts/jesushchrist
 mc_studies/scripts/*.png
 tpmuonfollowercut_0.json
 data_studies/scripts/background_model/data_energy_spectrums
+data_studies/scripts/bipo_tagger_systematic
+data_studies/scripts/evaluate_discriminant
+data_studies/scripts/evaluate_discriminant_bi_solar
+data_studies/scripts/low_itr_bi214_info_getter
+data_studies/scripts/remove_retrigs_eval_discriminant
+data_studies/scripts/ultimate_dataset_looper
+data_studies/scripts/background_model/bipo_tagger_data
+data_studies/scripts/background_model/bipo_tagger_mc
+data_studies/scripts/background_model/count_simulated
+data_studies/scripts/background_model/expected_rates_database.json
+data_studies/scripts/data_mc_agreement/bipo_tagger
+mc_studies/scripts/create_pdfs
+mc_studies/scripts/evaluate_discriminants
