@@ -194,7 +194,7 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     // define ratds input file location and output TTree file locations
     std::string input_fname  = input_fpath + "/simulation" + isotope + "_" + std::to_string(run_number) + "*.root";
-    std::string output_fname = output_fpath + "/full_analysis2_" + isotope + "/" + std::to_string(run_number) + ".root"; 
+    std::string output_fname = output_fpath + "/normed_pdfs_4p5m_" + isotope + "/" + std::to_string(run_number) + ".root"; 
     
     // load the PDF files for each isotope
     std::string working_directory = "/data/snoplus3/hunt-stokes/multisite_clean/mc_studies";
@@ -210,26 +210,45 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     */                                             
 
     // get the multisite histograms from the files (for both isotopes!)
-    TH1D *multi_pdf_B8_2p5_5p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
-    TH1D *multi_pdf_B8_2p5_3p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.0"));
-    TH1D *multi_pdf_B8_3p0_3p5  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.0_3.5"));
-    TH1D *multi_pdf_B8_3p5_4p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_4.0"));
-    TH1D *multi_pdf_B8_4p0_4p5  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.0_4.5"));
-    TH1D *multi_pdf_B8_4p5_5p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.5_5.0"));
-    TH1D *multi_pdf_B8_2p5_3p75 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.75"));
-    TH1D *multi_pdf_B8_3p75_5p0 = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_5.0"));
-    TH1D *multi_pdf_B8_3p5_5p0  = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_3p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.0"));
+    TH1D *multi_pdf_B8_3p0_3p5     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.0_3.5"));
+    TH1D *multi_pdf_B8_3p5_4p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_4.0"));
+    TH1D *multi_pdf_B8_4p0_4p5     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.0_4.5"));
+    TH1D *multi_pdf_B8_4p5_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_4.5_5.0"));
+    TH1D *multi_pdf_B8_2p5_3p75    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_2.5_3.75"));
+    TH1D *multi_pdf_B8_3p75_5p0    = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.75_5.0"));
+    TH1D *multi_pdf_B8_3p5_5p0     = dynamic_cast<TH1D*>(PDF_B8->Get("multi_3.5_5.0"));
 
-    TH1D *multi_pdf_Tl208_2p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
-    TH1D *multi_pdf_Tl208_2p5_3p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.0"));
-    TH1D *multi_pdf_Tl208_3p0_3p5 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.0_3.5"));
-    TH1D *multi_pdf_Tl208_3p5_4p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_4.0"));
-    TH1D *multi_pdf_Tl208_4p0_4p5 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.0_4.5"));
-    TH1D *multi_pdf_Tl208_4p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.5_5.0"));
+    TH1D *multi_pdf_Tl208_2p5_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_5.0"));
+    TH1D *multi_pdf_Tl208_2p5_3p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.0"));
+    TH1D *multi_pdf_Tl208_3p0_3p5  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.0_3.5"));
+    TH1D *multi_pdf_Tl208_3p5_4p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_4.0"));
+    TH1D *multi_pdf_Tl208_4p0_4p5  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.0_4.5"));
+    TH1D *multi_pdf_Tl208_4p5_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_4.5_5.0"));
     TH1D *multi_pdf_Tl208_2p5_3p75 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_2.5_3.75"));
     TH1D *multi_pdf_Tl208_3p75_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.75_5.0"));
-    TH1D *multi_pdf_Tl208_3p5_5p0 = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_5.0"));
+    TH1D *multi_pdf_Tl208_3p5_5p0  = dynamic_cast<TH1D*>(PDF_Tl208->Get("multi_3.5_5.0"));
 
+    // normalise the time residual pdfs for each isotope by their integral
+    multi_pdf_B8_2p5_3p0->Scale(1.0 / multi_pdf_B8_2p5_3p0->Integral());
+    multi_pdf_B8_3p0_3p5->Scale(1.0 / multi_pdf_B8_3p0_3p5->Integral());
+    multi_pdf_B8_3p5_4p0->Scale(1.0 / multi_pdf_B8_3p5_4p0->Integral());
+    multi_pdf_B8_4p0_4p5->Scale(1.0 / multi_pdf_B8_4p0_4p5->Integral());
+    multi_pdf_B8_4p5_5p0->Scale(1.0 / multi_pdf_B8_4p5_5p0->Integral());
+    multi_pdf_B8_2p5_3p75->Scale(1.0 / multi_pdf_B8_2p5_3p75->Integral());
+    multi_pdf_B8_3p75_5p0->Scale(1.0 / multi_pdf_B8_3p75_5p0->Integral());
+    multi_pdf_B8_3p5_5p0->Scale(1.0 / multi_pdf_B8_3p5_5p0->Integral());
+    
+    multi_pdf_Tl208_2p5_3p0->Scale(1.0 / multi_pdf_Tl208_2p5_3p0->Integral());
+    multi_pdf_Tl208_3p0_3p5->Scale(1.0 / multi_pdf_Tl208_3p0_3p5->Integral());
+    multi_pdf_Tl208_3p5_4p0->Scale(1.0 / multi_pdf_Tl208_3p5_4p0->Integral());
+    multi_pdf_Tl208_4p0_4p5->Scale(1.0 / multi_pdf_Tl208_4p0_4p5->Integral());
+    multi_pdf_Tl208_4p5_5p0->Scale(1.0 / multi_pdf_Tl208_4p5_5p0->Integral());
+    multi_pdf_Tl208_2p5_3p75->Scale(1.0 / multi_pdf_Tl208_2p5_3p75->Integral());
+    multi_pdf_Tl208_3p75_5p0->Scale(1.0 / multi_pdf_Tl208_3p75_5p0->Integral());
+    multi_pdf_Tl208_3p5_5p0->Scale(1.0 / multi_pdf_Tl208_3p5_5p0->Integral()); 
+    
     // create the output ntuple with an output TTree containing discriminants for each energy PDF
     std::cout << output_fname << std::endl;
     TFile *output_file    = new TFile(output_fname.c_str(), "RECREATE");
@@ -245,11 +264,14 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
     TTree *info_3p5_5p0 = new TTree("3p5_5p0", "3p5_5p0");
 
     // define the variables to fill branches with
-    double energy, x, y, z, dlogL, fisher, IQR, cos_theta_sun, itr;
-    
+    double energy, x, y, z, dlogL, fisher, IQR, cos_theta_sun, itr, posFOM;
+    UInt_t posFOM_hits;
+
     // add the relevant branches to each TTRee
     info_2p5_5p0->Branch("energy", &energy);
     info_2p5_5p0->Branch("itr", &itr);
+    info_2p5_5p0->Branch("posFOM", &posFOM);
+    info_2p5_5p0->Branch("posFOM_hits", &posFOM_hits);
     info_2p5_5p0->Branch("x", &x);
     info_2p5_5p0->Branch("y", &y);
     info_2p5_5p0->Branch("z", &z);
@@ -260,6 +282,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_2p5_3p0->Branch("energy", &energy);
     info_2p5_3p0->Branch("itr", &itr);
+    info_2p5_3p0->Branch("posFOM", &posFOM);
+    info_2p5_3p0->Branch("posFOM_hits", &posFOM_hits);
     info_2p5_3p0->Branch("x", &x);
     info_2p5_3p0->Branch("y", &y);
     info_2p5_3p0->Branch("z", &z);
@@ -270,6 +294,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_3p0_3p5->Branch("energy", &energy);
     info_3p0_3p5->Branch("itr", &itr);
+    info_3p0_3p5->Branch("posFOM", &posFOM);
+    info_3p0_3p5->Branch("posFOM_hits", &posFOM_hits);
     info_3p0_3p5->Branch("x", &x);
     info_3p0_3p5->Branch("y", &y);
     info_3p0_3p5->Branch("z", &z);
@@ -280,6 +306,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_3p5_4p0->Branch("energy", &energy);
     info_3p5_4p0->Branch("itr", &itr);
+    info_3p5_4p0->Branch("posFOM", &posFOM);
+    info_3p5_4p0->Branch("posFOM_hits", &posFOM_hits);
     info_3p5_4p0->Branch("x", &x);
     info_3p5_4p0->Branch("y", &y);
     info_3p5_4p0->Branch("z", &z);
@@ -290,6 +318,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_4p0_4p5->Branch("energy", &energy);
     info_4p0_4p5->Branch("itr", &itr);
+    info_4p0_4p5->Branch("posFOM", &posFOM);
+    info_4p0_4p5->Branch("posFOM_hits", &posFOM_hits);
     info_4p0_4p5->Branch("x", &x);
     info_4p0_4p5->Branch("y", &y);
     info_4p0_4p5->Branch("z", &z);
@@ -300,6 +330,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_4p5_5p0->Branch("energy", &energy);
     info_4p5_5p0->Branch("itr", &itr);
+    info_4p5_5p0->Branch("posFOM", &posFOM);
+    info_4p5_5p0->Branch("posFOM_hits", &posFOM_hits);
     info_4p5_5p0->Branch("x", &x);
     info_4p5_5p0->Branch("y", &y);
     info_4p5_5p0->Branch("z", &z);
@@ -310,6 +342,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_2p5_3p75->Branch("energy", &energy);
     info_2p5_3p75->Branch("itr", &itr);
+    info_2p5_3p75->Branch("posFOM", &posFOM);
+    info_2p5_3p75->Branch("posFOM_hits", &posFOM_hits);
     info_2p5_3p75->Branch("x", &x);
     info_2p5_3p75->Branch("y", &y);
     info_2p5_3p75->Branch("z", &z);
@@ -320,6 +354,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_3p75_5p0->Branch("energy", &energy);
     info_3p75_5p0->Branch("itr", &itr);
+    info_3p75_5p0->Branch("posFOM", &posFOM);
+    info_3p75_5p0->Branch("posFOM_hits", &posFOM_hits);
     info_3p75_5p0->Branch("x", &x);
     info_3p75_5p0->Branch("y", &y);
     info_3p75_5p0->Branch("z", &z);
@@ -330,6 +366,8 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
 
     info_3p5_5p0->Branch("energy", &energy);
     info_3p5_5p0->Branch("itr", &itr);
+    info_3p5_5p0->Branch("posFOM", &posFOM);
+    info_3p5_5p0->Branch("posFOM_hits", &posFOM_hits);
     info_3p5_5p0->Branch("x", &x);
     info_3p5_5p0->Branch("y", &y);
     info_3p5_5p0->Branch("z", &z);
@@ -419,7 +457,9 @@ void evaluate_discriminants(std::string isotope, int run_number, float fv_cut, f
             continue;
         }
 
-        itr = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
+        itr         = rEV.GetClassifierResult("ITR:scintFitter").GetClassification("ITR");
+        posFOM      = rEV.GetFitResult("scintFitter").GetFOM("PositionLogL");
+        posFOM_hits = rEV.GetFitResult("scintFitter").GetFOM("PositionSelectedNHit");
         // if (itr < 0.18 or itr > 0.3){
         //     continue;
         // }
