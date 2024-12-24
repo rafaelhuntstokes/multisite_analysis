@@ -6,8 +6,80 @@ import ROOT
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from scipy.stats import binned_statistic_2d, binned_statistic
+import matplotlib.font_manager as fm
 
+from scipy.stats import binned_statistic_2d, binned_statistic
+path2 = '/data/snoplus3/hunt-stokes/nuPhysPoster/scripts/Times_New_Roman_Normal.ttf'
+prop_font = fm.FontProperties(fname=path2, size = 12)
+
+plt.rcParams['mathtext.default'] = 'regular'
+plt.rcParams.update({'axes.unicode_minus' : False})
+
+# set position of axis labels
+plt.rcParams["xaxis.labellocation"] = 'right'
+plt.rcParams["yaxis.labellocation"] = 'top'
+
+# set global parameters with rcParams -- copy whole block below before plotting code to set plotting template globally
+
+# set height and width of big markings on axis x
+plt.rcParams['xtick.major.size'] = 6
+plt.rcParams['xtick.major.width'] = 1.6
+# set height and width of small markings on axis x
+plt.rcParams['xtick.minor.size'] = 3
+plt.rcParams['xtick.minor.width'] = 1.6
+# set height and width of big markings on axis y
+plt.rcParams['ytick.major.size'] = 6
+plt.rcParams['ytick.major.width'] = 1.6
+# set height and width of small markings on axis y
+plt.rcParams['ytick.minor.size'] = 3
+plt.rcParams['ytick.minor.width'] = 1.6
+# set thickness of axes
+plt.rcParams['axes.linewidth'] = 1.6
+# set plot background color
+plt.rcParams['figure.facecolor'] = 'white'
+# set plot aspect ratio -- change according to needs
+plt.rcParams['figure.figsize'] = (8.5, 6.5)
+# set padding (between ticks and axis label)
+plt.rcParams['xtick.major.pad'] = '12' ## change me if the axis labels overlap! ## 
+plt.rcParams['ytick.major.pad'] = '12'
+# set padding (between plot and title)
+plt.rcParams['axes.titlepad'] = 12
+# set markings on axis to show on the inside of the plot, can change if needed
+plt.rcParams['xtick.direction'] = 'in'
+plt.rcParams['ytick.direction'] = 'in'
+
+# set ticks on both sides of x and y axes
+plt.rcParams['xtick.top'] = True
+plt.rcParams['xtick.bottom'] = True
+plt.rcParams['ytick.left'] = True
+plt.rcParams['ytick.right'] = True
+plt.rcParams['xtick.minor.visible'] = True
+plt.rcParams['ytick.minor.visible'] = True
+
+histogram_style = {
+    'histtype': 'step', 
+    'color': 'blue',
+    'alpha': 0.7,
+    'linewidth': 2
+}
+
+scatter_style = {
+    'marker': 's',
+    'color': 'black',
+    's': 25
+}
+
+errorbar_style = {
+    'linestyle': 'None',
+    'color': 'black',
+    'capsize': 1.5
+}
+
+line_plot_style = {
+    'linestyle': '-',
+    'color': 'black',
+    'linewidth': 2.5
+}
 # import plotly.express as px
 """
 Script is created to investigate the systematic shift in multisite discriminant
@@ -162,14 +234,14 @@ def plot_itr_vs_multi():
     #         event_e.append(e)
         
     # file = ROOT.TFile.Open(working_dir + f"/extracted_data/bi214/discriminants_7.0._2.5_3.125_PDF/{irun}.root")
-    file = ROOT.TFile.Open(working_dir + f"/extracted_data/bi214/reprocessed_7.0.15_discriminants_2.5_3.125_PDF/total.root")
-    # file = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/bismuth214_data_discriminants/total.root")
+    #file = ROOT.TFile.Open(working_dir + f"/extracted_data/bi214/reprocessed_7.0.15_discriminants_2.5_3.125_PDF/total.root")
+    file = ROOT.TFile.Open(working_dir + "/extracted_data/bi214/bismuth214_data_discriminants/total.root")
     branch = file.Get("bi214")
     
-    FV_CUT = 6000
+    FV_CUT = 4500
     E_LOW  = 1.25
     E_HIGH = 3.0
-    ITR_LOW = 0.21
+    ITR_LOW = 0#0.21
     
     for ientry in branch:
         itr       = ientry.itr
@@ -510,7 +582,24 @@ def plot_itr_vs_multi():
 
     # fig = px.density_heatmap(mean_itr, text_auto = True)
     # fig.show()
-    
+    bins_itr = np.linspace(0.1, 0.3, 40)
+    plt.figure()
+    plt.hist(mc_itr, bins = bins_itr, density = True, histtype = "step", color = "red", linestyle = "dotted")
+    plt.hist(event_itr, bins = bins_itr, density = True, histtype = "step", color = "black")
+    plt.legend(handles = [plt.plot([], [], color = "red", linestyle = "dotted")[0], plt.plot([], [], color = "black")[0]], labels = ["MC", "Data"], frameon = False, prop = fm.FontProperties(fname=path2, size = 16))
+    plt.xlabel("ITR", fontproperties = prop_font, fontsize = 14)
+    plt.ylabel("Counts", fontproperties = prop_font, fontsize = 14)
+
+    ax = plt.gca()
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(prop_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(prop_font)
+    plt.savefig("../plots/itr_mc_vs_data.pdf")
+    plt.close()
+    np.save("/home/hunt-stokes/itr_data.npy", event_itr)
+    np.save("/home/hunt-stokes/itr_mc.npy", mc_itr)
 
 def check_pdfs():
 
@@ -806,13 +895,13 @@ def extract_mc_residuals():
     return residualsRECON
 
 # simple_multisite_comparison()
-# plot_itr_vs_multi()
+plot_itr_vs_multi()
 # plot_time_residuals()
 # write_gtids_of_weird_events()
 # check_pdfs()
 # excluding_old_data()
-mc_residuals = extract_mc_residuals()
-plot_time_residual_agreement(mc_residuals)
+# mc_residuals = extract_mc_residuals()
+# plot_time_residual_agreement(mc_residuals)
 
     
     
