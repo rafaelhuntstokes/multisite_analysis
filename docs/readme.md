@@ -25,7 +25,7 @@ Indicative energy distributions for the events within the 2.5 to 5.0 MeV ROI are
 ![image](asimov_energy-1.png)
 
 ### Multisite Discriminant Feature
-Interactions in liquid scintillator may be classifed into two broad classes of events: those which produce point-like energy depositions, and those which deposit energy over a broad area at a series of discrete vertices. The former are electron-like events, such as those produced by <sup>8</sup>B solar neutrino elastic scattering or radioactive $\beta$ decays. The latter class, multisite, frequently arise from radioactive decays involving $\gamma$ particles, such as internal <sup>208</sup>Tl $\beta$/$\gamma$ decays, and it is the Compton scattering of these $\gamma$ that produce multiple energy deposition verticies in the scintillator.
+Interactions in liquid scintillator may be classifed into two broad classes of events: those which produce point-like energy depositions, and those which deposit energy over a broad area at a series of discrete vertices. The former are electron-like events, such as those produced by <sup>8</sup>B solar neutrino elastic scattering or radioactive $\beta$ decays. The latter class, multisite, frequently arise from radioactive decays involving $\gamma$ particles, such as internal <sup>208</sup>Tl $\beta$ / $\gamma$ decays, and it is the Compton scattering of these $\gamma$ that produce multiple energy deposition verticies in the scintillator.
 
 The multiple energy depositions lead to a broader observed distribution of PMT hit times compared to single-site events. The figure below shows this broadening, obtained from MC simulations of <sup>8</sup>B $\nu_e$ elastic scattering and internal <sup>208</sup>Tl $\beta$/$\gamma$ decays.
 
