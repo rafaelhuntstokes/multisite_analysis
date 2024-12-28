@@ -13,7 +13,7 @@ $$log(\mathcal{L}) = \sum_k log\left(\sum_i N_i P_{ik}\right) - \sum_i N_i$$
 
 Where $n_k$ is the number of events in bin $k$ of the dataset, $N_i$ is the normalisation of event type $i$, and $P_{ik}$ is the counts in bin $k$ for event type $i$ in the normalised feature PDF. This analysis uses two features of the data: energy and a multisite discriminant. As shown elsewhere, the energy and multisite discriminant feature are independent, and their respective contributions to the overall log-likelihood are calculated independantly using the above and summed. 
 
-The respective normalisations of the signal (<sup>8</sup>B solar neutrino elastic scattering interactions) and background noise (dominated by <sup>208</sup>Tl $\beta$/$\gamma$ decays) are extracted from a dataset of 145.7 days of full-fill scintillator data. An energy domain of 2.5 to 5.0 MeV was chosen due to the sensitivity of solar neutrino flux measurements in this region to beyond standard model physics.
+The respective normalisations of the signal (<sup>8</sup>B solar neutrino elastic scattering interactions) and background noise (dominated by <sup>208</sup>Tl $\beta$ / $\gamma$ decays) are extracted from a dataset of 145.7 days of full-fill scintillator data. An energy domain of 2.5 to 5.0 MeV was chosen due to the sensitivity of solar neutrino flux measurements in this region to beyond standard model physics.
 
 The impact of including the additional multisite feature in the signal extraction is quantified by comparing the profile-loglikelihood frequentist confidence intervals obtained when only using energy information.    
 
