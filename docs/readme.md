@@ -34,6 +34,7 @@ The multiple energy depositions lead to a broader observed distribution of PMT h
 Where 'time residual' is a first order position independent transformation of the raw PMT hit times obtained via: 
 
 $$t_{res} = t_{hit} - t_{tof} - t_{ev}$$
+
 Where $t_{res}$ is the time residual, $t_{hit}$ is the observed (raw) PMT hit time, $t_{tof}$ is the time of flight for a photon emitted from the reconstructed interaction vertex to the hit PMT. and $t_{ev}$ is the reconstructed interaction time relative to the detector's event trigger.
 
 Essentially, using the time residual rather than raw PMT hit times removes the problem of interactions occuring closer to the PMTs having different residual shapes than those occuring at the center. Instead, the underlying physics of the interaction determines the observed time residual distribution shape.
