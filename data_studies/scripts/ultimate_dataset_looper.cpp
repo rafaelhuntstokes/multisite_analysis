@@ -85,7 +85,7 @@ void coincidence_tagger(TChain *chain, double AV_OFFSET, int run_num, std::vecto
     DELTA_T_HIGHER = 4000000;
     FV_CUT         = 6000;
 
-    output_name = "/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence/output_" + std::to_string(run_num) + ".root";
+    output_name = "path_to_coincidence_cut_info";//"/data/snoplus3/hunt-stokes/clean_multisite/data_spectrum_runs_general_coincidence/output_" + std::to_string(run_num) + ".root";
 
 
     // define the variables for tracking the coincidence pair attributes
