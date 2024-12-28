@@ -42,6 +42,7 @@ Essentially, using the time residual rather than raw PMT hit times removes the p
 As shown in the figure above, the different in the observed time residual distributions between the signal (orange) and background (green) is slight. However, since the MC is well-calibrated (see thesis chapter 3), and the PDFs are constructed with high statistics, these discrepencies are significant. A log-likelihood ratio discriminant is used to obtain the 'multisite-ness' of a given event via:
 
 $$ log(\mathcal{L}) = \frac{1}{N}\sum_i^N log\left(\frac{P_S(t_{res}^i)}{P_B(t_{res}^i)}\right)$$
+
 Where $N$ is the number of PMT hits in a given event and $P_{S,B}(t_{res}^i)$ is the counts in the normalised signal or background time residual PDF in the bin containing $t_{res}^i$.
 
 Using separate populations of simulated events to those used in the time residual PDFs shown above, the multisite discriminant distributions are shown in the figure below.
